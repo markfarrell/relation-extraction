@@ -1,0 +1,3 @@
+#!/bin/sh
+
+scala -J-Xmx2048m -cp "./lib/slf4j-1.7.5/*:./lib/*:./bin/" edu.berkeley.nlp.parser.MemoizedParser -gr "./lib/eng_sm6.gr" $@
