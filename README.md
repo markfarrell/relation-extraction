@@ -7,7 +7,7 @@ berkeley-lazy-cache
 # Description
 
 A tool with the same interface as the berkeley-parser (https://code.google.com/p/berkeleyparser/). It keeps sentence-tree key-value pairs in memory, improving running time by getting rid of duplicate computations that might plague a project. Particularly, it should be useful to those who want to perform map, filter and fold operations
-on a large volume of sentence-tree pairs. Multiple machines can parse sentences and contribute to the key-value store simultaneous, reducing the time it takes to map a sentence to its tree across the network.
+on a large volume of sentence-tree pairs. Multiple machines can parse sentences and contribute to the key-value store simultaneously, reducing the time it takes to map a sentence to its tree across the network.
 
 It reads from STDIN and writes to STDOUT.
 
