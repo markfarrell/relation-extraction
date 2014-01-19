@@ -1,8 +1,8 @@
-berkeley-parser-memoize
+berkeley-lazy-cache
 
 # Synopsis
 
-    berkeley-parser-memoize [-clear] [-host <redis-host>] [-port <redis-port>] ... <option-for-berkeley-parser> ...
+    berkeley-lazy-cache [-clear] [-host <redis-host>] [-port <redis-port>] ... <option-for-berkeley-parser> ...
 
 # Description
 
@@ -28,12 +28,12 @@ It reads from STDIN and writes to STDOUT.
 - Java Runtime Environment
 
 # Install
-
-  make
+    ./install.sh
+     make
   
 # Run
 
-  ./berkeley-parser-memoize
+     ./berkeley-lazy-cache
   
   
   

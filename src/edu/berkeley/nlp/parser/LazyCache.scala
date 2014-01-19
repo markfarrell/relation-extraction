@@ -23,7 +23,7 @@ import edu.berkeley.nlp.util.CommandLineUtils
  * having an entry point for when the tool is used on
  * the command line.
  **/
-object MemoizedParser {
+object LazyCache {
 
   def main(unfilteredArgs : Array[String]) {
 
