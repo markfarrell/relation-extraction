@@ -1,0 +1,84 @@
+# Determiners
+
+A quick brown fox jumps over a lazy dog.
+The quick brown fox jumps over the lazy dog.
+These quick brown foxes jump over the lazy dog.
+The quick brown foxes jump over enough lazy dogs.
+Only one quick brown fox jumps over the lazy dog.
+A single quick brown fox jumps over the lazy dog.
+Seven brown foxes jump over two lazy dogs.
+Any brown fox jumps over any lazy dog.
+Some brown foxes jump over some lazy dogs.
+Something jumped over the lazy dog. 
+Another fox jumps over the lazy dog.
+Which fox jumps over the lazy dog?
+Both foxes jump over the lazy.
+
+# Superlative 
+
+The quickest brown fox jumps over the laziest dog.
+
+# Comparative 
+
+The brown fox jumps quicker than the lazy dog.
+The brown fox jumps more quickly than the lazy dog.
+
+The dog is not as quick as the fox.
+The fox has more agility than the dog. 
+
+# Adjectives 
+
+The young fox jumps over than the old dog.
+The fox jumps over the wooden dog.
+The lovely fox jumps over the ugly dog.
+The Swedish fox jumps over the Australian dog.
+The happy fox jumps over the unhappy dog.
+
+# Adverbs
+
+The brown fox jumps over the lazy dog quickly.
+
+# Conditionals  
+
+When there is a lazy dog\, then there is a quick brown fox.
+Whenever there exists a lazy dog\, there exists a quick brown fox. 
+Unless there is a lazy dog\, there isn't a quick brown fox.
+There is either a quick brown fox and a lazy dog\, or there is not.
+If there is a quick brown fox\, then it jumps if and only if there is also a lazy dog.
+If there is a lazy dog\, then the quick brown jumps.
+
+# Verb forms 
+
+The fox is jumping over the dog.
+The fox is not jumping under the dog.
+The fox would rather jump over the dog. 
+The fox is going to jump over the dog.
+The fox wants to jump over the dog.
+The foxes are to jump over the dog.
+The fox will jump over the dog.
+The fox has jumped over the dog.
+The fox was jumping over the dog.
+The fox jumped over the dog.
+The fox did jump over the dog.
+Jumping over the lazy dog is quick.
+
+# Relative clauses
+
+The fox whose name was Flash\, jumped over the dog.
+He is the fox who jumped over the dog.
+The fox jumps over John's dog.
+
+# Possessives 
+
+My quick brown fox jumps over my lazy dog.
+John's quick brown fox jumps over his lazy dog.
+His quick brown fox jumps over his lazy dog.
+Our quick brown fox jumps over your lazy dog.
+
+# Misc
+
+The lazy dog is jumped over by the quick brown fox.
+There exists a lazy dog that the quick brown fox jumps over.
+
+
+
