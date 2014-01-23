@@ -13,23 +13,151 @@ import java.io.PipedInputStream
 import java.io.PipedOutputStream
 import java.io.IOException
 import java.net.UnknownHostException
+import java.security.Permission
 
 import com.redis.RedisClient
 import edu.berkeley.nlp.PCFGLA.BerkeleyParser
 import edu.berkeley.nlp.util.CommandLineUtils
 
 /** 
- * Companion object for the MemoizedParser, 
+  * Memoizes the results of parsing sentences with the BerkeleyParser.
+  * under a certain configuration.
+  *
+  * @constructor 
+  * @param host A Redis host -- for where results are cached.
+  * @param port A Redis port -- for where results are cached.
+  * @param args Flags used to configure the BerkeleyParser
+ **/
+class LazyCache( host : String , port : Int, args : Array[String] ) {
+
+  private[this] val client = new RedisClient(host, port)
+
+  def clear() = client.flushdb
+  
+  def get(sentence : String) : String = { 
+
+    System.setIn({ 
+
+      val out : PipedOutputStream = new PipedOutputStream()
+      val in : PipedInputStream = new PipedInputStream(out)
+      val writer : PrintWriter = new PrintWriter(out)
+
+      System.setIn(in)
+
+      writer.write(sentence)
+      writer.flush()
+      writer.close()
+
+      in
+    })
+
+    client.get(sentence) match { 
+      case None => {
+
+        val stdout = System.out
+
+        val captureStream : PrintStream = new PrintStream(System.out) {
+
+          val captured : StringBuilder = new StringBuilder()
+
+          @throws[IOException]()
+          override def write(buf : Array[Byte], off : Int, len : Int) {
+
+            //super.write(buf, off, len)
+            captured.appendAll(buf map { b => b.asInstanceOf[Char] }, off, len)
+
+          }
+
+          @throws[IOException]() 
+          override def write(b : Int) {
+
+            //super.write(b)
+            captured.append(b.asInstanceOf[Char])
+
+          }
+
+          override def toString() : String = {
+            captured.toString()
+          }
+
+          override def close() { 
+            client.set(sentence, captured.toString())
+          }
+
+        }
+
+        System.setOut(captureStream)
+
+        // Temporary prevent the BerkeleyParser tool 
+        // from causing the process to exit
+        System.setSecurityManager( new SecurityManager() { 
+
+            override def checkPermission( permission : Permission ) {
+              if( "exitVM" == permission.getName) { 
+                 throw new SecurityException()
+              }
+            }
+        })
+
+        try { 
+          BerkeleyParser.main(args)
+        } catch { 
+          case ex : SecurityException => {} 
+        }
+
+        System.setSecurityManager( null )
+
+        System.setOut(stdout)
+
+        captureStream.close()
+        captureStream.toString()
+
+      }
+      case Some(s) => s
+    }
+
+  }
+
+}
+
+/** 
+ * Companion object for LazyCache, 
  * having an entry point for when the tool is used on
  * the command line.
  **/
 object LazyCache {
 
+  /**
+    * Credit: https://github.com/kstyrc/embedded-redis
+   **/
+  def spawnRedisServer(port : Integer) : Process = {
+
+    val redisServer = new ProcessBuilder("redis-server", "--port", Integer.toString(port)).start()
+
+  
+    val readyPattern : String = ".*The server is now ready to accept connections on port.*" 
+
+    val reader : BufferedReader = new BufferedReader(new InputStreamReader(redisServer.getInputStream()));
+
+    try {
+      var outputLine : String = null;
+      do {
+        outputLine = reader.readLine();
+      } while (outputLine != null && !outputLine.matches(readyPattern));
+    } finally {
+      reader.close();
+    }
+    
+
+    redisServer
+
+  }
+
   def main(unfilteredArgs : Array[String]) {
 
-    var shouldFlush = false
-    var host = "localhost"
-    var port = 6379
+    var shouldClear = false
+    var host : String = null
+    var port : Integer = 6379
 
     val args = {
 
@@ -54,90 +182,34 @@ object LazyCache {
         } 
       })
 
-      argMap = chop(argMap, "-clear", (value : String) => { shouldFlush = true })
+      argMap = chop(argMap, "-clear", (value : String) => { shouldClear = true })
 
       argMap.flatMap(p => Array(p._1, p._2)).toArray[String]
- 
+
     }
 
-    val client : RedisClient = { 
-      try {
-        new RedisClient(host, port)
-      } catch {
-        case ex : RuntimeException => {
+    val start = () => { 
 
-          try {
-            Runtime.getRuntime().exec("redis-server &")
-            new RedisClient()
-          } catch { 
-            case ex : Exception => { 
-              System.err.println("Please have a redis server running on host " + host + ":" + port)
-              System.exit(1) 
-              null
-            }
-          }
+      val lazyCache : LazyCache = new LazyCache(host, port, args)
 
-        }
-      }
+      if(shouldClear) lazyCache.clear()
+      else System.out.println(lazyCache.get((new BufferedReader(new InputStreamReader(System.in))).readLine()))
+
+    }
+
+    if(host == null) {
+
+      val redisServer : Process = spawnRedisServer(port)
+
+      start()
+
+      redisServer.destroy()
+
+    } else { 
+
+      start()
+
     } 
-
-    if(shouldFlush) client.flushdb
-
-    val pipe = () => { 
-
-      val input = (new BufferedReader(new InputStreamReader(System.in))).readLine() 
-
-      val out : PipedOutputStream = new PipedOutputStream()
-      val in : PipedInputStream = new PipedInputStream(out)
-      val writer : PrintWriter = new PrintWriter(out)
-
-      System.setIn(in)
-
-      writer.write(input)
-      writer.flush()
-      writer.close()
-
-      input
-    }
- 
-    val input = pipe()
-
-    client.get(input) match { 
-      case None => {
-
-        System.setOut(new PrintStream(System.out) {
-
-          var captured = new StringBuilder()
-
-          @throws[IOException]()
-          override def write(buf : Array[Byte], off : Int, len : Int) {
-
-            super.write(buf, off, len)
-            captured.appendAll(buf map { b => b.asInstanceOf[Char] }, off, len)
-
-          }
-
-          @throws[IOException]()
-          override def write(b : Int) {
-
-              super.write(b)
-              captured.append(b.asInstanceOf[Char])
-
-          }
-
-          override def close() { 
-
-              client.set(input, captured.toString())
-
-          }
-
-        })
-
-         BerkeleyParser.main(args)
-
-      }
-      case Some(s) => println(s)
-    }
 
   }
 } 
