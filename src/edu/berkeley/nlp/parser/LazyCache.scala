@@ -11,6 +11,8 @@ import java.io.InputStreamReader
 import java.io.BufferedReader
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
+import java.io.FileOutputStream
+import java.io.FileDescriptor
 import java.io.IOException
 import java.net.UnknownHostException
 import java.security.Permission
@@ -54,7 +56,7 @@ class LazyCache( host : String , port : Int, args : Array[String] ) {
     client.get(sentence) match { 
       case None => {
 
-        val stdout = System.out
+        val stdout = new PrintStream(new FileOutputStream(FileDescriptor.out))
 
         val captureStream : PrintStream = new PrintStream(System.out) {
 
@@ -90,20 +92,23 @@ class LazyCache( host : String , port : Int, args : Array[String] ) {
 
         // Temporary prevent the BerkeleyParser tool 
         // from causing the process to exit
-        System.setSecurityManager( new SecurityManager() { 
+        System.setSecurityManager( new SecurityManager() {
 
-            override def checkPermission( permission : Permission ) {
-              if( "exitVM" == permission.getName) { 
-                 throw new SecurityException()
-              }
+            override def checkExit( status : Int ) {
+
+              throw new SecurityException() 
             }
+
+            override def checkPermission( permission : Permission ) { }
         })
+
 
         try { 
           BerkeleyParser.main(args)
         } catch { 
           case ex : SecurityException => {} 
         }
+
 
         System.setSecurityManager( null )
 
@@ -193,7 +198,7 @@ object LazyCache {
       val lazyCache : LazyCache = new LazyCache(host, port, args)
 
       if(shouldClear) lazyCache.clear()
-      else System.out.println(lazyCache.get((new BufferedReader(new InputStreamReader(System.in))).readLine()))
+      else println(lazyCache.get((new BufferedReader(new InputStreamReader(System.in))).readLine()))
 
     }
 
