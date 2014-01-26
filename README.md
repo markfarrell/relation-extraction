@@ -18,10 +18,10 @@ It reads from STDIN and writes to STDOUT.
 - host <redis-host> : Specify another host for the redis client. Localhost is the default host.
 - port <redis-port> : Specify another port for connections to a redis server. The port is 6379 by default.
 
-
 # Dependencies 
 
-- A redis server for the tool to connect to. 
+- Redis
+- SBT 0.13.0 
 - Scala 2.10
 - Bash
 - GNU Make

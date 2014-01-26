@@ -1,3 +1,8 @@
 #!/bin/sh
 
-scala -J-Xmx2048m -cp "./lib/slf4j-1.7.5/*:./lib/*:./bin/" edu.berkeley.nlp.parser.LazyCacheBlurb -gr "./lib/eng_sm6.gr" $@
+export JAVA_OPTS="-Xmx2048m"
+
+target/start edu.berkeley.nlp.parser.LazyCacheBlurb -gr "./lib/eng_sm6.gr" $@
+
+
+
