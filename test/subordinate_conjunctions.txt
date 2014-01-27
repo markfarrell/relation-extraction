@@ -1,0 +1,12 @@
+The dog walked after he ate.
+The dog walked after the dog ate.
+The dog walked after a dog ate.
+The dog walks because it ate.
+Because it ate the dog walks.
+The dog walks because the dog ate.
+If the dog walks then it is happy.
+If the dog is happy then it walks.
+Unless the dog walks it is sad.
+The dog is happy that it walks.
+The dog will walk if he eats.
+The dog could walk if he eats.
