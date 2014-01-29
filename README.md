@@ -22,13 +22,13 @@ overwhelming amount of information available in scientific literature, particula
 
 ### Synopsis 
 
-    ./civilize 
+    civilize 
 
 ### Description
 
 Reads a block of sentences from STDIN.
 
-Writes graph data in GraphML format to STDOUT.
+Writes graph data in GEXF format to STDOUT.
 
 ### Design
 
