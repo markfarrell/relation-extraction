@@ -25,7 +25,66 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.data.AttributeListImpl
 import it.uniroma1.dis.wsngroup.gexf4j.core.viz.NodeShape
 
-object TreeConversions { 
+package object TreeConversions {
+
+  type LinguisticTree = Tree[String]
+  implicit def TreeToTreeEnhancer(tree : LinguisticTree) = new TreeEnhancer(tree)
+
+  /** 
+    * Methods added to Tree through implicit conversions with this class.
+    **/
+  class TreeEnhancer(tree : LinguisticTree) { 
+
+    /** 
+      * Find the longest subtree of the tree containing only the labels provided
+      * as an argument to this function.
+      * TODO: Return longest subtree, not first found. 
+      **/
+    def longestSubtree(labels : Set[String]) : Option[LinguisticTree] = powerTree() filter { 
+      (subtree : LinguisticTree) => { 
+        subtree.getChildren().asScala forall { 
+          (child : LinguisticTree) => labels contains { child.getLabel() }
+        } 
+      }
+    } sortBy { 
+      _.getChildren().size() * -1
+    } find { (_) => true } 
+
+    def subsequences(ls : List[LinguisticTree]) : List[LinguisticTree] =  ((0 to ls.size) flatMap { 
+        (i : Int) => { 
+          val pair : (List[LinguisticTree], List[LinguisticTree]) = ls.splitAt(i)  
+          List[List[LinguisticTree]](pair._1, pair._2)
+        }
+      }).flatten.toList
+
+    def powerTree() : List[LinguisticTree] = {
+
+      if(tree.size() == 1) {
+        List[LinguisticTree]()
+      } else {  
+
+        val childList : List[LinguisticTree] = tree.getChildren().asScala.toList 
+        val childPower : List[List[LinguisticTree]] = subsequences(childList) map { _.powerTree() }
+        val flattened : List[LinguisticTree] = childPower flatten
+        val prepended : List[LinguisticTree] = childPower map { 
+          (s: List[LinguisticTree]) => { 
+            val root : LinguisticTree = tree.shallowCloneJustRoot()
+            root.setChildren( s.toList.asJava )
+            root
+          }
+        }
+
+        flattened union prepended 
+
+      }
+
+    }
+
+    def terminalList() : List[String] =  tree.iterator().asScala.foldLeft(List[String]()) {
+      (ls, child) => if(child.isPreTerminal()) ls ++ List[String](child.getChild(0).getLabel())  else ls
+    } 
+
+  }
 
   /** 
    * Implicitly convert a tree to a list of edges when this object's
@@ -63,63 +122,6 @@ object TreeConversions {
    **/
   implicit def TreeToGEXF(tree : Tree[String]) : Gexf = {
 
-    type LinguisticTree = Tree[String]
-    implicit def TreeToTreeEnhancer(tree : LinguisticTree) = new TreeEnhancer(tree)
-
-    /** 
-      * Methods added to Tree through implicit conversions with this class.
-      **/
-    class TreeEnhancer(tree : LinguisticTree) { 
-
-      /** 
-        * Find the longest subtree of the tree containing only the labels provided
-        * as an argument to this function.
-        * TODO: Return longest subtree, not first found. 
-        **/
-      def longestSubtree(labels : Set[String]) : Option[LinguisticTree] = powerTree() find { 
-        (subtree : LinguisticTree) => { 
-          tree.getChildren().asScala forall { 
-            (child : LinguisticTree) => labels contains { child.getLabel() }
-          } 
-        }
-      }
-
-      def subsequences(set : Set[LinguisticTree]) : Set[LinguisticTree] =  ((0 to set.size) flatMap { 
-        (i : Int) => { 
-          val pair : (Set[LinguisticTree], Set[LinguisticTree]) = set.splitAt(i)  
-          Set[Set[LinguisticTree]](pair._1, pair._2)
-        }
-      }).flatten.toSet[LinguisticTree] 
-
-      def powerTree() : Set[LinguisticTree] = {
-
-        if(tree.size() == 0) {
-          Set[LinguisticTree]()
-        } else {  
-
-          val childSet : Set[LinguisticTree] = tree.getChildren().asScala.toSet[LinguisticTree] 
-          val childPower : Set[Set[LinguisticTree]] = subsequences(childSet) map { _.powerTree() }
-          val flattened : Set[LinguisticTree] = childPower flatten
-          val prepended : Set[LinguisticTree] = childPower map { 
-            (s: Set[LinguisticTree]) => { 
-              val root : LinguisticTree = tree.shallowCloneJustRoot()
-              root.setChildren( s.toList.asJava )
-              root
-            }
-          }
-
-          flattened union prepended 
-
-        }
-
-      }
-
-      def terminalList() : List[String] =  tree.iterator().asScala.foldLeft(List[String]()) {
-        (ls, child) => if(child.isPreTerminal()) ls ++ List[String](child.getChild(0).getLabel())  else ls
-      } 
-
-    }
-
     val conditionTags : Set[String] = Set[String]("MD")
     val dependencyTags : Set[String] = Set[String]("IN")
     val clauseTags : Set[String] = Set[String]("S", "SBAR")
@@ -128,14 +130,13 @@ object TreeConversions {
 
     abstract class Term
     case class Action(value : String, dependency : Option[Dependency]) extends Term // VB, VBZ, VBP, VBD, CC
-    case class Dependency(value : String, clause : Topic) extends Term
-    case class Condition(modal : String, actionResult: Action) extends Term
-    case class Topic(values : List[String], actions: List[Term]) extends Term //VGD, NP, CC 
+    case class Dependency(value : String, clause : Option[Topic]) extends Term
+    case class Condition(modal : String, actionResult: Option[Action]) extends Term
+    case class Topic(values : List[String], ability : Option[Term]) extends Term //VGD, NP, CC 
+    //TODO: Add support for multiple actions: e.g. The dog can walk and might run.
+    // Possible expand a sentence before passing it to the environment.
 
     object Env { 
-
-      val terms : Stack[Term] = new Stack[Term]()
-      var state : Option[Term] = None
 
       /** 
         * Takes a current node assumed to contain a valid subtree produces a topic.
@@ -143,46 +144,44 @@ object TreeConversions {
         * "The dog walks" or the "The dog walks and eats"  because it is like saying 
         * "The dog, who walks and eats". 
         **/
-      def toTopic(tree : Tree[String]) /**: Option[Topic] **/ = {
+      def toTopic(tree : LinguisticTree) : Option[Topic] = tree.longestSubtree(topicTags) map { 
+         (t : LinguisticTree) => Topic(t.terminalList(), toCondition(tree).orElse(toAction(tree)))
+      } 
 
-        val values : List[String] = { 
-          val subtree : Option[Tree[String]] = tree.longestSubtree(topicTags)
-          subtree match { 
-            case Some(tree) => Topic(tree.terminalList(), {
+      def toDependency(tree : LinguisticTree) : Option[Dependency] = tree.longestSubtree(dependencyTags) map { 
+        ( t : LinguisticTree) => Dependency(t.terminalList().mkString(""), toTopic(tree))
+      }
 
-                tree.longestSubtree(Set[String]("VP")) match { 
-                  case None => List[Term]()
-                  case Some(verbPhraseTree) => { 
-                    val clauseTree : Option[Tree[String]] = verbPhraseTree.longestSubtree(clauseTags)
+      def toAction(tree : LinguisticTree) : Option[Action] = tree.longestSubtree(actionTags) map {
+        ( t : LinguisticTree) => Action(t.terminalList().mkString(""), toDependency(tree)) 
+      }
 
-                    /** Def: buildDependency : Option[Term] **/
-                    /** TODO: Implement **/ 
+      def toCondition(tree : LinguisticTree) : Option[Condition] = tree.longestSubtree(conditionTags) map {
+        ( t : LinguisticTree) => Condition(t.terminalList().mkString(""), toAction(tree)) 
+      }
 
-                    /** Def: buildAction : Option[Term] **/
-                    val buildAction = (clauseTree : LinguisticTree) => {
-                      clauseTree.longestSubtree(actionsTags) match { 
-                        case Some(t) => Action(t.terminalList().mkString(""), buildDependency(clauseTree))
-                        case None => None
-                      }
-                    }
 
-                    /** Def: buildCondition : Option[Term] **/
-                    /** TODO: Move to function **/
-                    val conditionTree : Option[Tree[String]] = clauseTree.longestSubtree(conditionTags)
-                    conditionTree match { 
-                      case Some(d) => Condition(conditionTree.terminalList().mkString(""), buildAction(clauseTree))
-                      case None => buildAction(clauseTree)
-                    } 
+      /** def toTopic(tree : Tree[String]) : Option[Topic]  = {
 
-                  }
+        val subtree : Option[Tree[String]] = tree.longestSubtree(topicTags)
+        subtree match { 
+          case Some(tree) => Topic(tree.terminalList(), {
+
+              tree.longestSubtree(Set[String]("VP")) match { 
+                case None => List[Term]()
+                case Some(verbPhraseTree) => { 
+                  val clauseTree : Option[Tree[String]] = verbPhraseTree.longestSubtree(clauseTags)
+
+                  } 
 
                 }
-              }) 
-            case None =>  None
-          }
-        }
 
-      }
+              }
+            }) 
+          case None => None
+        } 
+
+      } **/
 
     } 
 

@@ -7,12 +7,13 @@ object ProjectBuild extends Build {
   def standardSettings = Defaults.defaultSettings ++ Seq( 
     exportJars := true,
     name := "berkeley-lazy-cache",
-
     version := "0.1",
-
     scalaVersion := "2.10.3",
-
+    resolvers ++= Seq( 
+      "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases"
+    ),
     libraryDependencies ++= Seq(
+      "org.scalacheck" %% "scalacheck" % "1.11.3" % "test",
       "org.slf4j" % "slf4j-simple" % "1.7.5",
       "it.uniroma1.dis.wsngroup.gexf4j" % "gexf4j" % "0.4.4-BETA"
     )
