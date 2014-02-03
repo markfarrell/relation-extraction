@@ -32,7 +32,7 @@ package object TreeConversions {
 
   /** 
     * Methods added to Tree through implicit conversions with this class.
-    **/
+   **/
   class TreeEnhancer(tree : LinguisticTree) { 
 
     /** 
@@ -125,7 +125,8 @@ package object TreeConversions {
     val conditionTags : Set[String] = Set[String]("MD")
     val dependencyTags : Set[String] = Set[String]("IN")
     val clauseTags : Set[String] = Set[String]("S", "SBAR")
-    val topicTags : Set[String] = Set[String]("NP", "CC") 
+    val vpTags : Set[String] = Set[String]("VP")
+    val topicTags : Set[String] = Set[String]("NP", "CC")
     val actionTags : Set[String] = Set[String]("VB", "VBZ", "VBP", "VBD", "CC")
 
     abstract class Term
@@ -136,6 +137,7 @@ package object TreeConversions {
     //TODO: Add support for multiple actions: e.g. The dog can walk and might run.
     // Possible expand a sentence before passing it to the environment.
 
+    // TODO: Pull out env and create individual tests. For example, assert the output of (NP (DT The Dog)) on toTopic. 
     object Env { 
 
       /** 
@@ -153,93 +155,27 @@ package object TreeConversions {
       }
 
       def toAction(tree : LinguisticTree) : Option[Action] = tree.longestSubtree(actionTags) map {
-        ( t : LinguisticTree) => Action(t.terminalList().mkString(""), toDependency(tree)) 
+        ( t : LinguisticTree) => {
+          Action(t.terminalList().mkString(""), { 
+              tree.longestSubtree(vpTags) flatMap { toDependency(_) } 
+          })
+        }
       }
 
       def toCondition(tree : LinguisticTree) : Option[Condition] = tree.longestSubtree(conditionTags) map {
         ( t : LinguisticTree) => Condition(t.terminalList().mkString(""), toAction(tree)) 
       }
 
-
-      /** def toTopic(tree : Tree[String]) : Option[Topic]  = {
-
-        val subtree : Option[Tree[String]] = tree.longestSubtree(topicTags)
-        subtree match { 
-          case Some(tree) => Topic(tree.terminalList(), {
-
-              tree.longestSubtree(Set[String]("VP")) match { 
-                case None => List[Term]()
-                case Some(verbPhraseTree) => { 
-                  val clauseTree : Option[Tree[String]] = verbPhraseTree.longestSubtree(clauseTags)
-
-                  } 
-
-                }
-
-              }
-            }) 
-          case None => None
+      def toClause(tree : LinguisticTree) : Option[Term] = tree.iterator().asScala find { 
+        (t : LinguisticTree) => clauseTags contains { t.getLabel() } 
+      } flatMap { 
+        (t : LinguisticTree) => t.getLabel() match { 
+          case "S" => toTopic(t)
+          case "SBAR" => toDependency(t)
         } 
-
-      } **/
+      } 
 
     } 
-
-    // TODO: Build list of graph nodes, not list of string; set properties based on state.
-    // Assume there are conjunctions e.g. the dog and the cat, when transforming the tree.
-    val transform : (Tree[String]) => List[String] = (tree) => {
-
-      tree.iterator().asScala.foldLeft((List[String](), 0)) { 
-        (state, node) => {
-
-          val list : List[String] = state._1
-          val current : Int = state._2
-
-          node.getLabel() match { 
-            case "S" => (list, current)
-            case "SBAR" => (list, current) 
-            case "IN" => (if(node.isPreTerminal()) node.getChild(0).getLabel() :: list else list, current)
-            case "NP" => ({
-
-                val result : String = node.iterator().asScala.foldLeft("") {
-                  (str, child) => if(child.isPreTerminal()) str + " " + child.getChild(0).getLabel()  else str
-                } 
-
-                if(result.length > 0) result :: list else list 
-
-              }, current)
-            case "VP" => {
-
-                //Iterate over children: find and add modals, VB, VBZ, VBP, VBD, VBN or VBG.
-                val result : (String, Int) = node.iterator().asScala.foldLeft(("", current)) { 
-                  (concatState, child) => {
-
-                    if(child.isPreTerminal()) {
-
-                      val terminalLabel : String = child.getChild(0).getLabel()
-
-                      child.getLabel() match {
-                        case "MD" => (concatState._1  + " " + terminalLabel, 1)
-                        case _ => (concatState._1 + " " + terminalLabel, concatState._2)
-                    } 
-                  } else { 
-                    concatState
-                  } 
-
-                }
-
-              }
-              (result._1 :: list, result._2)
-            }
-            case _ => (list, current)
-          }
-
-        }
-
-      }._1.reverse
-
-    }
-
         
      val gexf : Gexf = new GexfImpl();
 
