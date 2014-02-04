@@ -13,7 +13,7 @@ object ProjectBuild extends Build {
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases"
     ),
     libraryDependencies ++= Seq(
-      "org.scalacheck" %% "scalacheck" % "1.11.3" % "test",
+      "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
       "org.slf4j" % "slf4j-simple" % "1.7.5",
       "it.uniroma1.dis.wsngroup.gexf4j" % "gexf4j" % "0.4.4-BETA"
     )
