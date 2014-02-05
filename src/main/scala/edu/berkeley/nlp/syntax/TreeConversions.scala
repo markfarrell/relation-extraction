@@ -40,41 +40,46 @@ package object TreeConversions {
       * as an argument to this function.
       * TODO: Return longest subtree, not first found. 
       **/
-    def longestSubtree(labels : Set[String]) : Option[LinguisticTree] = powerTree() filter { 
+    def longestSubtree(labels : Set[String]) : Option[LinguisticTree] = (powerTree() filter { 
       (subtree : LinguisticTree) => { 
         subtree.getChildren().asScala forall { 
           (child : LinguisticTree) => labels contains { child.getLabel() }
         } 
       }
-    } sortBy { 
+    }).toList.sortBy { 
       _.getChildren().size() * -1
     } find { (_) => true } 
 
-    def subsequences(ls : List[LinguisticTree]) : List[LinguisticTree] =  ((0 to ls.size) flatMap { 
-        (i : Int) => { 
-          val pair : (List[LinguisticTree], List[LinguisticTree]) = ls.splitAt(i)  
-          List[List[LinguisticTree]](pair._1, pair._2)
+    def replaceChildren(s : Set[LinguisticTree]) : LinguisticTree = { 
+      val root : LinguisticTree = tree.shallowCloneJustRoot()
+      root.setChildren( s.toList.asJava )
+      root
+    }
+
+    def slices() : Set[Set[LinguisticTree]] = { 
+      val ls : Set[LinguisticTree] = tree.getChildren().asScala.toSet[LinguisticTree] 
+      ((0 to (ls.size + 1)) flatMap { 
+        (x : Int) => (0 to (ls.size+1-x)) map { 
+          (y : Int) => ls.slice(y, (ls.size+1)-x).toSet[LinguisticTree]
         }
-      }).flatten.toList
+      }).toSet[Set[LinguisticTree]]
+    }
 
-    def powerTree() : List[LinguisticTree] = {
+    def powerTree() : Set[LinguisticTree] = {
 
-      if(tree.size() == 1) {
-        List[LinguisticTree]()
+      if(tree.isPreTerminal()) {
+        Set[LinguisticTree](tree)
       } else {  
 
-        val childList : List[LinguisticTree] = tree.getChildren().asScala.toList 
-        val childPower : List[List[LinguisticTree]] = subsequences(childList) map { _.powerTree() }
-        val flattened : List[LinguisticTree] = childPower flatten
-        val prepended : List[LinguisticTree] = childPower map { 
-          (s: List[LinguisticTree]) => { 
-            val root : LinguisticTree = tree.shallowCloneJustRoot()
-            root.setChildren( s.toList.asJava )
-            root
-          }
-        }
+        val childPower : Set[Set[LinguisticTree]] = slices() map { 
+          (s : Set[LinguisticTree]) => s flatMap { 
+            (c : LinguisticTree) => c.powerTree()
+          } 
+        } 
+        val flattened : Set[LinguisticTree] = childPower flatten
+        val prepended : Set[LinguisticTree] = childPower map { replaceChildren(_) }
 
-        flattened union prepended 
+        flattened | prepended 
 
       }
 
