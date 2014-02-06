@@ -35,12 +35,13 @@ package object TreeConversions {
    **/
   class TreeEnhancer(tree : LinguisticTree) { 
 
-    /** 
-      * Find the longest subtree of the tree containing only the labels provided
+    /**
+      * @method longestSlice
+      * @param labels
+      * @return The longest slice at any level of the tree containing only the labels provided
       * as an argument to this function.
-      * TODO: Return longest subtree, not first found. 
       **/
-    def longestSubtree(labels : Set[String]) : Option[LinguisticTree] = (powerTree() filter { 
+    def longestSlice(labels : Set[String]) : Option[LinguisticTree] = (powerTree() filter { 
       (subtree : LinguisticTree) => { 
         subtree.getChildren().asScala forall { 
           (child : LinguisticTree) => labels contains { child.getLabel() }
@@ -48,14 +49,25 @@ package object TreeConversions {
       }
     }).toList.sortBy { 
       _.getChildren().size() * -1
-    } find { (_) => true } 
+    } find { (_) => true }
 
+    /** 
+      * @method replaceChildren
+      * @param s
+      * @return - A new tree with the original root node of the tree,
+      * but with children set to s.
+     **/
     def replaceChildren(s : Set[LinguisticTree]) : LinguisticTree = { 
       val root : LinguisticTree = tree.shallowCloneJustRoot()
       root.setChildren( s.toList.asJava )
       root
     }
 
+    /** 
+      * @method slices - there should be (n^2/2 + n) slices for a list of 
+      * children of size n.
+      * @return All possible slices of a node's children.
+    **/
     def slices() : Set[Set[LinguisticTree]] = { 
       val ls : Set[LinguisticTree] = tree.getChildren().asScala.toSet[LinguisticTree] 
       ((0 to (ls.size + 1)) flatMap { 
@@ -65,6 +77,11 @@ package object TreeConversions {
       }).toSet[Set[LinguisticTree]]
     }
 
+    /** 
+      * @method powerTree - If f(x) = (x^2/2 + x), then there should be 
+      * f(n_0)f(n_1)...f(n_d) power trees for a tree of depth d.
+      * @return All possible slices of all possible slices.
+      **/
     def powerTree() : Set[LinguisticTree] = {
 
       if(tree.isPreTerminal()) {
@@ -85,6 +102,11 @@ package object TreeConversions {
 
     }
 
+    /** 
+      * @method terminalList
+      * @return - The list of terminals constructed when the leaf nodes of
+      * the tree are followed from left to right.
+     **/
     def terminalList() : List[String] =  tree.iterator().asScala.foldLeft(List[String]()) {
       (ls, child) => if(child.isPreTerminal()) ls ++ List[String](child.getChild(0).getLabel())  else ls
     } 

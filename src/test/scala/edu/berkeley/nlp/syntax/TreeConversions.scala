@@ -30,8 +30,8 @@ class TreeConversionsSpec extends FlatSpec with Matchers  {
       Set(), Set(a, b, c ,d),
       Set(b, c), Set(c), Set(b)
     )
-    tree.slices().toString() should be (expectation.toString()) 
-    
+    tree.slices().toString() should be (expectation.toString())
+
   }
 
   "Power tree" should "contain all possible sliced trees of a tree." in {
@@ -57,6 +57,18 @@ class TreeConversionsSpec extends FlatSpec with Matchers  {
 
     tree.powerTree().toString() should be (trees.toString())
 
-  } 
+  }
+
+  "Longest slice" should "should find the longest slice of the power tree containing the provided labels." in { 
+     
+       val tree : LinguisticTree = "(NP (DT The) (NN dog) (CC and) (NN cat.))"
+       val expectation : LinguisticTree = "(NP (DT The) (NN dog))"
+       
+       tree.longestSlice(Set[String]("DT", "NN")) match { 
+         case Some(t) => t.toString() should be (expectation.toString())
+         case None => assert(false)
+       }
+  }
+       
 
 } 

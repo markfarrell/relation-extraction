@@ -30,23 +30,23 @@ object Environment {
     * "The dog walks" or the "The dog walks and eats"  because it is like saying 
     * "The dog, who walks and eats". 
     **/
-  def toTopic(tree : LinguisticTree) : Option[Topic] = tree.longestSubtree(topicTags) map { 
+  def toTopic(tree : LinguisticTree) : Option[Topic] = tree.longestSlice(topicTags) map { 
     (t : LinguisticTree) => Topic(t.terminalList(), toCondition(tree).orElse(toAction(tree)))
   } 
 
-  def toDependency(tree : LinguisticTree) : Option[Dependency] = tree.longestSubtree(dependencyTags) map { 
+  def toDependency(tree : LinguisticTree) : Option[Dependency] = tree.longestSlice(dependencyTags) map { 
     ( t : LinguisticTree) => Dependency(t.terminalList().mkString(""), toTopic(tree))
   }
 
-  def toAction(tree : LinguisticTree) : Option[Action] = tree.longestSubtree(actionTags) map {
+  def toAction(tree : LinguisticTree) : Option[Action] = tree.longestSlice(actionTags) map {
     ( t : LinguisticTree) => {
       Action(t.terminalList().mkString(""), { 
-          tree.longestSubtree(vpTags) flatMap { toDependency(_) } 
+          tree.longestSlice(vpTags) flatMap { toDependency(_) } 
         })
     }
   }
 
-  def toCondition(tree : LinguisticTree) : Option[Condition] = tree.longestSubtree(conditionTags) map {
+  def toCondition(tree : LinguisticTree) : Option[Condition] = tree.longestSlice(conditionTags) map {
     ( t : LinguisticTree) => Condition(t.terminalList().mkString(""), toAction(tree)) 
   }
 

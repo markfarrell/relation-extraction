@@ -30,19 +30,6 @@ Reads a block of sentences from STDIN.
 
 Writes graph data in GEXF format to STDOUT.
 
-### Design
-
-1. Look for a sentence, S, or a subordinate clause SBAR. 
-2. Look for a noun phrase, NP. Flatten this subtree.
-3. Look for a verb phrase, VP.
-4. If there is a modal verb inside, 
-MD, then label subsequent subordinate clauses (starts with SBAR) as conditional.
-5. Extract any standalone verbs along the way, tagged with VB, VBZ, VBP, VBD, 
-VBN or VBG.
-6. Extract any conjunctions (subordinating or preposition), tagged with IN.
-7. Repeat / Connect 
-    NP -> (MD or None) -> (Any verb form) -> IN -> NP
-
 ## berkeley-lazy-cache
 
 ### Synopsis
