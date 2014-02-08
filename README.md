@@ -1,7 +1,6 @@
-# Civilize
+# Behold
 
-The goal of this project is to explore ways to make sense of the
-overwhelming amount of information available in scientific literature, particularly in the field of gerontology. 
+An attempt to make sense of the vast amount of information available in scientific literature.
 
 ## Dependencies 
 
@@ -18,18 +17,6 @@ overwhelming amount of information available in scientific literature, particula
 
 # Tools 
 
-## civilize 
-
-### Synopsis 
-
-    civilize 
-
-### Description
-
-Reads a block of sentences from STDIN.
-
-Writes graph data in GEXF format to STDOUT.
-
 ## berkeley-lazy-cache
 
 ### Synopsis
@@ -38,10 +25,9 @@ Writes graph data in GEXF format to STDOUT.
 
 ### Description
 
-Use berkeley-lazy-cache as you would the Berkeley Parser (https://code.google.com/p/berkeleyparser/). It uses a Redis store to cache of parsed sentences. 
+Use berkeley-lazy-cache as you would the Berkeley Parser (https://code.google.com/p/berkeleyparser/). It uses a Redis store to cache the output when sentences are parsed.
 
 It reads from STDIN and writes to STDOUT.
-
 
 ### Options
 

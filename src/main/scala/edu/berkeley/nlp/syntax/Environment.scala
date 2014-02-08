@@ -30,25 +30,26 @@ object Environment {
     * "The dog walks" or the "The dog walks and eats"  because it is like saying 
     * "The dog, who walks and eats". 
     **/
-  def toTopic(tree : LinguisticTree) : Option[Topic] = tree.longestSlice(topicTags) map { 
+  def toTopic(tree : LinguisticTree) : Option[Topic] = tree.findCut(topicTags) map { 
     (t : LinguisticTree) => Topic(t.terminalList(), toCondition(tree).orElse(toAction(tree)))
   } 
 
-  def toDependency(tree : LinguisticTree) : Option[Dependency] = tree.longestSlice(dependencyTags) map { 
-    ( t : LinguisticTree) => Dependency(t.terminalList().mkString(""), toTopic(tree))
+  def toDependency(tree : LinguisticTree) : Option[Dependency] = tree.findCut(dependencyTags) map { 
+    (t : LinguisticTree) => Dependency(t.terminalList().mkString(""), toTopic(tree))
   }
 
-  def toAction(tree : LinguisticTree) : Option[Action] = tree.longestSlice(actionTags) map {
-    ( t : LinguisticTree) => {
-      Action(t.terminalList().mkString(""), { 
-          tree.longestSlice(vpTags) flatMap { toDependency(_) } 
-        })
-    }
-  }
+  def toAction(tree : LinguisticTree) : Option[Action] = for { 
+    t1 <- tree.findCut(vpTags)
+    t2 <- t1.findCut(actionTags) 
+    action <- Some(Action(t2.terminalList().mkString(""), toDependency(t1)))
+  } yield action
 
-  def toCondition(tree : LinguisticTree) : Option[Condition] = tree.longestSlice(conditionTags) map {
-    ( t : LinguisticTree) => Condition(t.terminalList().mkString(""), toAction(tree)) 
-  }
+
+  def toCondition(tree : LinguisticTree) : Option[Condition] = for { 
+    t1 <- tree.findCut(vpTags)
+    t2 <- t1.findCut(conditionTags) 
+    condition <- Some(Condition(t2.terminalList().mkString(""), toAction(t1)))
+  } yield condition
 
   def toClause(tree : LinguisticTree) : Option[Term] = tree.iterator().asScala find { 
     (t : LinguisticTree) => clauseTags contains { t.getLabel() } 
@@ -57,7 +58,7 @@ object Environment {
       case "S" => toTopic(t)
       case "SBAR" => toDependency(t)
     } 
-  } 
+  } orElse(toTopic(tree))  
 
 } 
  

@@ -23,51 +23,71 @@ class TreeConversionsSpec extends FlatSpec with Matchers  {
     val b : Tree[String] = "(NN dog)"
     val c : Tree[String] = "(CC and)"
     val d : Tree[String] = "(NN cat.)"
+
     val expectation : Set[Set[LinguisticTree]] = Set[Set[LinguisticTree]](
       Set(a), Set(b, c, d),
       Set(a, b), Set(c ,d),
       Set(a, b, c),  Set(d), 
-      Set(), Set(a, b, c ,d),
-      Set(b, c), Set(c), Set(b)
+      Set(a, b, c ,d), Set(b, c), 
+      Set(c), Set(b)
     )
     tree.slices().toString() should be (expectation.toString())
 
   }
 
-  "Power tree" should "contain all possible sliced trees of a tree." in {
+  "Axed" should "contain all possible trees of a tree sliced at each level(depth)." in {
 
-    val tree : LinguisticTree = "(NP (DT The) (NN dog) (CC and) (NN cat.))"
+    // Case 1:
+    { 
+      val tree : LinguisticTree = "(NP (DT The) (NN dog) (CC and) (NN cat.))"
 
-    val a : Tree[String] = "(DT The)"
-    val b : Tree[String] = "(NN dog)"
-    val c : Tree[String] = "(CC and)"
-    val d : Tree[String] = "(NN cat.)"
-    val possibleChildren : Set[Set[LinguisticTree]] = Set[Set[LinguisticTree]](
-      Set(a), Set(b, c, d),
-      Set(a, b), Set(c ,d),
-      Set(a, b, c),  Set(d), 
-      Set(), Set(a, b, c ,d),
-      Set(b, c), Set(c), Set(b),
-      Set()
-    )
+      val a : Tree[String] = "(DT The)"
+      val b : Tree[String] = "(NN dog)"
+      val c : Tree[String] = "(CC and)"
+      val d : Tree[String] = "(NN cat.)"
 
-    val trees : Set[LinguisticTree] = (possibleChildren map { 
-      tree.replaceChildren(_)
-    }) | (possibleChildren flatten)
+      val possibleChildren : Set[Set[LinguisticTree]] = Set[Set[LinguisticTree]](
+        Set(a), Set(b, c, d),
+        Set(a, b), Set(c ,d),
+        Set(a, b, c),  Set(d), 
+        Set(a, b, c ,d), Set(b, c), Set(c), Set(b)
+      )
 
-    tree.powerTree().toString() should be (trees.toString())
+      val trees : Set[LinguisticTree] = (possibleChildren map { 
+        tree.replaceChildren(_)
+      }) | (possibleChildren flatten)
 
+      tree.axed().toString() should be (trees.toString())
+    } 
+
+    // Case 2:
+    { 
+     val tree : LinguisticTree = "((VP (VBZ walks) (PP (IN because))))"
+     val expectation : Set[LinguisticTree] = Set[LinguisticTree](
+       "(VP (VBZ walks) (PP (IN because)))", "(VBZ walks)",
+       "(VP (PP (IN because)))", "(IN because)", 
+       "(ROOT (VP (VBZ walks) (PP (IN because))))",
+       "(VP (VBZ walks))", "(PP (IN because))")
+     tree.axed().toString() should be (expectation.toString())
+ 
+    }
   }
 
-  "Longest slice" should "should find the longest slice of the power tree containing the provided labels." in { 
-     
+  "Total size" should " count the number of nodes in the tree." in {
+     val tree : LinguisticTree = "(NP (DT The) (NN dog) (CC and) (NN cat.))"
+     tree.totalSize() should be (9)
+  } 
+
+  "Find cut " should " find the longest slice of the a level in the tree containing the provided labels." in {
+
        val tree : LinguisticTree = "(NP (DT The) (NN dog) (CC and) (NN cat.))"
        val expectation : LinguisticTree = "(NP (DT The) (NN dog))"
        
-       tree.longestSlice(Set[String]("DT", "NN")) match { 
+       tree.findCut(Set[String]("DT", "NN")) match { 
          case Some(t) => t.toString() should be (expectation.toString())
          case None => assert(false)
        }
+
   }
        
 

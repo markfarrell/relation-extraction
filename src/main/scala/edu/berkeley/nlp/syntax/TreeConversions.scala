@@ -36,20 +36,29 @@ package object TreeConversions {
   class TreeEnhancer(tree : LinguisticTree) { 
 
     /**
-      * @method longestSlice
+      * @method findCut
       * @param labels
       * @return The longest slice at any level of the tree containing only the labels provided
       * as an argument to this function.
       **/
-    def longestSlice(labels : Set[String]) : Option[LinguisticTree] = (powerTree() filter { 
-      (subtree : LinguisticTree) => { 
-        subtree.getChildren().asScala forall { 
-          (child : LinguisticTree) => labels contains { child.getLabel() }
-        } 
-      }
-    }).toList.sortBy { 
-      _.getChildren().size() * -1
-    } find { (_) => true }
+    def findCut(labels : Set[String]) : Option[LinguisticTree] = (axed()  filter { 
+        (t : LinguisticTree) => { (t.getChildren().asScala forall { 
+            (child : LinguisticTree) => labels contains { child.getLabel() }
+          }) || ( labels contains {
+            t.getLabel() 
+          })
+        }
+      }).toList.sortWith { 
+        _.totalSize() > _.totalSize() 
+      } find { 
+        (_) => true
+      } 
+
+    /** 
+      * @method totalSize
+      * @return The number of nodes in the tree. 
+     **/
+    def totalSize() = tree.iterator().asScala.length
 
     /** 
       * @method replaceChildren
@@ -74,29 +83,25 @@ package object TreeConversions {
         (x : Int) => (0 to (ls.size+1-x)) map { 
           (y : Int) => ls.slice(y, (ls.size+1)-x).toSet[LinguisticTree]
         }
-      }).toSet[Set[LinguisticTree]]
+      }).toSet[Set[LinguisticTree]] filter { _.size > 0 } 
     }
 
     /** 
-      * @method powerTree - If f(x) = (x^2/2 + x), then there should be 
-      * f(n_0)f(n_1)...f(n_d) power trees for a tree of depth d.
-      * @return All possible slices of all possible slices.
+      * @method axed  
+      * @return Trees for all possible slices at each level of the tree.
       **/
-    def powerTree() : Set[LinguisticTree] = {
+    def axed() : Set[LinguisticTree] = {
 
       if(tree.isPreTerminal()) {
         Set[LinguisticTree](tree)
       } else {  
 
-        val childPower : Set[Set[LinguisticTree]] = slices() map { 
-          (s : Set[LinguisticTree]) => s flatMap { 
-            (c : LinguisticTree) => c.powerTree()
-          } 
-        } 
-        val flattened : Set[LinguisticTree] = childPower flatten
-        val prepended : Set[LinguisticTree] = childPower map { replaceChildren(_) }
+        val childSlices : Set[Set[LinguisticTree]] = slices() 
+        val flattened : Set[LinguisticTree] = childSlices flatten
+        val prepended : Set[LinguisticTree] = childSlices map { replaceChildren(_) }
+        val powered : Set[LinguisticTree] = flattened flatMap { _.axed() } 
 
-        flattened | prepended 
+        prepended | powered
 
       }
 
@@ -164,8 +169,6 @@ package object TreeConversions {
 
      val attrList : AttributeList = new AttributeListImpl(AttributeClass.NODE)
      graph.getAttributeLists().add(attrList)
-
-     
 
      gexf
   }
