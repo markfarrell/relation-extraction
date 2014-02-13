@@ -39,7 +39,7 @@ package object TreeConversions {
       * @method findCut
       * @param labels
       * @return The longest slice at any level of the tree containing only the labels provided
-      * as an argument to this function.
+      * as an argument to this function. 
       **/
     def findCut(labels : Set[String]) : Option[LinguisticTree] = (axed()  filter { 
         (t : LinguisticTree) => { (t.getChildren().asScala forall { 
@@ -148,29 +148,5 @@ package object TreeConversions {
    * to a Tree with string labels.
    **/
   implicit def StringToTree(str : String) : Tree[String] = Trees.PennTreeReader.parseEasy(str, false)
-
-  /** 
-   * Converts a tree into a civilized GEXF object, capable of being viewed as a graph in Gephi.
-   **/
-  implicit def TreeToGEXF(tree : Tree[String]) : Gexf = {
-
-       
-     val gexf : Gexf = new GexfImpl();
-
-     gexf.getMetadata()
-         .setLastModified(Calendar.getInstance().getTime())
-         .setCreator("Civilize")
-         .setDescription("Useful representation of a linguistic tree")
-
-     gexf.setVisualization(true)
-
-     val graph : Graph = gexf.getGraph()
-     graph.setDefaultEdgeType(EdgeType.UNDIRECTED).setMode(Mode.STATIC)
-
-     val attrList : AttributeList = new AttributeListImpl(AttributeClass.NODE)
-     graph.getAttributeLists().add(attrList)
-
-     gexf
-  }
 
 } 

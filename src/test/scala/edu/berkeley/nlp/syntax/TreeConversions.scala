@@ -62,14 +62,13 @@ class TreeConversionsSpec extends FlatSpec with Matchers  {
 
     // Case 2:
     { 
-     val tree : LinguisticTree = "((VP (VBZ walks) (PP (IN because))))"
-     val expectation : Set[LinguisticTree] = Set[LinguisticTree](
+      val tree : LinguisticTree = "((VP (VBZ walks) (PP (IN because))))"
+      val expectation : Set[LinguisticTree] = Set[LinguisticTree](
        "(VP (VBZ walks) (PP (IN because)))", "(VBZ walks)",
        "(VP (PP (IN because)))", "(IN because)", 
        "(ROOT (VP (VBZ walks) (PP (IN because))))",
        "(VP (VBZ walks))", "(PP (IN because))")
-     tree.axed().toString() should be (expectation.toString())
- 
+      tree.axed().toString() should be (expectation.toString())
     }
   }
 
@@ -89,6 +88,5 @@ class TreeConversionsSpec extends FlatSpec with Matchers  {
        }
 
   }
-       
 
 } 
