@@ -1,4 +1,4 @@
-# Behold
+# Beagle
 
 An attempt to make sense of the vast amount of information available in scientific literature.
 
