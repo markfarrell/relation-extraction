@@ -6,7 +6,7 @@ object ProjectBuild extends Build {
 
   def standardSettings = Defaults.defaultSettings ++ Seq( 
     exportJars := true,
-    name := "berkeley-lazy-cache",
+    name := "beagle",
     version := "0.1",
     scalaVersion := "2.10.3",
     resolvers ++= Seq( 
@@ -15,7 +15,9 @@ object ProjectBuild extends Build {
     libraryDependencies ++= Seq(
       "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
       "org.slf4j" % "slf4j-simple" % "1.7.5",
-      "it.uniroma1.dis.wsngroup.gexf4j" % "gexf4j" % "0.4.4-BETA"
+      "it.uniroma1.dis.wsngroup.gexf4j" % "gexf4j" % "0.4.4-BETA",
+      "org.squeryl" %% "squeryl" % "0.9.5-6",
+      "postgresql" % "postgresql" % "8.4-701.jdbc4"
     )
   ) 
 

@@ -109,7 +109,6 @@ class LazyCache( host : String , port : Int, args : Array[String] ) {
           case ex : SecurityException => {} 
         }
 
-
         System.setSecurityManager( null )
 
         System.setOut(stdout)

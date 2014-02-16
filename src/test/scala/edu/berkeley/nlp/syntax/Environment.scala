@@ -41,28 +41,28 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
   "toDependency" should " produce an Option[Dependency]." in { 
     val tree : LinguisticTree = "((IN after))" 
-    val expectation : Option[Environment.Dependency] = Some(Environment.Dependency("after", None))
+    val expectation : Option[Environment.Dependency] = Some(Environment.Dependency("after", List()))
     println(expectation.toString())
     Environment.toDependency(tree) should be (expectation)
   } 
 
   "toAction" should " produce an Option[Action]." in { 
     val tree : LinguisticTree = "((VP (VBZ walks) (PP (IN because))))"
-    val expectation : Option[Environment.Action] = Some(Environment.Action("walks", Some(Environment.Dependency("because", None))))
+    val expectation : Option[Environment.Action] = Some(Environment.Action("walks", List(Environment.Dependency("because", List()))))
     Environment.toAction(tree) should be (expectation)
 
   }
 
   "toCondition" should " produce an Option[Condition]." in {
      val tree : LinguisticTree = "(VP (MD could) (VP (VB walk)))" 
-     val expectation : Option[Environment.Condition] = Some(Environment.Condition("could", Some(Environment.Action("walk", None))))
+     val expectation : Option[Environment.Condition] = Some(Environment.Condition("could", List(Environment.Action("walk", List()))))
 
      Environment.toCondition(tree).toString() should be (expectation.toString())
   }
 
   "toTopic" should " produce an Option[Topic]." in { 
      val tree : LinguisticTree = "((NP (DT The) (NN dog) (NN walks.)))"
-     val expectation : Option[Environment.Topic] = Some(Environment.Topic("The dog walks.", None))
+     val expectation : Option[Environment.Topic] = Some(Environment.Topic("The dog walks.", List()))
 
      Environment.toTopic(tree).toString() should be (expectation.toString())
 
@@ -70,19 +70,44 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
   "toClause" should " produce an Option[Term]." in { 
      val tree : LinguisticTree = "((NP (DT The) (NN dog) (NN walks.)))"
-     val expectation : Option[Environment.Term] = Some(Environment.Topic("The dog walks.", None))
+     val expectation : Option[Environment.Term] = Some(Environment.Topic("The dog walks.", List()))
 
      Environment.toClause(tree).toString() should be (expectation.toString())
 
   }
 
+  "Merge" should " combine terms with the same values." in {
+
+    val topicA : Environment.Topic= Environment.Topic("The dog", 
+      List(Environment.Condition("might", 
+        List(Environment.Action("walk", 
+          List(Environment.Dependency("if",
+            List(Environment.Topic("the cat walks.", List())))))))))
+
+   val topicB : Environment.Topic= Environment.Topic("The dog", 
+     List(Environment.Condition("could", 
+       List(Environment.Action("sit", List()))))) 
+
+   val topicAB : Environment.Topic = Environment.Topic("The dog", 
+     List(Environment.Condition("could", 
+             List(Environment.Action("sit", List()))),
+          Environment.Condition("might", 
+             List(Environment.Action("walk", 
+               List(Environment.Dependency("if",
+                 List(Environment.Topic("the cat walks.", List())))))))))
+
+   (Environment.merge(List(topicA, topicB)).toString()) should be (List(topicAB).toString())
+
+
+  } 
+
   "toGexf" should " produce a Gexf object." in {
     
     val topic : Environment.Topic= Environment.Topic("The dog", 
-      Some(Environment.Condition("might", 
-        Some(Environment.Action("walk", 
-          Some(Environment.Dependency("if",
-            Some(Environment.Topic("the cat walks.", None)))))))))
+      List(Environment.Condition("might", 
+        List(Environment.Action("walk", 
+          List(Environment.Dependency("if",
+            List(Environment.Topic("the cat walks.", List())))))))))
 
     var expectation : String = """<?xml version='1.0' encoding='UTF-8'?>
     <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.2draft/viz" version="1.2">
@@ -96,18 +121,17 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
     </nodes><edges count="4"><edge id="The dog" source="The dog" target="might" type="undirected"/>
     <edge id="might" source="might" target="walk" type="undirected"/><edge id="walk" source="walk" target="if" type="undirected"/>
     <edge id="if" source="if" target="the cat walks." type="undirected"/></edges></graph></gexf>"""
-    expectation = expectation.split("\n").map( _.trim ).mkString("")
 
+    expectation = expectation.split("\n").map( _.trim ).mkString("")
 
     // Write Gexf object: OutputStream -> String
     // Compare XML expectation with output
     val gexfWriter : GexfWriter = new StaxGraphWriter()  
     val stringWriter : StringWriter = new StringWriter()
-    val gexf : Gexf = Environment.toGexf(topic)
+    val gexf : Gexf = Environment.toGexf(List(topic))
     gexfWriter.writeToStream(gexf, stringWriter, "UTF-8")
 
     stringWriter.toString() should be (expectation)
-
       
   } 
 
