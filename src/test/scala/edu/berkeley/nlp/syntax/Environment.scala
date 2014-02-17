@@ -76,7 +76,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
   }
 
-  "Merge" should " combine terms with the same values." in {
+  "Environments" should " join topics with the same values together when they are inserted." in {
 
     val topicA : Environment.Topic= Environment.Topic("The dog", 
       List(Environment.Condition("might", 
@@ -86,7 +86,9 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
    val topicB : Environment.Topic= Environment.Topic("The dog", 
      List(Environment.Condition("could", 
-       List(Environment.Action("sit", List()))))) 
+       List(Environment.Action("sit", List())))))
+
+   val topicC : Environment.Topic = Environment.Topic("the cat walks.", List())
 
    val topicAB : Environment.Topic = Environment.Topic("The dog", 
      List(Environment.Condition("could", 
@@ -96,42 +98,84 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
                List(Environment.Dependency("if",
                  List(Environment.Topic("the cat walks.", List())))))))))
 
-   (Environment.merge(List(topicA, topicB)).toString()) should be (List(topicAB).toString())
+   val env : Environment = new Environment
+
+   env.insertTopics(List(topicB, topicA))
+
+   (env.selectTopics().toString()) should be (List(topicAB, topicC).toString())
 
 
   } 
 
   "toGexf" should " produce a Gexf object." in {
+
+    // Case 1: 
+    { 
     
-    val topic : Environment.Topic= Environment.Topic("The dog", 
-      List(Environment.Condition("might", 
-        List(Environment.Action("walk", 
-          List(Environment.Dependency("if",
-            List(Environment.Topic("the cat walks.", List())))))))))
+     val topic : Environment.Topic= Environment.Topic("The dog", 
+       List(Environment.Condition("might", 
+         List(Environment.Action("walk", 
+           List(Environment.Dependency("if",
+             List(Environment.Topic("the cat walks.", List())))))))))
 
-    var expectation : String = """<?xml version='1.0' encoding='UTF-8'?>
-    <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.2draft/viz" version="1.2">
-    <graph defaultedgetype="undirected" idtype="string" mode="static"><attributes class="node" mode="static">
-    <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="The dog" label="The dog">
-    <attvalues><attvalue for="type" value="Topic"/></attvalues></node><node id="might" label="might"><attvalues>
-    <attvalue for="type" value="Condition"/></attvalues></node><node id="walk" label="walk">
-    <attvalues><attvalue for="type" value="Action"/></attvalues>
-    </node><node id="if" label="if"><attvalues><attvalue for="type" value="Dependency"/></attvalues></node>
-    <node id="the cat walks." label="the cat walks."><attvalues><attvalue for="type" value="Topic"/></attvalues></node>
-    </nodes><edges count="4"><edge id="The dog" source="The dog" target="might" type="undirected"/>
-    <edge id="might" source="might" target="walk" type="undirected"/><edge id="walk" source="walk" target="if" type="undirected"/>
-    <edge id="if" source="if" target="the cat walks." type="undirected"/></edges></graph></gexf>"""
+     var expectation : String = """<?xml version='1.0' encoding='UTF-8'?>
+     <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.2draft/viz" version="1.2">
+     <graph defaultedgetype="undirected" idtype="string" mode="static"><attributes class="node" mode="static">
+     <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="The dog" label="The dog">
+     <attvalues><attvalue for="type" value="Topic"/></attvalues></node><node id="might" label="might"><attvalues>
+     <attvalue for="type" value="Condition"/></attvalues></node><node id="walk" label="walk">
+     <attvalues><attvalue for="type" value="Action"/></attvalues>
+     </node><node id="if" label="if"><attvalues><attvalue for="type" value="Dependency"/></attvalues></node>
+     <node id="the cat walks." label="the cat walks."><attvalues><attvalue for="type" value="Topic"/></attvalues></node>
+     </nodes><edges count="4"><edge id="The dog" source="The dog" target="might" type="undirected"/>
+     <edge id="might" source="might" target="walk" type="undirected"/><edge id="walk" source="walk" target="if" type="undirected"/>
+     <edge id="if" source="if" target="the cat walks." type="undirected"/></edges></graph></gexf>"""
 
-    expectation = expectation.split("\n").map( _.trim ).mkString("")
 
-    // Write Gexf object: OutputStream -> String
-    // Compare XML expectation with output
-    val gexfWriter : GexfWriter = new StaxGraphWriter()  
-    val stringWriter : StringWriter = new StringWriter()
-    val gexf : Gexf = Environment.toGexf(List(topic))
-    gexfWriter.writeToStream(gexf, stringWriter, "UTF-8")
+     expectation = expectation.split("\n").map( _.trim ).mkString("")
+ 
+     // Write Gexf object: OutputStream -> String
+     // Compare XML expectation with output
+     val gexfWriter : GexfWriter = new StaxGraphWriter()  
+     val stringWriter : StringWriter = new StringWriter()
+     val gexf : Gexf = Environment.toGexf(List(topic))
+     gexfWriter.writeToStream(gexf, stringWriter, "UTF-8")
 
-    stringWriter.toString() should be (expectation)
+     stringWriter.toString() should be (expectation)
+
+
+   }
+
+   // Case 2:
+   { 
+     val env : Environment = new Environment
+     env.insertTopics(List(Environment.toTopic("((S (NP (DT The) (NN dog)) (VP (MD can) (VP (VB walk.)))))").get,
+       Environment.toTopic("((S (NP (DT The) (NN dog)) (VP (MD must) (VP (VB run.)))))").get))
+
+     var expectation : String = """<?xml version='1.0' encoding='UTF-8'?>
+     <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.2draft/viz" version="1.2">
+     <graph defaultedgetype="undirected" idtype="string" mode="static"><attributes class="node" mode="static">
+     <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="The dog" label="The dog">
+     <attvalues><attvalue for="type" value="Topic"/></attvalues></node>
+     <node id="can" label="can"><attvalues><attvalue for="type" value="Condition"/>
+     </attvalues></node><node id="walk." label="walk."><attvalues><attvalue for="type" value="Action"/>
+     </attvalues></node><node id="must" label="must"><attvalues><attvalue for="type" value="Condition"/>
+     </attvalues></node><node id="run." label="run."><attvalues><attvalue for="type" value="Action"/></attvalues></node>
+     </nodes><edges count="4"><edge id="The dog" source="The dog" target="can" type="undirected"/>
+     <edge id="The dog" source="The dog" target="must" type="undirected"/><edge id="can" source="can" target="walk." type="undirected"/>
+     <edge id="must" source="must" target="run." type="undirected"/></edges></graph></gexf>"""
+
+     expectation = expectation.split("\n").map( _.trim ).mkString("")
+
+     val gexfWriter : GexfWriter = new StaxGraphWriter()  
+     val stringWriter : StringWriter = new StringWriter()
+     val gexf : Gexf = Environment.toGexf(env.selectTopics())
+     gexfWriter.writeToStream(gexf, stringWriter, "UTF-8")
+
+     stringWriter.toString() should be (expectation)
+
+     
+   } 
       
   } 
 

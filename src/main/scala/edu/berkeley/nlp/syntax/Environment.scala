@@ -8,6 +8,7 @@ import scala.collection.JavaConverters._
 import scala.collection.Iterator
 import scala.collection.immutable.List
 import scala.collection.immutable.Set
+import scala.collection.immutable.Map
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.EdgeType
 import it.uniroma1.dis.wsngroup.gexf4j.core.Gexf
@@ -24,6 +25,97 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.impl.data.AttributeListImpl
 import it.uniroma1.dis.wsngroup.gexf4j.core.viz.NodeShape
 
 import TreeConversions._
+
+/** 
+  * @class Environment
+  * An environment stores and updates 
+  * information as sentences are inserted 
+  * into it. 
+ **/
+class Environment {
+
+  var topicMap : Map[String, Environment.Topic] = Map.empty
+
+  /** 
+    * @method insertTopics
+    * @param topics - The list of topics to be loaded 
+    * into the environment. 
+   **/
+  def insertTopics(topics : List[Environment.Topic]) : Unit = for(topic <- topics) {
+
+    topicMap.get(topic.value) match { 
+      case Some(existingTopic) => { 
+
+        //Note: will contain duplicate actions e.g.  "runs ... case 1", "runs ... case 2"
+        topicMap += topic.value -> Environment.Topic(topic.value, existingTopic.abilities ++ topic.abilities) 
+
+      } 
+      case None => topicMap += topic.value -> topic 
+    }
+
+    def insertActions(actions : List[Environment.Action]) : Unit = for { 
+      action <- actions 
+    } insertDependencies(action.dependencies)
+
+
+    def insertConditions(conditions : List[Environment.Condition]) : Unit = for { 
+      condition <- conditions
+    } insertActions(condition.actions) 
+
+
+    def insertDependencies(dependencies : List[Environment.Dependency]) : Unit = for { 
+      dependency <- dependencies
+    } insertTopics(dependency.clauses)
+
+
+    insertConditions(getConditions(topic.abilities))
+
+    insertActions(getActions(topic.abilities))
+     
+  } 
+
+  /** 
+    * @method selectTopics
+    * @return - All topics found in the environment, where 
+    * topics inserted with the same values have been merged together. 
+    **/
+  def selectTopics() : List[Environment.Topic] = {
+
+    def selectActions(terms : List[Environment.Term]) : List[Environment.Action]  = for { 
+      action <- getActions(terms)
+    } yield Environment.Action(action.value, selectDependencies(action.dependencies))
+
+    def selectConditions(terms : List[Environment.Term]) = for { 
+      condition <- getConditions(terms)
+    } yield Environment.Condition(condition.modal, selectActions(condition.actions))
+
+    def selectDependencies(dependencies : List[Environment.Dependency]) : List[Environment.Dependency] = for { 
+      dependency <- dependencies
+    } yield Environment.Dependency(dependency.value, dependency.clauses map { 
+        (t : Environment.Topic) => topicMap.get(t.value)
+      } flatten)
+  
+    { 
+      for { 
+        topic <- topicMap.values 
+      } yield Environment.Topic(topic.value, selectActions(topic.abilities) ++ selectConditions(topic.abilities))
+    } toList
+
+  }
+
+  private def getActions(terms : List[Environment.Term]) : List[Environment.Action] = terms filter { 
+    _.isInstanceOf[Environment.Action]
+  } map { 
+    _.asInstanceOf[Environment.Action] 
+  }
+
+  private def getConditions(terms : List[Environment.Term]) : List[Environment.Condition]  = terms filter { // type select 
+    _.isInstanceOf[Environment.Condition]
+  } map { 
+    _.asInstanceOf[Environment.Condition]
+  }
+
+} 
 
 object Environment { 
 
@@ -42,15 +134,15 @@ object Environment {
   //TODO: Add support for multiple actions: e.g. The dog can walk and might run.
   // Possible expand a sentence before passing it to the environment.
 
-  /** 
+ /** 
     * @method toTopic
     * @param tree
     **/
   def toTopic(tree : LinguisticTree) : Option[Topic] = tree.findCut(topicTags) map { 
     (t : LinguisticTree) => Topic(t.terminalList().mkString(" "), toCondition(tree).orElse(toAction(tree)) match { 
-      case Some(term) => List(term)
-      case None => List()
-    })
+        case Some(term) => List(term)
+        case None => List()
+     })
   } 
 
   /**
@@ -105,73 +197,12 @@ object Environment {
   } orElse(toTopic(tree))
 
   /**
-    * @method merge -- Ensures the uniqueness of 
-    * term values, building one to many relations 
-    * where the same term value is encountered more
-    * than once in the list of terms provided. 
-    * @param terms
-   **/
-  def merge(terms : List[Term]) : List[Term] = {
-
-    var topics : List[Topic] = List()
-    var actions : List[Action] = List()
-    var conditions : List[Condition] = List()
-    var dependencies : List[Dependency] = List()
-
-    for(term <- terms) { 
-      term match { 
-        case Topic(value, abilities) => topics find {  _.value == value } match { 
-          case Some(topic) => { 
-            topics = topics filterNot { _.value == value }
-            topics = Topic(value, merge(topic.abilities ++ abilities)) :: topics
-          } 
-          case None => topics = Topic(value, abilities) :: topics
-        } 
-        case Action(value, dependencies) => actions find {  _.value == value } match { 
-          case Some(action) => { 
-            actions = actions filterNot { _.value == value } 
-            actions = Action(value, merge(action.dependencies ++ dependencies) map { 
-              _.asInstanceOf[Dependency]
-            }) :: actions 
-          } 
-          case None => actions = Action(value, dependencies) :: actions
-        } 
-        case Condition(modal, actions) => conditions find { _.modal == modal } match { 
-          case Some(condition) => { 
-            conditions = conditions filterNot { _.modal == modal } 
-            conditions = Condition(modal, merge(condition.actions ++ actions) map {
-              _.asInstanceOf[Action]
-            }) :: conditions
-          } 
-          case None => conditions = Condition(modal, actions) :: conditions
-        } 
-        case Dependency(value, clauses) => dependencies find { _.value == value } match { 
-          case Some(dependency) => {
-            val combinedClauses : List[Topic] = dependency.clauses ++ clauses
-            val filteredTopics : List[Topic] = topics filter { 
-              (t : Topic) => combinedClauses exists { _.value == t.value }
-            } 
-            dependencies = dependencies filterNot { _.value == value } 
-            dependencies = Dependency(value, merge(filteredTopics ++ combinedClauses) map { 
-              _.asInstanceOf[Topic] 
-            }) :: dependencies
-          } 
-          case None => dependencies = Dependency(value, clauses) :: dependencies
-        } 
-      }
-    }
-
-    topics ++ actions ++ conditions ++ dependencies
-    
-  }
-
-  /**
     * @method toGexf
     * @param term
    **/
   def toGexf(terms : List[Term]) : Gexf = {
 
-    val gexf : Gexf = new GexfImpl();
+    val gexf : Gexf = new GexfImpl()
 
     gexf.setVisualization(true)
 
@@ -182,10 +213,13 @@ object Environment {
     graph.getAttributeLists().add(attrList)
 
     val attType : Attribute = attrList.createAttribute("type", AttributeType.STRING, "type")
+
+    var visited : Map[String, Node] = Map.empty //List of already visited topic nodes
   
     def makeNode(typename : String, value : String, terms : List[Term]) : Node  = { 
 
       val node : Node = graph.createNode(value).setLabel(value) // Look for or get if existing 
+
       node.getAttributeValues().addValue(attType, typename)
 
       for(term <- terms) node.connectTo(value, toNode(term))
@@ -194,9 +228,14 @@ object Environment {
 
     } 
 
-    def toNode(term : Term) : Node = { 
+    def toNode(term : Term) : Node = {
+
       term match { 
-        case Topic(value, abilities) => makeNode("Topic", value, abilities)
+        case Topic(value, abilities) => visited.get(value).getOrElse({ 
+          val node : Node = makeNode("Topic", value, abilities)
+          visited += value -> node
+          node
+        })
         case Dependency(value, clauses) => makeNode("Dependency", value, clauses)
         case Condition(modal, actions) => makeNode("Condition", modal, actions)
         case Action(value, dependencies) => makeNode("Action", value, dependencies)
@@ -210,6 +249,8 @@ object Environment {
     gexf
 
   } 
+
+
 
 } 
  

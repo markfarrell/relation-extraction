@@ -35,7 +35,7 @@ object GexfExporter {
         } terms = term :: terms
       }
 
-      (new StaxGraphWriter).writeToStream(Environment.toGexf(Environment.merge(terms)), System.out, "UTF-8")
+      (new StaxGraphWriter).writeToStream(Environment.toGexf(terms), System.out, "UTF-8")
       
     }
 
