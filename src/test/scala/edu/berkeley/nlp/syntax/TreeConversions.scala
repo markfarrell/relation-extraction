@@ -70,6 +70,7 @@ class TreeConversionsSpec extends FlatSpec with Matchers  {
        "(VP (VBZ walks))", "(PP (IN because))")
       tree.axed().toString() should be (expectation.toString())
     }
+
   }
 
   "Total size" should " count the number of nodes in the tree." in {

@@ -50,7 +50,6 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
     val tree : LinguisticTree = "((VP (VBZ walks) (PP (IN because))))"
     val expectation : Option[Environment.Action] = Some(Environment.Action("walks", List(Environment.Dependency("because", List()))))
     Environment.toAction(tree) should be (expectation)
-
   }
 
   "toCondition" should " produce an Option[Condition]." in {
@@ -60,13 +59,24 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      Environment.toCondition(tree).toString() should be (expectation.toString())
   }
 
-  "toTopic" should " produce an Option[Topic]." in { 
-     val tree : LinguisticTree = "((NP (DT The) (NN dog) (NN walks.)))"
-     val expectation : Option[Environment.Topic] = Some(Environment.Topic("The dog walks.", List()))
+  "toTopic" should " produce an Option[Topic]." in {
 
-     Environment.toTopic(tree).toString() should be (expectation.toString())
+     // Case 1: 
+     { 
+       val tree : LinguisticTree = "((NP (DT The) (NN dog) (NN walks.)))"
+       val expectation : Option[Environment.Topic] = Some(Environment.Topic("The dog walks.", List()))
 
-  }
+       Environment.toTopic(tree).toString() should be (expectation.toString())
+     } 
+
+     // Case 2:
+     {
+       val tree : LinguisticTree = "((NP (DT The) (NN dog)) (VP (MD might) (VP (VB eat) (SBAR (IN if) (S (NP (DT the) (NN cat)) (VP (MD can) (VP (VB run.))))))))"
+       val expectation : String = "Some(Topic(The dog,List(Condition(can,List(Action(run.,List(Dependency(if,List(Topic(the cat,List(Condition(can,List(Action(run.,List()))))))))))))))"
+       Environment.toTopic(tree).toString() should be (expectation)
+     } 
+
+   }
 
   "toClause" should " produce an Option[Term]." in { 
      val tree : LinguisticTree = "((NP (DT The) (NN dog) (NN walks.)))"

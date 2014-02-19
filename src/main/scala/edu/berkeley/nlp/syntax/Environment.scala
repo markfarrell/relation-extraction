@@ -122,6 +122,7 @@ object Environment {
   val conditionTags : Set[String] = Set[String]("MD")
   val dependencyTags : Set[String] = Set[String]("IN")
   val clauseTags : Set[String] = Set[String]("S", "SBAR")
+  val topicClauseTags : Set[String] = Set[String]("S") 
   val vpTags : Set[String] = Set[String]("VP")
   val topicTags : Set[String] = Set[String]("NP", "CC")
   val actionTags : Set[String] = Set[String]("VB", "VBZ", "VBP", "VBD", "CC")
@@ -150,7 +151,7 @@ object Environment {
     * @param tree
    **/
   def toDependency(tree : LinguisticTree) : Option[Dependency] = tree.findCut(dependencyTags) map { 
-    (t : LinguisticTree) => Dependency(t.terminalList().mkString(" "), toTopic(tree) match { 
+    (t : LinguisticTree) => Dependency(t.terminalList().mkString(" "), tree.findCut(topicClauseTags) flatMap { toTopic(_) } match { 
       case Some(term) => List(term)
       case None => List()
     })
@@ -162,7 +163,7 @@ object Environment {
    **/
   def toAction(tree : LinguisticTree) : Option[Action] = for { 
     t1 <- tree.findCut(vpTags)
-    t2 <- t1.findCut(actionTags) 
+    t2 <- t1.findCut(actionTags)
     action <- Some(Action(t2.terminalList().mkString(" "), toDependency(t1) match {
       case Some(term) => List(term)
       case None => List()
@@ -249,8 +250,6 @@ object Environment {
     gexf
 
   } 
-
-
 
 } 
  

@@ -46,7 +46,7 @@ package object TreeConversions {
             (child : LinguisticTree) => labels contains { child.getLabel() }
           }) || ( labels contains {
             t.getLabel() 
-          })
+          }) 
         }
       }).toList.sortWith { 
         _.totalSize() > _.totalSize() 
@@ -92,7 +92,7 @@ package object TreeConversions {
       **/
     def axed() : Set[LinguisticTree] = {
 
-      if(tree.isPreTerminal()) {
+      if(tree.isPreTerminal() || tree.getChildren().size() == 0) {
         Set[LinguisticTree](tree)
       } else {  
 
