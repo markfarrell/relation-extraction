@@ -15,8 +15,12 @@ object GexfExporter {
     var redisPort : Option[Int] = None
 
     if(args.length == 2) { 
-      redisHost = Some(args(1))
-      redisPort = Some(Integer.parseInt(args(2)))
+      redisHost = Some(args(0))
+      redisPort = try { 
+        Some(args(1).toInt)
+      } catch { 
+        case e : Exception => None
+      } 
     } 
 
     for {
