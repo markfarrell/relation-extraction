@@ -2,6 +2,8 @@ import java.sql.DriverManager
 import java.sql.Connection
 import java.sql.Statement
 import java.sql.PreparedStatement
+import java.sql.SQLException
+import java.sql.Types 
 import java.util.Properties
 
 import scala.collection.mutable.{HashMap, MultiMap, Set }
@@ -15,41 +17,30 @@ import edu.berkeley.nlp.syntax.Environment.Action
 
 object PostgreExporter {
 
+  // TODO: Create class PostgreExporter, making all fields and methods found in 'export' private 
   def export(conn : Connection, env : Environment) : Unit = {
 
-    class DependenciesTable extends HashMap[Topic, Set[Dependency]] with MultiMap[Topic, Dependency]
+    class DependenciesTable extends HashMap[Dependency, Set[Action]] with MultiMap[Dependency, Action]
     class TopicsTable extends HashMap[Term, Set[Topic]] with MultiMap[Term, Topic]
     class ConditionsTable extends HashMap[Action, Set[Condition]] with MultiMap[Action, Condition]
 
+    // Initialize field members
     val topics : List[Topic] = env.selectTopics()
-
-    val yes: Int = Statement.RETURN_GENERATED_KEYS
-
-    val insertTopic : PreparedStatement = conn.prepareStatement("INSERT INTO topics VALUES(?)")
-    val insertAction : PreparedStatement = conn.prepareStatement("INSERT INTO actions VALUES(?,?,?)", yes)
-    val insertCondition : PreparedStatement = conn.prepareStatement("INSERT INTO conditions VALUES(?,?)", yes)
-    val insertDependency : PreparedStatement = conn.prepareStatement("INSERT INTO dependencies VALUES(?,?,?)", yes)
 
     val topicsTable : TopicsTable = new TopicsTable 
     val conditionsTable : ConditionsTable = new ConditionsTable
+    val dependenciesTable : DependenciesTable = new DependenciesTable
 
-    val dependenciesTable : DependenciesTable = {
+    val yes: Int = Statement.RETURN_GENERATED_KEYS
 
-      val table : DependenciesTable = new DependenciesTable
+    // Methods to produce new prepared statements 
+    def insertTopic : PreparedStatement = conn.prepareStatement("INSERT INTO topics VALUES(?)")
+    def insertAction : PreparedStatement = conn.prepareStatement("INSERT INTO actions VALUES(?,?,?)", yes)
+    def insertCondition : PreparedStatement = conn.prepareStatement("INSERT INTO conditions VALUES(?,?)", yes)
+    def insertDependency : PreparedStatement = conn.prepareStatement("INSERT INTO dependencies VALUES(?,?,?)")
 
-      for(topic <- topics) { 
-        table += topic -> Set.empty[Dependency]
-      } 
-
-      table
-    }
-
-    def extractDependencies(action : Action) : Unit = for(dependency <- action.dependencies) { 
-
-      for(clause <- dependency.clauses) { 
-        dependenciesTable.addBinding(clause, dependency)
-      } 
-
+    def extractDependencies(action : Action) = for (dependency <- action.dependencies) { 
+      dependenciesTable.addBinding(dependency, action) 
     }
 
     def extract() : Unit = for (topic <- topics) {
@@ -63,39 +54,116 @@ object PostgreExporter {
             conditionsTable.addBinding(action, condition) 
             extractDependencies(action)
           }
-          case action : Action => extractDependencies(action) 
+          case action : Action => extractDependencies(action)
         }
 
       }
 
     }
-    
+
     extract()
-    
-    // Iterate through lists, setting preparedStatement values and using executeUpdate()
 
-    for(topic <- topics) { 
-      insertTopic.setString(1, topic.value)
-      insertTopic.executeUpdate() // TODO: Change to addBatch() 
-      insertTopic.clearParameters()
-    } 
+    // TODO: Methodize blocks found inside this try
+    try { 
 
-    for(kv <- topicsTable.iterator) {
-      kv._1 match { 
-        case condition : Condition => { 
+      // Commit all or nothing, since we want to enforce the same relationship 
+      // between terms in the environment. 
+      conn.setAutoCommit(false) 
+
+      // Insert all new topics into the database 
+      // TODO: What happens if a topic already exists?
+      {
+
+        val insertedTopic : PreparedStatement = insertTopic
+
+        for(topic <- topics) { 
+          insertedTopic.setString(1, topic.value)
+          insertedTopic.addBatch() // Add current parameters to batch
+          insertedTopic.clearParameters()
         } 
-        case action : Action => { 
-        } 
+
+        insertedTopic.executeBatch()
+        insertedTopic.close()
+
       } 
-    }
 
-    /** Execute batch. Commit transaction or rollback. **/
+      // Insert new actions that point to a topic
+      { 
+        val insertedAction : PreparedStatement = insertAction
+        for(kv <- topicsTable.iterator) {
+          kv._1 match { 
+            case action : Action => { 
+              for(topic <- kv._2) { 
+                insertedAction.setString(1, action.value)
+                insertedAction.setString(2, topic.value)
+                insertedAction.setNull(3, Types.INTEGER)
+                insertedAction.addBatch() 
+                insertedAction.clearParameters()
+              }
+            }
+          }
+        }
+        insertedAction.executeBatch()
+        insertedAction.close()
+      } 
 
-    // Allow database to release resources 
-    insertTopic.close()
-    insertAction.close()
-    insertCondition.close()
-    insertDependency.close()
+      // Insert new conditions that point to a topic
+      {
+        val insertedCondition : PreparedStatement = insertCondition
+
+        for(kv <- topicsTable.iterator) {
+          kv._1 match { 
+            case condition : Condition => {
+              for (topic <- kv._2) { 
+                insertedCondition.setString(1, condition.modal) 
+                insertedCondition.setString(2, topic.value) 
+                insertedCondition.addBatch() 
+                insertedCondition.clearParameters()
+              } 
+            } 
+          } 
+        }
+
+        insertedCondition.executeBatch()
+        insertedCondition.close()
+      }
+
+      // Grab all generated condition keys
+      // Insert new actions that point to a condition
+      {
+        val insertedAction : PreparedStatement = insertAction
+      
+        for(kv <- conditionsTable) { 
+
+          val action : Action = kv._1
+          
+          //TODO : ...
+        } 
+
+        insertedAction.executeBatch()
+        insertedAction.close()
+      } 
+
+      // Grab all generated action keys
+      // Insert dependencies that point to actions
+      // TODO: ...
+
+      conn.commit() // Complete transaction
+
+    } catch { 
+      case e : SQLException => { 
+        conn.rollback()
+        println(e.getStackTrace)
+      } 
+    } finally { 
+      conn.setAutoCommit(true)
+
+      // Allow database to release resources 
+      insertAction.close()
+      insertCondition.close()
+      insertDependency.close()
+
+    } 
 
   } 
 
