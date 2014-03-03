@@ -17,13 +17,13 @@ import edu.berkeley.nlp.syntax.Environment.Condition
 import edu.berkeley.nlp.syntax.Environment.Action
 
 /** 
-  * @class PostgreExporter
+  * @class PostgresExporter
   * 
   * @constructor Export an environment to a PostgreSQL database.
   * @param conn - active database connection.
   * @param env - environment loaded with terms. 
   **/
-class PostgreExporter(conn : Connection, env : Environment) { 
+class PostgresExporter(conn : Connection, env : Environment) { 
 
   class DependenciesTable extends HashMap[Dependency, Set[Action]] with MultiMap[Dependency, Action]
   class TopicsTable extends HashMap[Term, Set[Topic]] with MultiMap[Term, Topic]
