@@ -25,6 +25,9 @@ import edu.berkeley.nlp.syntax.Environment.Action
  **/
 class PostgreImporter(conn : Connection) { 
 
+  /** 
+    * Importer types 
+   **/
   private class Metadata extends HashMap[Int, String]
   private class ConditionMetadata extends Metadata
   private class ActionMetadata extends Metadata
@@ -33,10 +36,34 @@ class PostgreImporter(conn : Connection) {
 
   private class DependencyGraph extends HashMap[DependencyMetadata, String] 
 
+  /** 
+    * @method selectTopics
+    * @return {PreparedStatement}
+   **/
   private def selectTopics() : PreparedStatement = conn.prepareStatement("SELECT * FROM topics")
+
+  /**
+    * @method selectedAbsoluteActions
+    * @return {PreparedStatement}
+   **/
   private def selectAbsoluteActions() : PreparedStatement  = conn.prepareStatement("SELECT * FROM actions WHERE topic_id = ?")
+
+  /**
+    * @method selectConditionalActions
+    * @return {PreparedStatement}
+   **/
   private def selectConditionalActions() : PreparedStatement = conn.prepareStatement("SELECT * FROM actions WHERE condition_id = ?")
+
+  /**
+    * @method selectConditions
+    * @return {PreparedStatement} 
+   **/
   private def selectConditions() : PreparedStatement = conn.prepareStatement("SELECT * FROM conditions WHERE topic_id = ?") 
+
+  /**
+    * @method selectDependencies
+    * @return {PreparedStatement} 
+   **/
   private def selectDependencies() : PreparedStatement = conn.prepareStatement("SELECT * FROM dependencies WHERE action_id = ?") 
 
   /**
@@ -60,6 +87,12 @@ class PostgreImporter(conn : Connection) {
     topicValues 
   }
 
+  /**
+    * @method fetchMetadata {T extends Metadata}
+    * @param ps {PreparedStatement}
+    * @param map {T}
+    * @return {T}
+   **/
   private def fetchMetadata[T <: Metadata](ps : PreparedStatement, map : T) : T = { 
     val rs : ResultSet = ps.executeQuery()
     while(rs.next()) { 
@@ -72,7 +105,7 @@ class PostgreImporter(conn : Connection) {
   /**
     * @method getAbsoluteActionMetadata
     * @param topicId 
-    * @return 
+    * @return {ActionMetadata} 
    **/
   private def getAbsoluteActionMetadata(topicId : String) : ActionMetadata = {
 
@@ -83,6 +116,11 @@ class PostgreImporter(conn : Connection) {
     
   }
 
+  /**
+    * @method getConditionalActionMetadata
+    * @param conditionId {Int}
+    * @return {ActionMetadata}
+   **/
   private def getConditionalActionMetadata(conditionId : Int) : ActionMetadata = { 
 
     val selectedConditionalActions : PreparedStatement = selectConditionalActions()
@@ -92,25 +130,11 @@ class PostgreImporter(conn : Connection) {
 
   } 
 
-  private def getActionMetadata(topicMetadata : TopicMetadata) : ActionMetadata = {
-
-    var actionMetadata : ActionMetadata = topicMetadata.actionMetadata
-
-    // Extract all actions that point to the conditions that points to the topic
-    val ls : List[(Int, String)] = {
-      topicMetadata.conditionMetadata.keys flatMap { 
-        getConditionalActionMetadata(_)
-      } toList
-    } 
-
-    // Iterate and add each entry (keeps the type of ActionMetadata)
-    for(l <- ls) { 
-      actionMetadata += l
-    } 
-
-    actionMetadata 
-  } 
-
+  /** 
+    * @method getConditionMetadata
+    * @param topicId {String}
+    * @return {ConditionMetadata}
+   **/
   private def getConditionMetadata(topicId : String) : ConditionMetadata = { 
 
     val selectedConditions : PreparedStatement = selectConditions()
@@ -120,7 +144,12 @@ class PostgreImporter(conn : Connection) {
 
   }
 
-  private def getDependencyGraph(actionId : Int, topicId : String) : DependencyGraph = { 
+  /**
+    * @method getDependencyGraph
+    * @param actionId {Int} 
+    * @return DependencyGraph
+   **/
+  private def getDependencyGraph(actionId : Int) : DependencyGraph = { 
     
     val selectedDependencies : PreparedStatement = selectDependencies() 
     selectedDependencies.setInt(1, actionId)
@@ -133,7 +162,12 @@ class PostgreImporter(conn : Connection) {
 
       while(rs.next()) {
 
-        val dependencyMetadata : DependencyMetadata = DependencyMetadata(rs.getInt(1), rs.getString(2), rs.getInt(3)) 
+        val dependencyMetadata : DependencyMetadata = DependencyMetadata(
+          rs.getInt(1),
+          rs.getString(2),
+          rs.getInt(3)
+        ) 
+
         val topicId : String = rs.getString(4)
 
         graph += dependencyMetadata -> topicId
@@ -147,6 +181,11 @@ class PostgreImporter(conn : Connection) {
 
   }
 
+  /**
+    * @method getTopicMetadata
+    * @param topicId {String}
+    * @return {TopicMetadata}
+   **/
   private def getTopicMetadata(topicId : String) : TopicMetadata = { 
 
     val actionMetadata : ActionMetadata = getAbsoluteActionMetadata(topicId)
@@ -156,10 +195,53 @@ class PostgreImporter(conn : Connection) {
     
   }
 
- 
-  def load() : Environment = {
+  /**
+    * @method unsimplifiedConditions
+    * @param conditionMetadata {ConditionMetadata}
+    * @return {Iterable[Condition]}
+   **/
+  private def unsimplifiedConditions(conditionMetadata : ConditionMetadata) : Iterable[Condition] = for { 
+    (conditionId, conditionValue) <- conditionMetadata
+  } yield { 
+    val actions : List[Action] = unsimplifiedActions(getConditionalActionMetadata(conditionId)).toList
+    Condition(conditionValue, actions)
+  } 
 
-    val env : Environment = new Environment
+  /** 
+    * @method unsimplifiedActions 
+    * @param actionMetadata {ActionMetadata} 
+    * @return {Iterable[Action]}
+   **/
+  private def unsimplifiedActions(actionMetadata : ActionMetadata) : Iterable[Action] = for {
+    (actionId, actionValue) <- actionMetadata
+    tuple <- getDependencyGraph(actionId)
+  } yield { 
+
+    val dependency : Dependency = Dependency(tuple._1.value, List(Topic(tuple._2, List.empty[Term])))
+
+    Action(actionValue, List(dependency))
+
+  }
+
+  /**
+    * @method unsimplifiedTerms
+    * @param topicsMetadata {TopicMetadata} 
+    * @return {Iterable[Term]}
+   **/
+  private def unsimplifiedTerms(topicMetadata : TopicMetadata) : Iterable[Term] = { 
+
+    val a : ActionMetadata = topicMetadata.actionMetadata
+    val c : ConditionMetadata = topicMetadata.conditionMetadata
+
+    unsimplifiedActions(a) ++ unsimplifiedConditions(c) 
+
+  }
+
+  /**
+    * @method unsimplifiedTopics
+    * @return {Iterable[Topic]}
+   **/
+  private def unsimplifiedTopics() : Iterable[Topic] = {
 
     val topicList : List[String] = getTopicList
 
@@ -167,35 +249,21 @@ class PostgreImporter(conn : Connection) {
       getTopicMetadata(_)
     }
 
-    var topics : List[Topic] = List.empty[Topic]
+    for { 
+      topicMetadata <- topicsMetadata 
+    } yield Topic(topicMetadata.value, unsimplifiedTerms(topicMetadata).toList)
 
-    { 
+  } 
 
-      for(topicMetadata <- topicsMetadata) {
+  /**
+    * @method load
+    * @return {Environment}
+   **/
+  def load() : Environment = {
 
-        val topic : Topic = Topic(topicMetadata.value, List.empty[Term])
-
-        val actionMetadata : ActionMetadata = getActionMetadata(topicMetadata) 
-        // Get rid of getActionMetadata; 
-        // Create Action, or Condition that points to Actions 
-
-        for { 
-          actionId <- actionMetadata.keys
-          tuple <- getDependencyGraph(actionId, topicMetadata.value)
-        } yield Dependency(tuple._1.value, List(Topic(tuple._2, List.empty[Term])))
-        // How will dependencies merge together? 
-
-        // Create dependency that points to its Topic (with no terms) 
-        // Correct topic will be reconstructed when inserted into the environment
-
-        topics = topic :: topics
-
-      }
-
-    } 
-
-    env.insertTopics(topics)
-
+    val env : Environment = new Environment
+    
+    env.insertTopics(unsimplifiedTopics.toList) // TODO: Make sure all terms are simplified
  
     env 
   } 
