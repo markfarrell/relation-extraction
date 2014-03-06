@@ -42,7 +42,6 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
   "toDependency" should " produce an Option[Dependency]." in { 
     val tree : LinguisticTree = "((IN after))" 
     val expectation : Option[Environment.Dependency] = Some(Environment.Dependency("after", List()))
-    println(expectation.toString())
     Environment.toDependency(tree) should be (expectation)
   } 
 

@@ -380,7 +380,6 @@ object PostgreExporter {
        val conn : Connection = DriverManager.getConnection(url, props)
         
      } 
-
      
   } 
 } 

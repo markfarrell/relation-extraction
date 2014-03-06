@@ -78,7 +78,7 @@ class PostgreImporter(conn : Connection) {
 
     val rs : ResultSet = selectTopics.executeQuery()
 
-    while( rs.next() ) { 
+    while(rs.next()) { 
 
       topicValues = rs.getString(1) :: topicValues
 

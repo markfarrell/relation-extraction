@@ -67,7 +67,8 @@ class TreeConversionsSpec extends FlatSpec with Matchers  {
        "(VP (VBZ walks) (PP (IN because)))", "(VBZ walks)",
        "(VP (PP (IN because)))", "(IN because)", 
        "(ROOT (VP (VBZ walks) (PP (IN because))))",
-       "(VP (VBZ walks))", "(PP (IN because))")
+       "(VP (VBZ walks))", "(PP (IN because))"
+     )
       tree.axed().toString() should be (expectation.toString())
     }
 
