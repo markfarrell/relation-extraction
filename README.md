@@ -1,6 +1,7 @@
 # Beagle
 
 An attempt to make sense of the vast amount of information available in scientific literature.
+Affiliated with [CREA](http://crea.berkeley.edu/).
 
 ## Dependencies 
 
