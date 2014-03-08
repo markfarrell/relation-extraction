@@ -34,7 +34,15 @@ import TreeConversions._
  **/
 class Environment {
 
-  var topicMap : Map[String, Environment.Topic] = Map.empty
+  private var topicMap : Map[String, Environment.Topic] = Map.empty
+  
+  private var currentSize : Int = 0 // Statistic about the number of unique terms inserted so far. 
+  
+  /**
+    * @method size
+    * @return - Number of unique terms in the environment.
+   **/
+  def size() : Int = currentSize
 
   /** 
     * @method insertTopics
@@ -50,23 +58,32 @@ class Environment {
         topicMap += topic.value -> Environment.Topic(topic.value, existingTopic.abilities ++ topic.abilities) 
 
       } 
-      case None => topicMap += topic.value -> topic 
+      case None => { 
+        currentSize += 1
+        topicMap += topic.value -> topic 
+      } 
     }
 
     def insertActions(actions : List[Environment.Action]) : Unit = for { 
       action <- actions 
-    } insertDependencies(action.dependencies)
-
+    } { 
+      currentSize += 1
+      insertDependencies(action.dependencies)
+    } 
 
     def insertConditions(conditions : List[Environment.Condition]) : Unit = for { 
       condition <- conditions
-    } insertActions(condition.actions) 
-
+    } { 
+      currentSize += 1
+      insertActions(condition.actions) 
+    } 
 
     def insertDependencies(dependencies : List[Environment.Dependency]) : Unit = for { 
       dependency <- dependencies
-    } insertTopics(dependency.clauses)
-
+    } { 
+      currentSize += 1
+      insertTopics(dependency.clauses)
+    } 
 
     insertConditions(getConditions(topic.abilities))
 

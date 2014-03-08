@@ -1,3 +1,5 @@
+package edu.berkeley.nlp.io
+
 import java.sql.DriverManager
 import java.sql.Connection
 import java.sql.Statement
@@ -23,7 +25,7 @@ import edu.berkeley.nlp.syntax.Environment.Action
   * Useful for testing the success of exporting an environment in to a test
   * database.
  **/
-class PostgreImporter(conn : Connection) { 
+class PostgresImporter(conn : Connection) { 
 
   /** 
     * Importer types 
@@ -40,31 +42,31 @@ class PostgreImporter(conn : Connection) {
     * @method selectTopics
     * @return {PreparedStatement}
    **/
-  private def selectTopics() : PreparedStatement = conn.prepareStatement("SELECT * FROM topics")
+  private def selectTopics() : PreparedStatement = conn.prepareStatement("SELECT * FROM beagle.topics")
 
   /**
     * @method selectedAbsoluteActions
     * @return {PreparedStatement}
    **/
-  private def selectAbsoluteActions() : PreparedStatement  = conn.prepareStatement("SELECT * FROM actions WHERE topic_id = ?")
+  private def selectAbsoluteActions() : PreparedStatement  = conn.prepareStatement("SELECT * FROM beagle.actions WHERE topic_id = ?")
 
   /**
     * @method selectConditionalActions
     * @return {PreparedStatement}
    **/
-  private def selectConditionalActions() : PreparedStatement = conn.prepareStatement("SELECT * FROM actions WHERE condition_id = ?")
+  private def selectConditionalActions() : PreparedStatement = conn.prepareStatement("SELECT * FROM beagle.actions WHERE condition_id = ?")
 
   /**
     * @method selectConditions
     * @return {PreparedStatement} 
    **/
-  private def selectConditions() : PreparedStatement = conn.prepareStatement("SELECT * FROM conditions WHERE topic_id = ?") 
+  private def selectConditions() : PreparedStatement = conn.prepareStatement("SELECT * FROM beagle.conditions WHERE topic_id = ?") 
 
   /**
     * @method selectDependencies
     * @return {PreparedStatement} 
    **/
-  private def selectDependencies() : PreparedStatement = conn.prepareStatement("SELECT * FROM dependencies WHERE action_id = ?") 
+  private def selectDependencies() : PreparedStatement = conn.prepareStatement("SELECT * FROM beagle.dependencies WHERE action_id = ?") 
 
   /**
     * @method getTopicList
@@ -150,34 +152,31 @@ class PostgreImporter(conn : Connection) {
     * @return DependencyGraph
    **/
   private def getDependencyGraph(actionId : Int) : DependencyGraph = { 
-    
-    val selectedDependencies : PreparedStatement = selectDependencies() 
-    selectedDependencies.setInt(1, actionId)
 
-    {   
+    val graph : DependencyGraph = new DependencyGraph
 
-      val graph : DependencyGraph = new DependencyGraph
-      val ps : PreparedStatement = selectDependencies()
-      val rs : ResultSet = ps.executeQuery()
+    val ps : PreparedStatement = selectDependencies()
+    ps.setInt(1, actionId)
 
-      while(rs.next()) {
+    val rs : ResultSet = ps.executeQuery()
 
-        val dependencyMetadata : DependencyMetadata = DependencyMetadata(
-          rs.getInt(1),
-          rs.getString(2),
-          rs.getInt(3)
-        ) 
+    while(rs.next()) {
 
-        val topicId : String = rs.getString(4)
+      val dependencyMetadata : DependencyMetadata = DependencyMetadata(
+        rs.getInt(1),
+        rs.getString(2),
+        rs.getInt(3)
+      ) 
 
-        graph += dependencyMetadata -> topicId
+      val topicId : String = rs.getString(4)
 
-      } 
+      graph += dependencyMetadata -> topicId
 
-      ps.close()
-      graph
+    } 
 
-    }
+    ps.close()
+    graph
+
 
   }
 
@@ -214,12 +213,15 @@ class PostgreImporter(conn : Connection) {
    **/
   private def unsimplifiedActions(actionMetadata : ActionMetadata) : Iterable[Action] = for {
     (actionId, actionValue) <- actionMetadata
-    tuple <- getDependencyGraph(actionId)
-  } yield { 
+  } yield {
 
-    val dependency : Dependency = Dependency(tuple._1.value, List(Topic(tuple._2, List.empty[Term])))
+    val dependencies : List[Dependency] = (getDependencyGraph(actionId) map { 
+        tuple : (DependencyMetadata, String)  => { 
+          Dependency(tuple._1.value, List(Topic(tuple._2, List.empty[Term])))
+        } 
+    }).toList
 
-    Action(actionValue, List(dependency))
+    Action(actionValue, dependencies)
 
   }
 
@@ -266,6 +268,7 @@ class PostgreImporter(conn : Connection) {
     env.insertTopics(unsimplifiedTopics.toList) // TODO: Make sure all terms are simplified
  
     env 
-  } 
+  }
+
 
 } 

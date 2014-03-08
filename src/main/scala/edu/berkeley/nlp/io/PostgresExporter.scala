@@ -1,3 +1,5 @@
+package edu.berkeley.nlp.io 
+
 import java.sql.DriverManager
 import java.sql.Connection
 import java.sql.Statement
@@ -41,25 +43,25 @@ class PostgresExporter(conn : Connection, env : Environment) {
     * @method insertTopic
     * @return A new prepared statement for the insertion of topics. 
    **/
-  private def insertTopic : PreparedStatement = conn.prepareStatement("INSERT INTO topics VALUES(?)")
+  private def insertTopic : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.topics VALUES(?)")
   
   /**
     * @method insertAction
     * @return A new prepared statement for the insertion of actions.
    **/
-  private def insertAction : PreparedStatement = conn.prepareStatement("INSERT INTO actions VALUES(?,?,?)", yes)
+  private def insertAction : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.actions(value, condition_id, topic_id) VALUES(?,?,?)", yes)
 
   /**
     * @method insertCondition
     * @return A new prepared statement for the insertion of conditions.
    **/
-  private def insertCondition : PreparedStatement = conn.prepareStatement("INSERT INTO conditions VALUES(?,?)", yes)
+  private def insertCondition : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.conditions(value, topic_id) VALUES(?,?)", yes)
 
   /** 
     * @method insertDependency
     * @return A new prepared statement for the insertion of dependencies. 
    **/ 
-  private def insertDependency : PreparedStatement = conn.prepareStatement("INSERT INTO dependencies VALUES(?,?,?)")
+  private def insertDependency : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.dependencies(value, action_id, topic_id) VALUES(?,?,?)")
 
   /** 
     * @method zipKeys
@@ -75,12 +77,13 @@ class PostgresExporter(conn : Connection, env : Environment) {
     var i : Int = 0 
 
     assert( rs != null)
-    assert( rs.getFetchSize() == terms.size ) // Assert same size to generate kv pairs
 
     while( rs.next() ) { 
       ids += rs.getInt(1) -> terms(i)
       i = i+1  
     }
+
+    assert(ids.keys.size  == terms.size, ids.keys.size + "==" + terms.size) 
 
     ids
   }
@@ -164,19 +167,18 @@ class PostgresExporter(conn : Connection, env : Environment) {
           for(topic <- kv._2) { 
 
             insertedAction.setString(1, action.value)
-            insertedAction.setString(2, topic.value)
-            insertedAction.setNull(3, Types.INTEGER)
-            insertedAction.addBatch() 
+            insertedAction.setNull(2, Types.INTEGER)
+            insertedAction.setString(3, topic.value)
+            insertedAction.executeUpdate() 
             insertedAction.clearParameters()
 
             actions = action :: actions
 
           }
         }
+        case _ => {} 
       }
     }
-
-    insertedAction.executeBatch()
 
     {
       val ids : Map[Int, Action] = zipKeys[Action](insertedAction, actions)
@@ -202,7 +204,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
 
             insertedCondition.setString(1, condition.modal) 
             insertedCondition.setString(2, topic.value) 
-            insertedCondition.addBatch() 
+            insertedCondition.executeUpdate()
             insertedCondition.clearParameters()
 
             conditions = condition :: conditions 
@@ -212,8 +214,6 @@ class PostgresExporter(conn : Connection, env : Environment) {
       }
 
     }
-
-    insertedCondition.executeBatch()
 
     {
       val ids : Map[Int, Condition] = zipKeys[Condition](insertedCondition, conditions)
@@ -239,9 +239,9 @@ class PostgresExporter(conn : Connection, env : Environment) {
       for (conditionId <- pluckKeys[Condition](kv._2, conditionsIds)) { 
 
         insertedAction.setString(1, action.value) 
-        insertedAction.setNull(2, Types.INTEGER) 
-        insertedAction.setInt(3, conditionId) // Set condition ID  
-        insertedAction.addBatch() 
+        insertedAction.setInt(2, conditionId) // Set condition ID 
+        insertedAction.setNull(3, Types.VARCHAR) 
+        insertedAction.executeUpdate()
         insertedAction.clearParameters()
 
         actions = action :: actions 
@@ -249,8 +249,6 @@ class PostgresExporter(conn : Connection, env : Environment) {
       } 
 
     } 
-
-    insertedAction.executeBatch()
 
     { 
       val ids : Map[Int, Action] = zipKeys[Action](insertedAction, actions)
@@ -274,13 +272,12 @@ class PostgresExporter(conn : Connection, env : Environment) {
 
         insertedDependency.setString(1, dependency.value) 
         insertedDependency.setInt(2, actionId)
-        insertedDependency.addBatch()
+        insertedDependency.executeUpdate()
         insertedDependency.clearParameters()
 
       } 
     }
 
-    insertedDependency.executeBatch()
     insertedDependency.close()
 
   }
@@ -325,16 +322,10 @@ class PostgresExporter(conn : Connection, env : Environment) {
     } catch { 
       case e : SQLException => { 
         conn.rollback()
-        println(e.getStackTrace)
+        e.printStackTrace()
       } 
     } finally { 
       conn.setAutoCommit(true)
-
-      // Allow database to release resources 
-      insertAction.close()
-      insertCondition.close()
-      insertDependency.close()
-
     } 
 
   } 
