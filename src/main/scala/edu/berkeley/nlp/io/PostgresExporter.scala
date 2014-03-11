@@ -49,19 +49,19 @@ class PostgresExporter(conn : Connection, env : Environment) {
     * @method insertAction
     * @return A new prepared statement for the insertion of actions.
    **/
-  private def insertAction : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.actions(value, condition_id, topic_id) VALUES(?,?,?)", yes)
+  private def insertAction : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.actions VALUES(DEFAULT, ?,?,?)", yes)
 
   /**
     * @method insertCondition
     * @return A new prepared statement for the insertion of conditions.
    **/
-  private def insertCondition : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.conditions(value, topic_id) VALUES(?,?)", yes)
+  private def insertCondition : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.conditions VALUES(DEFAULT, ?,?)", yes)
 
   /** 
     * @method insertDependency
     * @return A new prepared statement for the insertion of dependencies. 
    **/ 
-  private def insertDependency : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.dependencies(value, action_id, topic_id) VALUES(?,?,?)")
+  private def insertDependency : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.dependencies VALUES(DEFAULT, ?,?,?)")
 
   /** 
     * @method zipKeys
@@ -76,7 +76,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
     val rs : ResultSet = preparedStatement.getGeneratedKeys()
     var i : Int = 0 
 
-    assert( rs != null)
+    assert(rs != null)
 
     while( rs.next() ) { 
       ids += rs.getInt(1) -> terms(i)
@@ -86,6 +86,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
     assert(ids.keys.size  == terms.size, ids.keys.size + "==" + terms.size) 
 
     ids
+
   }
 
   /**

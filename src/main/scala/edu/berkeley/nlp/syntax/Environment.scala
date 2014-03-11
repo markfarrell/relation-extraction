@@ -55,7 +55,7 @@ class Environment {
       case Some(existingTopic) => { 
 
         //Note: will contain duplicate actions e.g.  "runs ... case 1", "runs ... case 2"
-        topicMap += topic.value -> Environment.Topic(topic.value, existingTopic.abilities ++ topic.abilities) 
+        topicMap += topic.value -> Environment.Topic(topic.value, mergeTerms(existingTopic.abilities ++ topic.abilities)) 
 
       } 
       case None => { 
@@ -120,16 +120,87 @@ class Environment {
 
   }
 
+  /** 
+    * @method getActions
+    * @param terms {List[Environment.Term} 
+    * @return {List[Environment.Action]}
+   **/
   private def getActions(terms : List[Environment.Term]) : List[Environment.Action] = terms filter { 
     _.isInstanceOf[Environment.Action]
   } map { 
     _.asInstanceOf[Environment.Action] 
   }
 
+  /**
+    * @method getConditions
+    * @param terms {List[Environment.Terms]}
+    * @return {List[Environment.Condition]}
+   **/
   private def getConditions(terms : List[Environment.Term]) : List[Environment.Condition]  = terms filter { // type select 
     _.isInstanceOf[Environment.Condition]
   } map { 
     _.asInstanceOf[Environment.Condition]
+  }
+
+  /**
+    * @method mergeTerms
+    * @param terms {List[Environment.Term]}
+    * @return {List[Environment.Term]}
+  **/
+  private def mergeTerms(terms : List[Environment.Term]) : List[Environment.Term] = { 
+
+    def mergeDependencies(dependencies : List[Environment.Dependency]) : List[Environment.Dependency]  = {
+
+      var map : Map[String, Environment.Dependency] = Map.empty
+
+      for(dependency <- dependencies) {
+        map.get(dependency.value) match { 
+          case Some(d) => {
+            map += d.value -> Environment.Dependency(d.value, d.clauses ++ dependency.clauses)
+          } 
+          case None => map += dependency.value -> dependency
+        }
+      } 
+
+      map.values.toList 
+    }
+
+    def mergeActions(actions : List[Environment.Action]) : List[Environment.Action] = {
+
+      var map : Map[String, Environment.Action] = Map.empty
+
+      for(action <- actions) {
+        map.get(action.value) match { 
+          case Some(a) => {
+            map += a.value -> Environment.Action(a.value, mergeDependencies(a.dependencies ++ action.dependencies))
+          } 
+          case None => map += action.value -> action
+        }
+      } 
+
+      map.values.toList 
+
+    }
+
+    def mergeConditions(conditions : List[Environment.Condition]) : List[Environment.Condition] = {
+
+      var map : Map[String, Environment.Condition] = Map.empty
+
+      for(condition <- conditions) {
+        map.get(condition.modal) match { 
+          case Some(c) => {
+            map += c.modal -> Environment.Condition(c.modal, mergeActions(c.actions ++ condition.actions))
+          } 
+          case None => map += condition.modal -> condition
+        }
+      } 
+
+      map.values.toList 
+
+    } 
+
+    mergeActions(getActions(terms)) ++ mergeConditions(getConditions(terms))
+
   }
 
 } 
@@ -149,8 +220,6 @@ object Environment {
   case class Dependency(value : String, clauses: List[Topic]) extends Term
   case class Condition(modal : String, actions : List[Action]) extends Term
   case class Topic(value : String, abilities : List[Term]) extends Term //VGD, NP, CC 
-  //TODO: Add support for multiple actions: e.g. The dog can walk and might run.
-  // Possible expand a sentence before passing it to the environment.
 
  /** 
     * @method toTopic
@@ -216,6 +285,8 @@ object Environment {
 
   /**
     * @method toGexf
+    * TODO: If two actions share the same dependency, there should only be one node produced
+    * for that dependency. 
     * @param term
    **/
   def toGexf(terms : List[Term]) : Gexf = {
