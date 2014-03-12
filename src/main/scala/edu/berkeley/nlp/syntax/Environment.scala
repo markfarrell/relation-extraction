@@ -285,8 +285,6 @@ object Environment {
 
   /**
     * @method toGexf
-    * TODO: If two actions share the same dependency, there should only be one node produced
-    * for that dependency. 
     * @param term
    **/
   def toGexf(terms : List[Term]) : Gexf = {
@@ -303,15 +301,26 @@ object Environment {
 
     val attType : Attribute = attrList.createAttribute("type", AttributeType.STRING, "type")
 
-    var visited : Map[String, Node] = Map.empty //List of already visited topic nodes
-  
-    def makeNode(typename : String, value : String, terms : List[Term]) : Node  = { 
+    var currentId : Int = 0 // Current node ID 
 
-      val node : Node = graph.createNode(value).setLabel(value) // Look for or get if existing 
+    // Map of already visited topic nodes
+    var visitedTopics : Map[String, Node] = Map.empty[String, Node] 
+
+    // Map of already visited dependencies, to make two different actions
+    // point to the same dependency. 
+    var visitedDependencies : Map[Int, Node] = Map.empty[Int, Node]
+
+    def makeNode(typename : String, value : String, terms : List[Term]) : Node = { 
+
+      val id : Int = currentId
+      
+      currentId += 1
+
+      val node : Node = graph.createNode(id.toString).setLabel(value) // Look for or get if existing 
 
       node.getAttributeValues().addValue(attType, typename)
 
-      for(term <- terms) node.connectTo(value, toNode(term))
+      for(term <- terms) node.connectTo(id.toString, toNode(term))
 
       node
 
@@ -320,15 +329,29 @@ object Environment {
     def toNode(term : Term) : Node = {
 
       term match { 
-        case Topic(value, abilities) => visited.get(value).getOrElse({ 
+        case Topic(value, abilities) => visitedTopics.get(value).getOrElse({ 
           val node : Node = makeNode("Topic", value, abilities)
-          visited += value -> node
+          visitedTopics += value -> node
           node
         })
-        case Dependency(value, clauses) => makeNode("Dependency", value, clauses)
+        case Dependency(value, clauses) => {
+
+          // Test for equality by summing character code of dependency value + all topic values
+          val key : Int = { 
+            val strings : List[String] = value :: (clauses map { _.value })
+            strings.map(_.map(_.asDigit).sum).sum
+          } 
+
+          visitedDependencies.get(key).getOrElse({
+            val node : Node = makeNode("Dependency", value, clauses)
+            visitedDependencies += key -> node
+            node 
+          })
+        } 
         case Condition(modal, actions) => makeNode("Condition", modal, actions)
         case Action(value, dependencies) => makeNode("Action", value, dependencies)
-      } 
+      }
+
     }
     
     terms map { 

@@ -130,15 +130,15 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      var expectation : String = """<?xml version='1.0' encoding='UTF-8'?>
      <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.2draft/viz" version="1.2">
      <graph defaultedgetype="undirected" idtype="string" mode="static"><attributes class="node" mode="static">
-     <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="The dog" label="The dog">
-     <attvalues><attvalue for="type" value="Topic"/></attvalues></node><node id="might" label="might"><attvalues>
-     <attvalue for="type" value="Condition"/></attvalues></node><node id="walk" label="walk">
+     <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="0" label="The dog">
+     <attvalues><attvalue for="type" value="Topic"/></attvalues></node><node id="1" label="might"><attvalues>
+     <attvalue for="type" value="Condition"/></attvalues></node><node id="2" label="walk">
      <attvalues><attvalue for="type" value="Action"/></attvalues>
-     </node><node id="if" label="if"><attvalues><attvalue for="type" value="Dependency"/></attvalues></node>
-     <node id="the cat walks." label="the cat walks."><attvalues><attvalue for="type" value="Topic"/></attvalues></node>
-     </nodes><edges count="4"><edge id="The dog" source="The dog" target="might" type="undirected"/>
-     <edge id="might" source="might" target="walk" type="undirected"/><edge id="walk" source="walk" target="if" type="undirected"/>
-     <edge id="if" source="if" target="the cat walks." type="undirected"/></edges></graph></gexf>"""
+     </node><node id="3" label="if"><attvalues><attvalue for="type" value="Dependency"/></attvalues></node>
+     <node id="4" label="the cat walks."><attvalues><attvalue for="type" value="Topic"/></attvalues></node>
+     </nodes><edges count="4"><edge id="0" source="0" target="1" type="undirected"/>
+     <edge id="1" source="1" target="2" type="undirected"/><edge id="2" source="2" target="3" type="undirected"/>
+     <edge id="3" source="3" target="4" type="undirected"/></edges></graph></gexf>"""
 
 
      expectation = expectation.split("\n").map( _.trim ).mkString("")
@@ -164,15 +164,15 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      var expectation : String = """<?xml version='1.0' encoding='UTF-8'?>
      <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.2draft/viz" version="1.2">
      <graph defaultedgetype="undirected" idtype="string" mode="static"><attributes class="node" mode="static">
-     <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="The dog" label="The dog">
+     <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="0" label="The dog">
      <attvalues><attvalue for="type" value="Topic"/></attvalues></node>
-     <node id="can" label="can"><attvalues><attvalue for="type" value="Condition"/>
-     </attvalues></node><node id="walk." label="walk."><attvalues><attvalue for="type" value="Action"/>
-     </attvalues></node><node id="must" label="must"><attvalues><attvalue for="type" value="Condition"/>
-     </attvalues></node><node id="run." label="run."><attvalues><attvalue for="type" value="Action"/></attvalues></node>
-     </nodes><edges count="4"><edge id="The dog" source="The dog" target="can" type="undirected"/>
-     <edge id="The dog" source="The dog" target="must" type="undirected"/><edge id="can" source="can" target="walk." type="undirected"/>
-     <edge id="must" source="must" target="run." type="undirected"/></edges></graph></gexf>"""
+     <node id="1" label="can"><attvalues><attvalue for="type" value="Condition"/>
+     </attvalues></node><node id="2" label="walk."><attvalues><attvalue for="type" value="Action"/>
+     </attvalues></node><node id="3" label="must"><attvalues><attvalue for="type" value="Condition"/>
+     </attvalues></node><node id="4" label="run."><attvalues><attvalue for="type" value="Action"/></attvalues></node>
+     </nodes><edges count="4"><edge id="0" source="0" target="1" type="undirected"/>
+     <edge id="0" source="0" target="3" type="undirected"/><edge id="1" source="1" target="2" type="undirected"/>
+     <edge id="3" source="3" target="4" type="undirected"/></edges></graph></gexf>"""
 
      expectation = expectation.split("\n").map( _.trim ).mkString("")
 
