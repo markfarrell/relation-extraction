@@ -308,7 +308,7 @@ object Environment {
 
     // Map of already visited dependencies, to make two different actions
     // point to the same dependency. 
-    var visitedDependencies : Map[Int, Node] = Map.empty[Int, Node]
+    var visitedDependencies : Map[String, Node] = Map.empty[String, Node]
 
     def makeNode(typename : String, value : String, terms : List[Term]) : Node = { 
 
@@ -336,10 +336,10 @@ object Environment {
         })
         case Dependency(value, clauses) => {
 
-          // Test for equality by summing character code of dependency value + all topic values
-          val key : Int = { 
+          // Test for equality by summing dependency value + all topic values
+          val key : String = { 
             val strings : List[String] = value :: (clauses map { _.value })
-            strings.map(_.map(_.asDigit).sum).sum
+            strings.mkString("")
           } 
 
           visitedDependencies.get(key).getOrElse({
