@@ -335,43 +335,56 @@ class PostgresExporter(conn : Connection, env : Environment) {
 
 object PostgreExporter {
 
-  def main(args : Array[String]) : Unit = { 
-    
-     var postgreHost : Option[String] = None
-     var postgrePort : Option[Int] = None
-     var postgreUsername : Option[String] = None
-     var postgrePassword : Option[String] = None
+  case class Config(database : String = "beagle", host : String = "127.0.0.1",
+    port : Int = 5432, user : String = "", password : String = "")
 
-     if(args.length == 4) { 
-       postgreHost = Some(args(0))
-       postgrePort = try { 
-         Some(args(1).toInt)
-       } catch { 
-         case e : Exception => None
-       } 
-       postgreUsername = Some(args(2))
-       postgrePassword = Some(args(3))
-     } 
+  val parser = new scopt.OptionParser[Config]("scopt") { 
 
-     for { 
-       host <- postgreHost
-       port <- postgrePort
-       username <- postgreUsername
-       password <- postgrePassword
-     } yield { 
-       
-       Class.forName("org.postgresql.Driver")
+    head("PostgreExporter")
 
-       val url : String = "jdbc:postgresql://"+host+":"+port+"/beagle" 
-       val props : Properties = new Properties() 
-       props.setProperty("user", username)
-       props.setProperty("password", password)
-       props.setProperty("ssl", "true")
-       props.setProperty("sslfactory", "org.postgresql.ssl.NonValidatingFactory")
-       
-       val conn : Connection = DriverManager.getConnection(url, props)
-        
-     } 
-     
+    opt[String]('d', "database") action { 
+      (x, c) => c.copy(database = x)
+    } text("database is a string property")
+
+    opt[String]('h', "host") action { 
+      (x, c) => c.copy(host = x) 
+    } text("host is a string property")
+
+    opt[Int]('p', "port") action { 
+      (x, c) => c.copy(port = x)
+    } text("port is an integer property")
+
+    opt[String]('U', "user") action { 
+      (x, c) => c.copy(user = x) 
+    } text("user is a string property")
+
+    opt[String]('P', "password") action { 
+      (x, c) => c.copy(password = x)
+    } text("password is a string property") 
+
   } 
+
+  def main(args : Array[String]) : Unit = { 
+
+    parser.parse(args, Config()) map { 
+      cfg => {  
+
+        Class.forName("org.postgresql.Driver")
+
+        val url : String = "jdbc:postgresql://"+cfg.host+":"+cfg.port+"/"+cfg.database
+        val props : Properties = new Properties() 
+        props.setProperty("user", cfg.user)
+        props.setProperty("password", cfg.password)
+
+        val conn : Connection = DriverManager.getConnection(url, props)
+
+        // TODO: Read blurb from STDIN; parse; export to Postgres database 
+
+        conn.close()
+      }
+
+    }
+
+  }
+     
 } 
