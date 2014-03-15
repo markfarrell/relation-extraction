@@ -1,8 +1,0 @@
-#!/bin/sh
-
-export JAVA_OPTS="-Xmx2048m"
-
-target/start edu.berkeley.nlp.parser.LazyCacheBlurb -gr "./lib/eng_sm6.gr" $@
-
-
-
