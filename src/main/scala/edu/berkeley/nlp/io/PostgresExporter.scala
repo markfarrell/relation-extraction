@@ -11,6 +11,9 @@ import java.util.Properties
 
 import scala.collection.mutable.{HashMap, MultiMap, Set}
 
+import edu.berkeley.nlp.syntax.Tree
+
+import edu.berkeley.nlp.syntax.TreeConversions._
 import edu.berkeley.nlp.syntax.Environment
 import edu.berkeley.nlp.syntax.Environment.Term
 import edu.berkeley.nlp.syntax.Environment.Topic
@@ -333,58 +336,4 @@ class PostgresExporter(conn : Connection, env : Environment) {
 
 } 
 
-object PostgreExporter {
 
-  case class Config(database : String = "beagle", host : String = "127.0.0.1",
-    port : Int = 5432, user : String = "", password : String = "")
-
-  val parser = new scopt.OptionParser[Config]("scopt") { 
-
-    head("PostgreExporter")
-
-    opt[String]('d', "database") action { 
-      (x, c) => c.copy(database = x)
-    } text("database is a string property")
-
-    opt[String]('h', "host") action { 
-      (x, c) => c.copy(host = x) 
-    } text("host is a string property")
-
-    opt[Int]('p', "port") action { 
-      (x, c) => c.copy(port = x)
-    } text("port is an integer property")
-
-    opt[String]('U', "user") action { 
-      (x, c) => c.copy(user = x) 
-    } text("user is a string property")
-
-    opt[String]('P', "password") action { 
-      (x, c) => c.copy(password = x)
-    } text("password is a string property") 
-
-  } 
-
-  def main(args : Array[String]) : Unit = { 
-
-    parser.parse(args, Config()) map { 
-      cfg => {  
-
-        Class.forName("org.postgresql.Driver")
-
-        val url : String = "jdbc:postgresql://"+cfg.host+":"+cfg.port+"/"+cfg.database
-        val props : Properties = new Properties() 
-        props.setProperty("user", cfg.user)
-        props.setProperty("password", cfg.password)
-
-        val conn : Connection = DriverManager.getConnection(url, props)
-
-        // TODO: Read blurb from STDIN; parse; export to Postgres database 
-
-        conn.close()
-      }
-
-    }
-
-  }
-     
-} 

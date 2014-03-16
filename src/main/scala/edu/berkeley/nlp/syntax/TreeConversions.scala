@@ -44,11 +44,9 @@ package object TreeConversions {
     def findCut(labels : Set[String]) : Option[LinguisticTree] = (axed()  filter { 
         (t : LinguisticTree) => { (t.getChildren().asScala forall { 
             (child : LinguisticTree) => labels contains { child.getLabel() }
-          }) || ( labels contains {
-            t.getLabel() 
           }) 
         }
-      }).toList.sortWith { 
+      }).sortWith { 
         _.totalSize() > _.totalSize() 
       } find { 
         (_) => true
@@ -66,9 +64,9 @@ package object TreeConversions {
       * @return - A new tree with the original root node of the tree,
       * but with children set to s.
      **/
-    def replaceChildren(s : Set[LinguisticTree]) : LinguisticTree = { 
+    def replaceChildren(s : List[LinguisticTree]) : LinguisticTree = { 
       val root : LinguisticTree = tree.shallowCloneJustRoot()
-      root.setChildren( s.toList.asJava )
+      root.setChildren( s.asJava )
       root
     }
 
@@ -78,7 +76,7 @@ package object TreeConversions {
       * @return All possible slices of a node's children.
     **/
     def slices() : Set[Set[LinguisticTree]] = { 
-      val ls : Set[LinguisticTree] = tree.getChildren().asScala.toSet[LinguisticTree] 
+      val ls : Set[LinguisticTree] = tree.getChildren().asScala.toSet[LinguisticTree]
       ((0 to (ls.size + 1)) flatMap { 
         (x : Int) => (0 to (ls.size+1-x)) map { 
           (y : Int) => ls.slice(y, (ls.size+1)-x).toSet[LinguisticTree]
@@ -90,18 +88,17 @@ package object TreeConversions {
       * @method axed  
       * @return Trees for all possible slices at each level of the tree.
       **/
-    def axed() : Set[LinguisticTree] = {
+    def axed() : List[LinguisticTree] = {
 
       if(tree.isPreTerminal() || tree.getChildren().size() == 0) {
-        Set[LinguisticTree](tree)
+        List[LinguisticTree](tree)
       } else {  
 
-        val childSlices : Set[Set[LinguisticTree]] = slices() 
-        val flattened : Set[LinguisticTree] = childSlices flatten
-        val prepended : Set[LinguisticTree] = childSlices map { replaceChildren(_) }
-        val powered : Set[LinguisticTree] = flattened flatMap { _.axed() } 
+        val childSlices :  Set[Set[LinguisticTree]] = slices() 
+        val prepended : List[LinguisticTree] = childSlices.toList map { t => replaceChildren(t.toList) }
+        val powered : List[LinguisticTree] = tree.getChildren().asScala.toList flatMap { _.axed() } 
 
-        prepended | powered
+        prepended ++ powered
 
       }
 

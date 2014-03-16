@@ -222,9 +222,9 @@ object Environment {
   case class Topic(value : String, abilities : List[Term]) extends Term //VGD, NP, CC 
 
  /** 
-    * @method toTopic
-    * @param tree
-    **/
+   * @method toTopic
+   * @param tree
+  **/
   def toTopic(tree : LinguisticTree) : Option[Topic] = tree.findCut(topicTags) map { 
     (t : LinguisticTree) => Topic(t.terminalList().mkString(" "), toCondition(tree).orElse(toAction(tree)) match { 
         case Some(term) => List(term)
@@ -356,7 +356,7 @@ object Environment {
     
     terms map { 
       (term : Term) => toNode(term)
-    } 
+    }
     
     gexf
 

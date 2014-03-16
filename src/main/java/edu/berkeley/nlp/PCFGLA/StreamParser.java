@@ -18,7 +18,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.StringWriter;
 import java.io.PrintWriter;
+import org.apache.commons.io.output.WriterOutputStream;
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -112,6 +115,21 @@ public class StreamParser  {
 		@Option(name = "-nGrammars", usage = "Use a product model based on that many grammars")
 		public int nGrammars = 1;
 	}
+
+    public static String parseString(String str, String[] args) {
+
+        StringWriter stringWriter = new StringWriter(); 
+        PrintStream printStream = new PrintStream(new WriterOutputStream(stringWriter));
+         
+
+        try {  
+            parse(new ByteArrayInputStream(str.getBytes()), printStream, args); 
+        } catch (Exception e) { 
+            e.printStackTrace();
+        }  
+
+        return stringWriter.toString();
+    } 
 
 	public static void parse(InputStream parserIn, PrintStream parserOut, String[] args) throws Exception {
 		OptionParser optParser = new OptionParser(Options.class);
@@ -253,7 +271,6 @@ public class StreamParser  {
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
-		throw new Exception();
 	}
 
 

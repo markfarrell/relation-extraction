@@ -52,7 +52,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
   }
 
   "toCondition" should " produce an Option[Condition]." in {
-     val tree : LinguisticTree = "(VP (MD could) (VP (VB walk)))" 
+     val tree : LinguisticTree = "(ROOT (VP (MD could) (VP (VB walk))))" 
      val expectation : Option[Environment.Condition] = Some(Environment.Condition("could", List(Environment.Action("walk", List()))))
 
      Environment.toCondition(tree).toString() should be (expectation.toString())
@@ -62,7 +62,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
      // Case 1: 
      { 
-       val tree : LinguisticTree = "((NP (DT The) (NN dog) (NN walks.)))"
+       val tree : LinguisticTree = "((S (NP (DT The) (NN dog) (NN walks.))))"
        val expectation : Option[Environment.Topic] = Some(Environment.Topic("The dog walks.", List()))
 
        Environment.toTopic(tree).toString() should be (expectation.toString())
@@ -70,15 +70,15 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
      // Case 2:
      {
-       val tree : LinguisticTree = "((NP (DT The) (NN dog)) (VP (MD might) (VP (VB eat) (SBAR (IN if) (S (NP (DT the) (NN cat)) (VP (MD can) (VP (VB run.))))))))"
-       val expectation : String = "Some(Topic(The dog,List(Condition(can,List(Action(run.,List(Dependency(if,List(Topic(the cat,List(Condition(can,List(Action(run.,List()))))))))))))))"
+       val tree : LinguisticTree = "(S (NP (DT The) (NN dog)) (VP (MD might) (VP (VB eat) (SBAR (IN if) (S (NP (DT the) (NN cat)) (VP (MD can) (VP (VB run.))))))))"
+       val expectation : String = "Some(Topic(The dog,List(Condition(might,List(Action(eat,List(Dependency(if,List(Topic(the cat,List(Condition(can,List(Action(run.,List()))))))))))))))"
        Environment.toTopic(tree).toString() should be (expectation)
      } 
 
    }
 
   "toClause" should " produce an Option[Term]." in { 
-     val tree : LinguisticTree = "((NP (DT The) (NN dog) (NN walks.)))"
+     val tree : LinguisticTree = "(ROOT (S (NP (DT The) (NN dog) (NN walks.))))"
      val expectation : Option[Environment.Term] = Some(Environment.Topic("The dog walks.", List()))
 
      Environment.toClause(tree).toString() should be (expectation.toString())
@@ -87,31 +87,54 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
   "Environments" should " join topics with the same values together when they are inserted." in {
 
-    val topicA : Environment.Topic= Environment.Topic("The dog", 
-      List(Environment.Condition("might", 
-        List(Environment.Action("walk", 
-          List(Environment.Dependency("if",
-            List(Environment.Topic("the cat walks.", List())))))))))
+    // Case 1: 
+    { 
 
-   val topicB : Environment.Topic= Environment.Topic("The dog", 
-     List(Environment.Condition("could", 
-       List(Environment.Action("sit", List())))))
+      val topicA : Environment.Topic= Environment.Topic("The dog", 
+        List(Environment.Condition("might", 
+          List(Environment.Action("walk", 
+            List(Environment.Dependency("if",
+              List(Environment.Topic("the cat walks.", List())))))))))
 
-   val topicC : Environment.Topic = Environment.Topic("the cat walks.", List())
+      val topicB : Environment.Topic= Environment.Topic("The dog", 
+        List(Environment.Condition("could", 
+         List(Environment.Action("sit", List())))))
 
-   val topicAB : Environment.Topic = Environment.Topic("The dog", 
-     List(Environment.Condition("could", 
-             List(Environment.Action("sit", List()))),
-          Environment.Condition("might", 
-             List(Environment.Action("walk", 
-               List(Environment.Dependency("if",
-                 List(Environment.Topic("the cat walks.", List())))))))))
+      val topicC : Environment.Topic = Environment.Topic("the cat walks.", List())
 
-   val env : Environment = new Environment
+      val topicAB : Environment.Topic = Environment.Topic("The dog", 
+        List(Environment.Condition("could", 
+          List(Environment.Action("sit", List()))),
+            Environment.Condition("might", 
+               List(Environment.Action("walk", 
+                 List(Environment.Dependency("if",
+                   List(Environment.Topic("the cat walks.", List())))))))))
 
-   env.insertTopics(List(topicB, topicA))
+       val env : Environment = new Environment
 
-   (env.selectTopics().toString()) should be (List(topicAB, topicC).toString())
+       env.insertTopics(List(topicB, topicA))
+
+       (env.selectTopics().toString()) should be (List(topicAB, topicC).toString())
+     
+    }
+
+    // Case 2:
+    { 
+      val env : Environment = new Environment
+      val expected : List[String] = List[String]("The man", "The dog")
+
+      env.insertTopics(List(Environment.Topic("The man", 
+        List(Environment.Condition("might", 
+          List(Environment.Action("walk", 
+            List(Environment.Dependency("if", 
+              List(Environment.Topic("The dog", 
+                List(Environment.Condition("can", 
+                  List(Environment.Action("eat", List.empty)))))))))))))))
+
+      
+      env.selectTopics() map { _.value } should be (expected)
+
+    } 
 
 
   } 
@@ -182,7 +205,6 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      gexfWriter.writeToStream(gexf, stringWriter, "UTF-8")
 
      stringWriter.toString() should be (expectation)
-
      
    } 
       

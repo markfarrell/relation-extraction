@@ -42,7 +42,6 @@ class PostgresExporterSpec extends FlatSpec with Matchers {
 
     assume(conn != null, "Could not connect to PostgresSQL database.")
 
-
     def reloaded(env : Environment) : Environment = {
       
       val exporter : PostgresExporter = new PostgresExporter(conn,env)
@@ -56,7 +55,7 @@ class PostgresExporterSpec extends FlatSpec with Matchers {
         reloadedEnv = importer.load()
       } catch { 
         case e : Exception => e.printStackTrace()
-      } // ALlow any contents inserted to still be deleted if there is an exception 
+      } // Allow any contents inserted to still be deleted if there is an exception 
 
       try {
         val statement : Statement = conn.createStatement() 

@@ -46,31 +46,17 @@ class TreeConversionsSpec extends FlatSpec with Matchers  {
       val c : Tree[String] = "(CC and)"
       val d : Tree[String] = "(NN cat.)"
 
-      val possibleChildren : Set[Set[LinguisticTree]] = Set[Set[LinguisticTree]](
-        Set(a), Set(b, c, d),
-        Set(a, b), Set(c ,d),
-        Set(a, b, c),  Set(d), 
-        Set(a, b, c ,d), Set(b, c), Set(c), Set(b)
+      val possibleChildren : List[List[LinguisticTree]] = List[List[LinguisticTree]](
+        List(a), List(c), List(a,b,c), List(c,d), List(a,b), 
+        List(d), List(a,b,c,d), List(b,c), List(b,c,d), List(b)
       )
 
-      val trees : Set[LinguisticTree] = (possibleChildren map { 
-        tree.replaceChildren(_)
-      }) | (possibleChildren flatten)
+      val trees : List[LinguisticTree] = (possibleChildren map { 
+          t => tree.replaceChildren(t.toList)
+      }) ++ List[LinguisticTree](a,b,c,d)
 
       tree.axed().toString() should be (trees.toString())
     } 
-
-    // Case 2:
-    { 
-      val tree : LinguisticTree = "((VP (VBZ walks) (PP (IN because))))"
-      val expectation : Set[LinguisticTree] = Set[LinguisticTree](
-       "(VP (VBZ walks) (PP (IN because)))", "(VBZ walks)",
-       "(VP (PP (IN because)))", "(IN because)", 
-       "(ROOT (VP (VBZ walks) (PP (IN because))))",
-       "(VP (VBZ walks))", "(PP (IN because))"
-     )
-      tree.axed().toString() should be (expectation.toString())
-    }
 
   }
 
