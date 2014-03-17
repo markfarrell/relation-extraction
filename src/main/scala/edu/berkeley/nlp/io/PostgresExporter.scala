@@ -197,6 +197,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
     * @return - A map of primary key -> condition pairs.
    **/
   private def exportConditions() : Map[Int, Condition] = {
+
     var conditions : List[Condition] = List.empty[Condition]
 
     val insertedCondition : PreparedStatement = insertCondition
@@ -204,7 +205,11 @@ class PostgresExporter(conn : Connection, env : Environment) {
     for(kv <- topicsTable.iterator) {
       kv._1 match { 
         case condition : Condition => {
-          for (topic <- kv._2) { 
+          for (topic <- kv._2) {
+
+            println(condition)
+            println(topic)
+            println("")
 
             insertedCondition.setString(1, condition.modal) 
             insertedCondition.setString(2, topic.value) 

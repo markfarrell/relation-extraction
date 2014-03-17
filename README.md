@@ -1,7 +1,8 @@
 # Beagle
 
-An attempt to make sense of the vast amount of information available in scientific literature.
-Affiliated with [CREA](http://crea.berkeley.edu/).
+Tools to make sense of the vast amount of information available in scientific literature.
+Affiliated with [CREA](http://crea.berkeley.edu/). Type <code>./Beagle --help</code> for 
+more information once built. 
 
 ## Dependencies 
 
@@ -11,10 +12,10 @@ Affiliated with [CREA](http://crea.berkeley.edu/).
 - GNU Make
 - Java Runtime Environment
 
-## Install
-    ./install.sh
-     make
+## Build
+    make
 
+Tests are run as part of the build process. 
 
 
   

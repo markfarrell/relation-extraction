@@ -37,7 +37,12 @@ object Beagle {
 
   val parser = new scopt.OptionParser[Config]("Beagle") { 
 
-    head("Beagle")
+    head(
+      """Beagle ---
+      Reads a blurb of text from STDIN. Parses sentences and loads them 
+      into an environment, to be either exported to a PostgresSQL database or 
+      compiled to a GEXF file for viewing the Gephi graph visualization software."""
+    )
 
     opt[String]('d', "database") action { 
       (x, c) => c.copy(database = x)
@@ -69,7 +74,10 @@ object Beagle {
 
     opt[Boolean]('c', "clear") action { 
       (x, c) => c.copy(clear = true)
-    } 
+    }
+
+    help("help") text("Prints this help message.")
+
 
   } 
 
@@ -81,9 +89,15 @@ object Beagle {
         Class.forName("org.postgresql.Driver")
 
         val url : String = "jdbc:postgresql://"+cfg.host+":"+cfg.port+"/"+cfg.database
-        val props : Properties = new Properties() 
-        //props.setProperty("user", cfg.user)
-        //props.setProperty("password", cfg.password)
+        val props : Properties = new Properties()
+
+        if(cfg.user.length > 0) { 
+          props.setProperty("user", cfg.user)
+        }
+
+        if(cfg.password.length > 0) { 
+          props.setProperty("password", cfg.password)
+        } 
 
         val conn : Connection = DriverManager.getConnection(url, props)
 
@@ -98,10 +112,8 @@ object Beagle {
             } 
           } flatMap {
             str => Environment.toTopic(str)
-          } map { t => println(t); t } 
+          }  
         }
-
-        for(topic <- env.selectTopics()) println(topic.value) 
 
         // Clear existing contents of database
         if(cfg.clear) {
@@ -113,7 +125,7 @@ object Beagle {
 
         try { 
           // Export to database
-          //(new PostgresExporter(conn,env)).export()
+          // (new PostgresExporter(conn,env)).export()
         } catch { 
           case e : Exception => e.printStackTrace()
         } 

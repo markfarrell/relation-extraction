@@ -42,6 +42,15 @@ class PostgresExporterSpec extends FlatSpec with Matchers {
 
     assume(conn != null, "Could not connect to PostgresSQL database.")
 
+    def clear() = try {
+      val statement : Statement = conn.createStatement() 
+      statement.executeQuery("DELETE FROM beagle.topics CASCADE") // statement will close automatically
+      statement.close()
+    } catch { 
+      case p : PSQLException => { /** Ignore. No results returned. **/ } 
+    } 
+
+
     def reloaded(env : Environment) : Environment = {
       
       val exporter : PostgresExporter = new PostgresExporter(conn,env)
@@ -57,17 +66,13 @@ class PostgresExporterSpec extends FlatSpec with Matchers {
         case e : Exception => e.printStackTrace()
       } // Allow any contents inserted to still be deleted if there is an exception 
 
-      try {
-        val statement : Statement = conn.createStatement() 
-        statement.executeQuery("DELETE FROM beagle.topics CASCADE") // statement will close automatically
-        statement.close()
-      } catch { 
-        case p : PSQLException => { /** Ignore. No results returned. **/ } 
-      } 
+      clear()  
 
       reloadedEnv
 
     } 
+
+    clear() // DB should be empty for tests to run.
 
     // Case 1: Empty environment 
     { 
