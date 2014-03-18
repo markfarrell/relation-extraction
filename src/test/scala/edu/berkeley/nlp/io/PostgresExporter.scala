@@ -95,7 +95,13 @@ class PostgresExporterSpec extends FlatSpec with Matchers {
     {
       val env : Environment = new Environment
 
-      env.insertTopics(List[Topic](Topic("The man", List(Condition("might", List(Action("hunt", List.empty[Dependency])))))))
+      env.insertTopics(List[Topic](Topic("The man", 
+        List(Condition("might", 
+          List(Action("hunt", 
+            List(Dependency("if", 
+              List(Topic("the dog", 
+                List(Condition("can", 
+                  List(Action("run.", List.empty[Dependency])))))))))))))))
 
       assert(env.size == reloaded(env).size) 
     } 

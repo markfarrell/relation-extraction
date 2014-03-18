@@ -36,7 +36,6 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.data.AttributeListImpl
 import it.uniroma1.dis.wsngroup.gexf4j.core.viz.NodeShape
 
-
 class EnvironmentSpec extends FlatSpec with Matchers  {
 
   "toDependency" should " produce an Option[Dependency]." in { 
@@ -75,7 +74,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
        Environment.toTopic(tree).toString() should be (expectation)
      } 
 
-   }
+  }
 
   "toClause" should " produce an Option[Term]." in { 
      val tree : LinguisticTree = "(ROOT (S (NP (DT The) (NN dog) (NN walks.))))"
@@ -163,7 +162,6 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      <edge id="1" source="1" target="2" type="undirected"/><edge id="2" source="2" target="3" type="undirected"/>
      <edge id="3" source="3" target="4" type="undirected"/></edges></graph></gexf>"""
 
-
      expectation = expectation.split("\n").map( _.trim ).mkString("")
  
      // Write Gexf object: OutputStream -> String
@@ -175,12 +173,13 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
      stringWriter.toString() should be (expectation)
 
-
    }
 
    // Case 2:
-   { 
+   {
+
      val env : Environment = new Environment
+
      env.insertTopics(List(Environment.toTopic("((S (NP (DT The) (NN dog)) (VP (MD can) (VP (VB walk.)))))").get,
        Environment.toTopic("((S (NP (DT The) (NN dog)) (VP (MD must) (VP (VB run.)))))").get))
 

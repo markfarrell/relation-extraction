@@ -75,7 +75,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
    **/ 
   private def zipKeys[A <: Term](preparedStatement : PreparedStatement, terms : List[A]) : Map[Int, A] = { 
 
-    var ids : Map[Int, A] = Map()
+    var ids : Map[Int, A] = Map.empty[Int, A]
     val rs : ResultSet = preparedStatement.getGeneratedKeys()
     var i : Int = 0 
 
@@ -86,7 +86,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
       i = i+1  
     }
 
-    assert(ids.keys.size  == terms.size, ids.keys.size + "==" + terms.size) 
+    assert(ids.keys.size == terms.size, ids.keys.size + "==" + terms.size) 
 
     ids
 
@@ -100,7 +100,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
     * @return - A set of keys corresponding each term in the set of terms passed.
     **/
   private def pluckKeys[A <: Term](terms : Set[A], termsTable : Map[Int, A]) : Iterable[Int] = { 
-    assert(terms.size == termsTable.size) 
+    //assert(terms.size == termsTable.size, terms.size + "==" + termsTable.size) 
     termsTable filter { 
       kv : (Int, A)  => terms contains { kv._2 }
     } keys
@@ -162,7 +162,8 @@ class PostgresExporter(conn : Connection, env : Environment) {
    **/
   private def exportAbsoluteActions() : Map[Int, Action] = { 
 
-    var actions : List[Action] = List.empty[Action]
+    var ids : Map[Int, Action] = Map.empty[Int, Action] 
+
     val insertedAction : PreparedStatement = insertAction
 
     for(kv <- topicsTable.iterator) {
@@ -176,7 +177,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
             insertedAction.executeUpdate() 
             insertedAction.clearParameters()
 
-            actions = action :: actions
+            ids = ids ++ zipKeys[Action](insertedAction, List[Action](action))
 
           }
         }
@@ -184,11 +185,8 @@ class PostgresExporter(conn : Connection, env : Environment) {
       }
     }
 
-    {
-      val ids : Map[Int, Action] = zipKeys[Action](insertedAction, actions)
-      insertedAction.close()
-      ids // Produce ID table
-    } 
+    insertedAction.close()
+    ids // Produce ID table
 
   }
 
@@ -198,7 +196,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
    **/
   private def exportConditions() : Map[Int, Condition] = {
 
-    var conditions : List[Condition] = List.empty[Condition]
+    var ids : Map[Int, Condition] = Map.empty[Int, Condition] 
 
     val insertedCondition : PreparedStatement = insertCondition
 
@@ -207,16 +205,12 @@ class PostgresExporter(conn : Connection, env : Environment) {
         case condition : Condition => {
           for (topic <- kv._2) {
 
-            println(condition)
-            println(topic)
-            println("")
-
             insertedCondition.setString(1, condition.modal) 
             insertedCondition.setString(2, topic.value) 
             insertedCondition.executeUpdate()
             insertedCondition.clearParameters()
 
-            conditions = condition :: conditions 
+            ids = ids ++ zipKeys[Condition](insertedCondition, List[Condition](condition))
 
           } 
         } 
@@ -224,11 +218,8 @@ class PostgresExporter(conn : Connection, env : Environment) {
 
     }
 
-    {
-      val ids : Map[Int, Condition] = zipKeys[Condition](insertedCondition, conditions)
-      insertedCondition.close()
-      ids
-    } 
+    insertedCondition.close()
+    ids
 
   }
 
@@ -238,7 +229,8 @@ class PostgresExporter(conn : Connection, env : Environment) {
    **/
   private def exportConditionalActions(conditionsIds : Map[Int, Condition]) : Map[Int, Action] = {
 
-    var actions : List[Action] = List.empty[Action]
+    var ids : Map[Int, Action] = Map.empty[Int, Action] 
+
     val insertedAction : PreparedStatement = insertAction
 
     for(kv <- conditionsTable) { 
@@ -253,17 +245,14 @@ class PostgresExporter(conn : Connection, env : Environment) {
         insertedAction.executeUpdate()
         insertedAction.clearParameters()
 
-        actions = action :: actions 
+        ids = ids ++ zipKeys[Action](insertedAction, List[Action](action))
 
       } 
 
     } 
 
-    { 
-      val ids : Map[Int, Action] = zipKeys[Action](insertedAction, actions)
-      insertedAction.close()
-      ids
-    } 
+    insertedAction.close()
+    ids
 
   }
 
@@ -277,12 +266,17 @@ class PostgresExporter(conn : Connection, env : Environment) {
 
       val dependency : Dependency = kv._1 
 
-      for(actionId <- pluckKeys[Action](kv._2, actionsIds)) { 
+      for(actionId <- pluckKeys[Action](kv._2, actionsIds)) {
 
-        insertedDependency.setString(1, dependency.value) 
-        insertedDependency.setInt(2, actionId)
-        insertedDependency.executeUpdate()
-        insertedDependency.clearParameters()
+        for(topic <- dependency.clauses) { 
+
+          insertedDependency.setString(1, dependency.value) 
+          insertedDependency.setInt(2, actionId)
+          insertedDependency.setString(3, topic.value)
+          insertedDependency.executeUpdate()
+          insertedDependency.clearParameters()
+
+        } 
 
       } 
     }

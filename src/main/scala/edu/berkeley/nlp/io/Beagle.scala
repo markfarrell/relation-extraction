@@ -78,7 +78,6 @@ object Beagle {
 
     help("help") text("Prints this help message.")
 
-
   } 
 
   def main(args : Array[String]) : Unit = { 
@@ -123,9 +122,11 @@ object Beagle {
           statement.close() 
         } 
 
-        try { 
+        try {
+
           // Export to database
-          // (new PostgresExporter(conn,env)).export()
+          (new PostgresExporter(conn,env)).export()
+
         } catch { 
           case e : Exception => e.printStackTrace()
         } 
