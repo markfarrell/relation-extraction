@@ -28,13 +28,33 @@ import edu.berkeley.nlp.syntax.Environment.Action
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 
+
+/**
+  * @object Beagle - A tool for exporting environments to Postgres databases,
+  * clearing databases, reloading environments saved in databases and compiling
+  * environments to Gephi datasets.
+ **/
 object Beagle {
 
-  case class Config(database : String = "test", host : String = "127.0.0.1",
-    port : Int = 5432, user : String = "", password : String = "", file : File = null,
-    grammar : String = "./lib/eng_sm6.gr", clear : Boolean = false
+   /** 
+     * @class Config - command line options for the tool.
+    **/
+   case class Config(
+    database : String = "test", 
+    host : String = "127.0.0.1",
+    port : Int = 5432,
+    user : String = "",
+    password : String = "", 
+    file : File = null,
+    grammar : String = "./lib/eng_sm6.gr", 
+    clear : Boolean = false, 
+    export : Boolean = false
   )
 
+  /** 
+    * Set values for command line options. Specify
+    * usage of the tool. 
+   **/
   val parser = new scopt.OptionParser[Config]("Beagle") { 
 
     head(
@@ -72,20 +92,27 @@ object Beagle {
       (x, c) => c.copy(grammar = x) 
     } text("grammar is a string (path) property")
 
-    opt[Boolean]('c', "clear") action { 
-      (x, c) => c.copy(clear = true)
+    opt[Unit]('c', "clear") action { 
+      (_, c) => c.copy(clear = true)
     }
+
+    opt[Unit]('e', "export") action { 
+      (_, c) => c.copy(export = true) 
+    } 
 
     help("help") text("Prints this help message.")
 
   } 
 
-  def main(args : Array[String]) : Unit = { 
+  /**
+    * @method connect - Connect to the database with 
+    * parameters specifyed in cfg.
+    * @param cfg {Config} 
+    * @return {Connection} - A connection to the database.
+   **/
+  private def connect(cfg : Config) : Connection = {
 
-    parser.parse(args, Config()) map { 
-      cfg => {  
-
-        Class.forName("org.postgresql.Driver")
+       Class.forName("org.postgresql.Driver")
 
         val url : String = "jdbc:postgresql://"+cfg.host+":"+cfg.port+"/"+cfg.database
         val props : Properties = new Properties()
@@ -98,46 +125,83 @@ object Beagle {
           props.setProperty("password", cfg.password)
         } 
 
-        val conn : Connection = DriverManager.getConnection(url, props)
+        DriverManager.getConnection(url, props)
 
-        val env : Environment = new Environment
+  } 
 
-        env.insertTopics { 
-          Blurb.tokens(System.in) map { 
-            str => { 
-              val ret = StreamParser.parseString(str, Array[String]("-gr", cfg.grammar))
-              println(ret)
-              ret
-            } 
-          } flatMap {
-            str => Environment.toTopic(str)
-          }  
-        }
+  /** 
+    * @method main - Entry point for the tool.
+    * @param args - {Array[String]} 
+   **/
+  def main(args : Array[String]) : Unit = { 
+
+    parser.parse(args, Config()) map { 
+      cfg => { 
+
 
         // Clear existing contents of database
         if(cfg.clear) {
 
+          val conn : Connection = connect(cfg) 
+
           val statement : Statement = conn.createStatement() 
           statement.executeQuery("DELETE FROM beagle.topics CASCADE")
-          statement.close() 
-        } 
+          statement.close()
 
-        try {
+          conn.close()
 
-          // Export to database
-          (new PostgresExporter(conn,env)).export()
+        }
 
-        } catch { 
-          case e : Exception => e.printStackTrace()
+        if(cfg.export) {
+
+          val conn : Connection = connect(cfg) 
+
+
+          val env : Environment = new Environment
+
+          env.insertTopics { 
+            Blurb.tokens(System.in) map { 
+              str => { 
+                val ret = StreamParser.parseString(str, Array[String]("-gr", cfg.grammar))
+                println(ret)
+                ret
+              } 
+            } flatMap {
+              str => Environment.toTopic(str)
+            }  
+          }
+
+
+
+          try {
+
+            // Export to database
+            (new PostgresExporter(conn,env)).export()
+
+          } catch { 
+            case e : Exception => e.printStackTrace()
+          } 
+
+          conn.close() 
+
         } 
 
         // Maybe produce a GEXF file
         if(cfg.file != null) {
+
+          val conn : Connection = connect(cfg) 
+
           val fs : FileOutputStream = new FileOutputStream(cfg.file) 
+
+          val env : Environment = new PostgresImporter(conn).load()
+
           (new StaxGraphWriter).writeToStream(Environment.toGexf(env.selectTopics()), fs, "UTF-8")
+
+          conn.close() 
+
         }
 
-        conn.close()
+      
       }
 
     }
