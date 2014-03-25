@@ -62,7 +62,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      // Case 1: 
      { 
        val tree : LinguisticTree = "((S (NP (DT The) (NN dog) (NN walks.))))"
-       val expectation : Option[Environment.Topic] = Some(Environment.Topic("The dog walks.", List()))
+       val expectation : Option[Environment.Topic] = Some(Environment.Topic("the dog walks.", List()))
 
        Environment.toTopic(tree).toString() should be (expectation.toString())
      } 
@@ -70,7 +70,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      // Case 2:
      {
        val tree : LinguisticTree = "(S (NP (DT The) (NN dog)) (VP (MD might) (VP (VB eat) (SBAR (IN if) (S (NP (DT the) (NN cat)) (VP (MD can) (VP (VB run.))))))))"
-       val expectation : String = "Some(Topic(The dog,List(Condition(might,List(Action(eat,List(Dependency(if,List(Topic(the cat,List(Condition(can,List(Action(run.,List()))))))))))))))"
+       val expectation : String = "Some(Topic(the dog,List(Condition(might,List(Action(eat,List(Dependency(if,List(Topic(the cat,List(Condition(can,List(Action(run.,List()))))))))))))))"
        Environment.toTopic(tree).toString() should be (expectation)
      } 
 
@@ -78,7 +78,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
   "toClause" should " produce an Option[Term]." in { 
      val tree : LinguisticTree = "(ROOT (S (NP (DT The) (NN dog) (NN walks.))))"
-     val expectation : Option[Environment.Term] = Some(Environment.Topic("The dog walks.", List()))
+     val expectation : Option[Environment.Term] = Some(Environment.Topic("the dog walks.", List()))
 
      Environment.toClause(tree).toString() should be (expectation.toString())
 
@@ -89,19 +89,19 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
     // Case 1: 
     { 
 
-      val topicA : Environment.Topic= Environment.Topic("The dog", 
+      val topicA : Environment.Topic= Environment.Topic("the dog", 
         List(Environment.Condition("might", 
           List(Environment.Action("walk", 
             List(Environment.Dependency("if",
               List(Environment.Topic("the cat walks.", List())))))))))
 
-      val topicB : Environment.Topic= Environment.Topic("The dog", 
+      val topicB : Environment.Topic= Environment.Topic("the dog", 
         List(Environment.Condition("could", 
          List(Environment.Action("sit", List())))))
 
       val topicC : Environment.Topic = Environment.Topic("the cat walks.", List())
 
-      val topicAB : Environment.Topic = Environment.Topic("The dog", 
+      val topicAB : Environment.Topic = Environment.Topic("the dog", 
         List(Environment.Condition("could", 
           List(Environment.Action("sit", List()))),
             Environment.Condition("might", 
@@ -120,13 +120,13 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
     // Case 2:
     { 
       val env : Environment = new Environment
-      val expected : List[String] = List[String]("The man", "The dog")
+      val expected : List[String] = List[String]("the man", "the dog")
 
-      env.insertTopics(List(Environment.Topic("The man", 
+      env.insertTopics(List(Environment.Topic("the man", 
         List(Environment.Condition("might", 
           List(Environment.Action("walk", 
             List(Environment.Dependency("if", 
-              List(Environment.Topic("The dog", 
+              List(Environment.Topic("the dog", 
                 List(Environment.Condition("can", 
                   List(Environment.Action("eat", List.empty)))))))))))))))
 
@@ -143,7 +143,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
     // Case 1: 
     { 
     
-     val topic : Environment.Topic= Environment.Topic("The dog", 
+     val topic : Environment.Topic= Environment.Topic("the dog", 
        List(Environment.Condition("might", 
          List(Environment.Action("walk", 
            List(Environment.Dependency("if",
@@ -152,7 +152,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      var expectation : String = """<?xml version='1.0' encoding='UTF-8'?>
      <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.2draft/viz" version="1.2">
      <graph defaultedgetype="undirected" idtype="string" mode="static"><attributes class="node" mode="static">
-     <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="0" label="The dog">
+     <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="0" label="the dog">
      <attvalues><attvalue for="type" value="Topic"/></attvalues></node><node id="1" label="might"><attvalues>
      <attvalue for="type" value="Condition"/></attvalues></node><node id="2" label="walk">
      <attvalues><attvalue for="type" value="Action"/></attvalues>
@@ -186,7 +186,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      var expectation : String = """<?xml version='1.0' encoding='UTF-8'?>
      <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.2draft/viz" version="1.2">
      <graph defaultedgetype="undirected" idtype="string" mode="static"><attributes class="node" mode="static">
-     <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="0" label="The dog">
+     <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="0" label="the dog">
      <attvalues><attvalue for="type" value="Topic"/></attvalues></node>
      <node id="1" label="can"><attvalues><attvalue for="type" value="Condition"/>
      </attvalues></node><node id="2" label="walk."><attvalues><attvalue for="type" value="Action"/>

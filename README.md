@@ -11,9 +11,11 @@ more information once built.
 - Bash
 - GNU Make
 - Java Runtime Environment
+- PostgreSQL 9.3.3
 
 ## Build
     make
+    make samples
 
 Tests are run as part of the build process. 
 

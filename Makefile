@@ -2,14 +2,16 @@ all:
 	export SBT_OPTS="-Xss1m"
 	sbt compile start-script test
 
-sample: $(patsubst %.txt, %.gexf, $(wildcard samples/*.txt))
-	zip samples/samples.zip $<
-	rm -f samples/*.gexf
+bin: 
+	mkdir -p bin
 
 %.gexf: %.txt
-	./Beagle -f $@ < $<
+	./Beagle --export -f bin/$(notdir $@) < $<
+
+samples: bin $(patsubst %.txt, %.gexf, $(wildcard samples/*.txt))
 
 clean:
-	sbt clean	
+	sbt clean
+	rm -rf bin
 
-.PHONY: clean
+.PHONY: all sample clean

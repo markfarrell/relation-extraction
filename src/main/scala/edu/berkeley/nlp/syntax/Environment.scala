@@ -226,7 +226,7 @@ object Environment {
    * @param tree
   **/
   def toTopic(tree : LinguisticTree) : Option[Topic] = tree.findCut(topicTags) map { 
-    (t : LinguisticTree) => Topic(t.terminalList().mkString(" "), toCondition(tree).orElse(toAction(tree)) match { 
+    (t : LinguisticTree) => Topic(t.terminalList().mkString(" ").toLowerCase, toCondition(tree).orElse(toAction(tree)) match { 
         case Some(term) => List(term)
         case None => List()
      })
