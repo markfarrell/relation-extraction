@@ -2,7 +2,9 @@ package edu.berkeley.nlp.syntax
 
 import java.util.Calendar
 
-import java.io.StringWriter 
+import java.io.StringWriter
+
+import scala.util.Random
 
 import scala.collection.JavaConverters._
 import scala.collection.Iterator
@@ -15,6 +17,7 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.Gexf
 import it.uniroma1.dis.wsngroup.gexf4j.core.Graph
 import it.uniroma1.dis.wsngroup.gexf4j.core.Mode
 import it.uniroma1.dis.wsngroup.gexf4j.core.Node
+import it.uniroma1.dis.wsngroup.gexf4j.core.Edge
 import it.uniroma1.dis.wsngroup.gexf4j.core.data.Attribute
 import it.uniroma1.dis.wsngroup.gexf4j.core.data.AttributeClass
 import it.uniroma1.dis.wsngroup.gexf4j.core.data.AttributeList
@@ -23,6 +26,8 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.impl.GexfImpl
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.data.AttributeListImpl
 import it.uniroma1.dis.wsngroup.gexf4j.core.viz.NodeShape
+import it.uniroma1.dis.wsngroup.gexf4j.core.viz.Color
+import it.uniroma1.dis.wsngroup.gexf4j.core.impl.viz.ColorImpl
 
 import TreeConversions._
 
@@ -207,14 +212,16 @@ class Environment {
 
 object Environment { 
 
-  val conditionTags : Set[String] = Set[String]("MD")
-  val dependencyTags : Set[String] = Set[String]("IN")
-  val clauseTags : Set[String] = Set[String]("S", "SBAR")
-  val topicClauseTags : Set[String] = Set[String]("S") 
-  val vpTags : Set[String] = Set[String]("VP")
-  val topicTags : Set[String] = Set[String]("NP", "CC")
-  val actionTags : Set[String] = Set[String]("VB", "VBZ", "VBP", "VBD", "CC")
+  private final val random : Random = new Random(0) 
 
+  private final val conditionTags : Set[String] = Set[String]("MD")
+  private final val dependencyTags : Set[String] = Set[String]("IN")
+  private final val clauseTags : Set[String] = Set[String]("S", "SBAR")
+  private final val topicClauseTags : Set[String] = Set[String]("S") 
+  private final val vpTags : Set[String] = Set[String]("VP")
+  private final val topicTags : Set[String] = Set[String]("NP", "CC")
+  private final val actionTags : Set[String] = Set[String]("VB", "VBZ", "VBP", "VBD", "CC")
+  
   abstract class Term
   case class Action(value : String, dependencies : List[Dependency]) extends Term // VB, VBZ, VBP, VBD, CC
   case class Dependency(value : String, clauses: List[Topic]) extends Term
@@ -294,14 +301,16 @@ object Environment {
     gexf.setVisualization(true)
 
     val graph : Graph = gexf.getGraph()
-    graph.setDefaultEdgeType(EdgeType.UNDIRECTED).setMode(Mode.STATIC)
+    graph.setDefaultEdgeType(EdgeType.DIRECTED).setMode(Mode.STATIC)
 
     val attrList : AttributeList = new AttributeListImpl(AttributeClass.NODE)
     graph.getAttributeLists().add(attrList)
 
     val attType : Attribute = attrList.createAttribute("type", AttributeType.STRING, "type")
 
-    var currentId : Int = 0 // Current node ID 
+    var currentColor : Color = nextColor() 
+    var currentNodeId : Int = 0 // Current node ID 
+    var currentEdgeId : Int = 0 // Current edge ID 
 
     // Map of already visited topic nodes
     var visitedTopics : Map[String, Node] = Map.empty[String, Node] 
@@ -312,15 +321,23 @@ object Environment {
 
     def makeNode(typename : String, value : String, terms : List[Term]) : Node = { 
 
-      val id : Int = currentId
+      val nodeId : Int = currentNodeId
       
-      currentId += 1
+      currentNodeId += 1
 
-      val node : Node = graph.createNode(id.toString).setLabel(value) // Look for or get if existing 
+      val node : Node = graph.createNode(nodeId.toString).setLabel(value) // Look for or get if existing 
 
       node.getAttributeValues().addValue(attType, typename)
 
-      for(term <- terms) node.connectTo(id.toString, toNode(term))
+      for(term <- terms) {
+
+        val edgeId : Int = currentEdgeId
+        currentEdgeId += 1
+
+        val edge : Edge = node.connectTo(edgeId.toString, toNode(term))
+
+        // edge.setColor(currentColor) 
+      } 
 
       node
 
@@ -349,16 +366,33 @@ object Environment {
           })
         } 
         case Condition(modal, actions) => makeNode("Condition", modal, actions)
-        case Action(value, dependencies) => makeNode("Action", value, dependencies)
+        case Action(value, dependencies) => { 
+          currentColor = nextColor()
+          makeNode("Action", value, dependencies) 
+        } 
       }
 
     }
     
-    terms map { 
-      (term : Term) => toNode(term)
-    }
+    for (term <- terms) yield toNode(term) 
     
     gexf
+
+  }
+
+  // TODO: 
+  // -- Assign each term a color when first inserted into an environment, so
+  // that no information is lost. 
+  // -- Make each have type='directed' as well
+  private def nextColor() : Color = {
+
+    val rgb : Tuple3[Int, Int, Int] = (
+      random.nextInt(256),
+      random.nextInt(256), 
+      random.nextInt(256)
+    ) 
+
+    new ColorImpl(rgb._1, rgb._2, rgb._3) 
 
   } 
 

@@ -151,7 +151,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
      var expectation : String = """<?xml version='1.0' encoding='UTF-8'?>
      <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.2draft/viz" version="1.2">
-     <graph defaultedgetype="undirected" idtype="string" mode="static"><attributes class="node" mode="static">
+     <graph defaultedgetype="directed" idtype="string" mode="static"><attributes class="node" mode="static">
      <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="0" label="the dog">
      <attvalues><attvalue for="type" value="Topic"/></attvalues></node><node id="1" label="might"><attvalues>
      <attvalue for="type" value="Condition"/></attvalues></node><node id="2" label="walk">
@@ -185,7 +185,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
      var expectation : String = """<?xml version='1.0' encoding='UTF-8'?>
      <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:viz="http://www.gexf.net/1.2draft/viz" version="1.2">
-     <graph defaultedgetype="undirected" idtype="string" mode="static"><attributes class="node" mode="static">
+     <graph defaultedgetype="directed" idtype="string" mode="static"><attributes class="node" mode="static">
      <attribute id="type" title="type" type="string"/></attributes><nodes count="5"><node id="0" label="the dog">
      <attvalues><attvalue for="type" value="Topic"/></attvalues></node>
      <node id="1" label="can"><attvalues><attvalue for="type" value="Condition"/>
@@ -193,7 +193,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      </attvalues></node><node id="3" label="must"><attvalues><attvalue for="type" value="Condition"/>
      </attvalues></node><node id="4" label="run."><attvalues><attvalue for="type" value="Action"/></attvalues></node>
      </nodes><edges count="4"><edge id="0" source="0" target="1" type="undirected"/>
-     <edge id="0" source="0" target="3" type="undirected"/><edge id="1" source="1" target="2" type="undirected"/>
+     <edge id="2" source="0" target="3" type="undirected"/><edge id="1" source="1" target="2" type="undirected"/>
      <edge id="3" source="3" target="4" type="undirected"/></edges></graph></gexf>"""
 
      expectation = expectation.split("\n").map( _.trim ).mkString("")
