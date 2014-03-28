@@ -39,9 +39,16 @@ import TreeConversions._
  **/
 class Environment {
 
-  private var topicMap : Map[String, Environment.Topic] = Map.empty
+  import Environment.Term
+  import Environment.Topic
+  import Environment.Condition
+  import Environment.Action
+  import Environment.Dependency
+
+  private var topicMap : Map[String, Topic] = Map.empty
   
-  private var currentSize : Int = 0 // Statistic about the number of unique terms inserted so far. 
+  private var currentSize : Int = 0 // Number of unique terms inserted so far. 
+  private var currentColor : Color = Environment.nextColor()
   
   /**
     * @method size
@@ -53,37 +60,43 @@ class Environment {
     * @method insertTopics
     * @param topics - The list of topics to be loaded 
     * into the environment. 
+    * @post - currentColor is rechosen before this method returns. The
+    * currentSize of the is also updated. 
    **/
-  def insertTopics(topics : List[Environment.Topic]) : Unit = for(topic <- topics) {
+  def insertTopics(topics : List[Topic]) : Unit = for(topic <- recolor(topics)) {
 
     topicMap.get(topic.value) match { 
-      case Some(existingTopic) => { 
+      case Some(existingTopic) => {
 
-        //Note: will contain duplicate actions e.g.  "runs ... case 1", "runs ... case 2"
-        topicMap += topic.value -> Environment.Topic(topic.value, mergeTerms(existingTopic.abilities ++ topic.abilities)) 
+        val updatedTopic : Topic = Topic(
+          topic.value,
+          mergeTerms(existingTopic.abilities ++ topic.abilities)
+        ) 
+
+        topicMap += topic.value -> updatedTopic
 
       } 
       case None => { 
         currentSize += 1
-        topicMap += topic.value -> topic 
+        topicMap += topic.value -> topic
       } 
     }
 
-    def insertActions(actions : List[Environment.Action]) : Unit = for { 
+    def insertActions(actions : List[Action]) : Unit = for { 
       action <- actions 
     } { 
       currentSize += 1
       insertDependencies(action.dependencies)
     } 
 
-    def insertConditions(conditions : List[Environment.Condition]) : Unit = for { 
+    def insertConditions(conditions : List[Condition]) : Unit = for { 
       condition <- conditions
     } { 
       currentSize += 1
       insertActions(condition.actions) 
     } 
 
-    def insertDependencies(dependencies : List[Environment.Dependency]) : Unit = for { 
+    def insertDependencies(dependencies : List[Dependency]) : Unit = for { 
       dependency <- dependencies
     } { 
       currentSize += 1
@@ -91,8 +104,9 @@ class Environment {
     } 
 
     insertConditions(getConditions(topic.abilities))
-
     insertActions(getActions(topic.abilities))
+
+    currentColor = Environment.nextColor()
      
   } 
 
@@ -101,67 +115,86 @@ class Environment {
     * @return - All topics found in the environment, where 
     * topics inserted with the same values have been merged together. 
     **/
-  def selectTopics() : List[Environment.Topic] = {
+  def selectTopics() : List[Topic] = {
 
-    def selectActions(terms : List[Environment.Term]) : List[Environment.Action]  = for { 
+    def selectActions(terms : List[Term]) : List[Action]  = for { 
       action <- getActions(terms)
-    } yield Environment.Action(action.value, selectDependencies(action.dependencies))
+    } yield Action(
+      action.value,
+      selectDependencies(action.dependencies),
+      action.color
+    )
 
-    def selectConditions(terms : List[Environment.Term]) = for { 
+    def selectConditions(terms : List[Term]) = for { 
       condition <- getConditions(terms)
-    } yield Environment.Condition(condition.modal, selectActions(condition.actions))
+    } yield Condition(
+      condition.value, 
+      selectActions(condition.actions), 
+      condition.color
+    )
 
-    def selectDependencies(dependencies : List[Environment.Dependency]) : List[Environment.Dependency] = for { 
+    def selectDependencies(dependencies : List[Dependency]) : List[Dependency] = for { 
       dependency <- dependencies
-    } yield Environment.Dependency(dependency.value, dependency.clauses map { 
-        (t : Environment.Topic) => topicMap.get(t.value)
-      } flatten)
+    } yield Dependency(
+      dependency.value, 
+      dependency.clauses map { 
+        (t : Topic) => topicMap.get(t.value)
+      } flatten,
+      dependency.color
+    )
   
     { 
       for { 
         topic <- topicMap.values 
-      } yield Environment.Topic(topic.value, selectActions(topic.abilities) ++ selectConditions(topic.abilities))
+      } yield Topic ( 
+        topic.value,
+        selectActions(topic.abilities) ++ selectConditions(topic.abilities),
+        topic.color
+      )
     } toList
 
   }
 
   /** 
     * @method getActions
-    * @param terms {List[Environment.Term} 
-    * @return {List[Environment.Action]}
+    * @param terms {List[Term} 
+    * @return {List[Action]}
    **/
-  private def getActions(terms : List[Environment.Term]) : List[Environment.Action] = terms filter { 
-    _.isInstanceOf[Environment.Action]
+  private def getActions(terms : List[Term]) : List[Action] = terms filter { 
+    _.isInstanceOf[Action]
   } map { 
-    _.asInstanceOf[Environment.Action] 
+    _.asInstanceOf[Action] 
   }
 
   /**
     * @method getConditions
-    * @param terms {List[Environment.Terms]}
-    * @return {List[Environment.Condition]}
+    * @param terms {List[Terms]}
+    * @return {List[Condition]}
    **/
-  private def getConditions(terms : List[Environment.Term]) : List[Environment.Condition]  = terms filter { // type select 
-    _.isInstanceOf[Environment.Condition]
+  private def getConditions(terms : List[Term]) : List[Condition]  = terms filter { // type select 
+    _.isInstanceOf[Condition]
   } map { 
-    _.asInstanceOf[Environment.Condition]
+    _.asInstanceOf[Condition]
   }
 
   /**
     * @method mergeTerms
-    * @param terms {List[Environment.Term]}
-    * @return {List[Environment.Term]}
-  **/
-  private def mergeTerms(terms : List[Environment.Term]) : List[Environment.Term] = { 
+    * @param terms {List[Term]}
+    * @return {List[Term]}
+   **/
+  private def mergeTerms(terms : List[Term]) : List[Term] = { 
 
-    def mergeDependencies(dependencies : List[Environment.Dependency]) : List[Environment.Dependency]  = {
+    def mergeDependencies(dependencies : List[Dependency]) : List[Dependency]  = {
 
-      var map : Map[String, Environment.Dependency] = Map.empty
+      var map : Map[String, Dependency] = Map.empty
 
       for(dependency <- dependencies) {
         map.get(dependency.value) match { 
           case Some(d) => {
-            map += d.value -> Environment.Dependency(d.value, d.clauses ++ dependency.clauses)
+            map += d.value -> Dependency(d.value, 
+              d.clauses ++ dependency.clauses,
+              avg(d.color, dependency.color)
+            )
           } 
           case None => map += dependency.value -> dependency
         }
@@ -170,14 +203,18 @@ class Environment {
       map.values.toList 
     }
 
-    def mergeActions(actions : List[Environment.Action]) : List[Environment.Action] = {
+    def mergeActions(actions : List[Action]) : List[Action] = {
 
-      var map : Map[String, Environment.Action] = Map.empty
+      var map : Map[String, Action] = Map.empty
 
       for(action <- actions) {
         map.get(action.value) match { 
           case Some(a) => {
-            map += a.value -> Environment.Action(a.value, mergeDependencies(a.dependencies ++ action.dependencies))
+            map += a.value -> Action(
+              a.value, 
+              mergeDependencies(a.dependencies ++ action.dependencies),
+              avg(a.color, action.color)
+            )
           } 
           case None => map += action.value -> action
         }
@@ -187,16 +224,20 @@ class Environment {
 
     }
 
-    def mergeConditions(conditions : List[Environment.Condition]) : List[Environment.Condition] = {
+    def mergeConditions(conditions : List[Condition]) : List[Condition] = {
 
-      var map : Map[String, Environment.Condition] = Map.empty
+      var map : Map[String, Condition] = Map.empty
 
       for(condition <- conditions) {
-        map.get(condition.modal) match { 
+        map.get(condition.value) match { 
           case Some(c) => {
-            map += c.modal -> Environment.Condition(c.modal, mergeActions(c.actions ++ condition.actions))
+            map += c.value -> Condition(
+              c.value, 
+              mergeActions(c.actions ++ condition.actions),
+              avg(c.color, condition.color)
+            )
           } 
-          case None => map += condition.modal -> condition
+          case None => map += condition.value -> condition
         }
       } 
 
@@ -208,25 +249,93 @@ class Environment {
 
   }
 
+  /** 
+    * @method avg 
+    * @param a {Color}
+    * @param b {Color}
+    * @return {Color} - The average of colors a and b.
+   **/
+  private def avg(a : Color, b : Color) = new ColorImpl(
+    (a.getR + b.getR) / 2,
+    (a.getG + b.getG) / 2,
+    (a.getB + b.getB) / 2
+  )
+
+  /** 
+    * @method recolor - Changes the colors of each topic, as well as each of 
+    * its conditions, actions, and subsequent dependencies.
+    * @param topics {List[Topic]} 
+    * @param color {Color} 
+    * @return {List[Topic]} - The recolored list of Topics. 
+   **/
+  private def recolor(topics : List[Topic], color : Color = Environment.nextColor()) : List[Topic] = { 
+
+    def recolorConditions(conditions : List[Condition]) = for { 
+      condition <- conditions
+    } yield Condition(  
+      condition.value,
+      recolorActions(condition.actions), 
+      color 
+    ) 
+
+    def recolorActions(actions : List[Action]) = for { 
+      action <- actions 
+    } yield Action(
+      action.value,
+      recolorDependencies(action.dependencies),
+      color 
+    )  
+
+    def recolorDependencies(dependencies : List[Dependency]) = for { 
+      dependency <- dependencies
+    } yield Dependency(  
+      dependency.value,
+      dependency.clauses,
+      color 
+    ) 
+
+    for (topic <- topics) yield Topic(
+      topic.value, 
+      recolorActions(getActions(topic.abilities)) 
+        ++ recolorConditions(getConditions(topic.abilities)),
+      color
+    ) 
+
+  } 
+
 } 
 
 object Environment { 
 
-  private final val random : Random = new Random(0) 
+  // Set to false to make nextColor 
+  var randomize : Boolean = true 
 
-  private final val conditionTags : Set[String] = Set[String]("MD")
-  private final val dependencyTags : Set[String] = Set[String]("IN")
-  private final val clauseTags : Set[String] = Set[String]("S", "SBAR")
-  private final val topicClauseTags : Set[String] = Set[String]("S") 
-  private final val vpTags : Set[String] = Set[String]("VP")
-  private final val topicTags : Set[String] = Set[String]("NP", "CC")
-  private final val actionTags : Set[String] = Set[String]("VB", "VBZ", "VBP", "VBD", "CC")
+  private val random : Random = new Random(0)
+  private val defaultColor : Color = new ColorImpl(0,0,0)
+
+  private val conditionTags : Set[String] = Set[String]("MD")
+  private val dependencyTags : Set[String] = Set[String]("IN")
+  private val clauseTags : Set[String] = Set[String]("S", "SBAR")
+  private val topicClauseTags : Set[String] = Set[String]("S") 
+  private val vpTags : Set[String] = Set[String]("VP")
+  private val topicTags : Set[String] = Set[String]("NP", "CC")
+  private val actionTags : Set[String] = Set[String]("VB", "VBZ", "VBP", "VBD", "CC")
   
-  abstract class Term
-  case class Action(value : String, dependencies : List[Dependency]) extends Term // VB, VBZ, VBP, VBD, CC
-  case class Dependency(value : String, clauses: List[Topic]) extends Term
-  case class Condition(modal : String, actions : List[Action]) extends Term
-  case class Topic(value : String, abilities : List[Term]) extends Term //VGD, NP, CC 
+  abstract class Term { 
+    def color : Color;  
+  }
+
+  case class Action(value : String, dependencies : List[Dependency],
+    color : Color = defaultColor) extends Term // VB, VBZ, VBP, VBD, CC
+
+  case class Dependency(value : String, clauses: List[Topic],
+    color : Color = defaultColor) extends Term
+
+  case class Condition(value : String, actions : List[Action],
+    color : Color = defaultColor) extends Term
+
+  case class Topic(value : String, abilities : List[Term],
+    color : Color = defaultColor) extends Term //VGD, NP, CC
 
  /** 
    * @method toTopic
@@ -346,12 +455,12 @@ object Environment {
     def toNode(term : Term) : Node = {
 
       term match { 
-        case Topic(value, abilities) => visitedTopics.get(value).getOrElse({ 
+        case Topic(value, abilities, color) => visitedTopics.get(value).getOrElse({ 
           val node : Node = makeNode("Topic", value, abilities)
           visitedTopics += value -> node
           node
         })
-        case Dependency(value, clauses) => {
+        case Dependency(value, clauses, color) => {
 
           // Test for equality by summing dependency value + all topic values
           val key : String = { 
@@ -365,8 +474,8 @@ object Environment {
             node 
           })
         } 
-        case Condition(modal, actions) => makeNode("Condition", modal, actions)
-        case Action(value, dependencies) => { 
+        case Condition(value, actions, color) => makeNode("Condition", value, actions)
+        case Action(value, dependencies, color) => { 
           currentColor = nextColor()
           makeNode("Action", value, dependencies) 
         } 
@@ -380,11 +489,11 @@ object Environment {
 
   }
 
-  // TODO: 
-  // -- Assign each term a color when first inserted into an environment, so
-  // that no information is lost. 
-  // -- Make each have type='directed' as well
-  private def nextColor() : Color = {
+  /** 
+    * @method nextColor - Generates a random color. 
+    * @return {Color} - A random color. 
+   **/
+  private def nextColor() : Color = if(randomize) { 
 
     val rgb : Tuple3[Int, Int, Int] = (
       random.nextInt(256),
@@ -394,7 +503,7 @@ object Environment {
 
     new ColorImpl(rgb._1, rgb._2, rgb._3) 
 
-  } 
+  } else defaultColor
 
 } 
  

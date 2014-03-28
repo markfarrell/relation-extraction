@@ -205,7 +205,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
         case condition : Condition => {
           for (topic <- kv._2) {
 
-            insertedCondition.setString(1, condition.modal) 
+            insertedCondition.setString(1, condition.value) 
             insertedCondition.setString(2, topic.value) 
             insertedCondition.executeUpdate()
             insertedCondition.clearParameters()

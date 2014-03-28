@@ -1,5 +1,11 @@
 package edu.berkeley.nlp.syntax
 
+import Environment.Term
+import Environment.Topic
+import Environment.Action
+import Environment.Condition
+import Environment.Dependency
+
 import java.util.Calendar
 import java.io.OutputStream
 import java.io.StringWriter
@@ -69,9 +75,16 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
      // Case 2:
      {
+
        val tree : LinguisticTree = "(S (NP (DT The) (NN dog)) (VP (MD might) (VP (VB eat) (SBAR (IN if) (S (NP (DT the) (NN cat)) (VP (MD can) (VP (VB run.))))))))"
-       val expectation : String = "Some(Topic(the dog,List(Condition(might,List(Action(eat,List(Dependency(if,List(Topic(the cat,List(Condition(can,List(Action(run.,List()))))))))))))))"
-       Environment.toTopic(tree).toString() should be (expectation)
+
+       val expectation : Option[Environment.Topic] = Some(Topic("the dog",
+         List(Condition("might", List(Action("eat", List(Dependency("if",
+         List(Topic("the cat", List(Condition("can", List(Action("run.",
+         List()))))))))))))))
+
+       Environment.toTopic(tree).toString() should be (expectation.toString())
+
      } 
 
   }
@@ -85,6 +98,8 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
   }
 
   "Environments" should " join topics with the same values together when they are inserted." in {
+
+    Environment.randomize = false 
 
     // Case 1: 
     { 
@@ -129,12 +144,12 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
               List(Environment.Topic("the dog", 
                 List(Environment.Condition("can", 
                   List(Environment.Action("eat", List.empty)))))))))))))))
-
       
       env.selectTopics() map { _.value } should be (expected)
 
     } 
 
+    Environment.randomize = true
 
   } 
 
