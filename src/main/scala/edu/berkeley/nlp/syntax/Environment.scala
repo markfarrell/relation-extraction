@@ -48,7 +48,6 @@ class Environment {
   private var topicMap : Map[String, Topic] = Map.empty
   
   private var currentSize : Int = 0 // Number of unique terms inserted so far. 
-  private var currentColor : Color = Environment.nextColor()
   
   /**
     * @method size
@@ -63,52 +62,60 @@ class Environment {
     * @post - currentColor is rechosen before this method returns. The
     * currentSize of the is also updated. 
    **/
-  def insertTopics(topics : List[Topic]) : Unit = for(topic <- recolor(topics)) {
-
-    topicMap.get(topic.value) match { 
-      case Some(existingTopic) => {
-
-        val updatedTopic : Topic = Topic(
-          topic.value,
-          mergeTerms(existingTopic.abilities ++ topic.abilities)
-        ) 
-
-        topicMap += topic.value -> updatedTopic
-
-      } 
-      case None => { 
-        currentSize += 1
-        topicMap += topic.value -> topic
-      } 
+  def insertTopics(topics : List[Topic], maybeColor : Option[Color] = None) : Unit = { 
+    
+    def recolor(topic : Topic) : Topic = maybeColor match {   
+      case Some(color) => recolorTopic(topic, color)
+      case None => recolorTopic(topic) 
     }
+    
+    val recoloredTopics : List[Topic] = topics map recolor 
+    
+    for(topic <- recoloredTopics) {
 
-    def insertActions(actions : List[Action]) : Unit = for { 
-      action <- actions 
-    } { 
-      currentSize += 1
-      insertDependencies(action.dependencies)
-    } 
+      topicMap.get(topic.value) match { 
+        case Some(existingTopic) => {
 
-    def insertConditions(conditions : List[Condition]) : Unit = for { 
-      condition <- conditions
-    } { 
-      currentSize += 1
-      insertActions(condition.actions) 
-    } 
+          val updatedTopic : Topic = Topic(
+            topic.value,
+            mergeTerms(existingTopic.abilities ++ topic.abilities)
+          ) 
 
-    def insertDependencies(dependencies : List[Dependency]) : Unit = for { 
-      dependency <- dependencies
-    } { 
-      currentSize += 1
-      insertTopics(dependency.clauses)
-    } 
+          topicMap += topic.value -> updatedTopic
 
-    insertConditions(getConditions(topic.abilities))
-    insertActions(getActions(topic.abilities))
+        } 
+        case None => { 
+          currentSize += 1
+          topicMap += topic.value -> topic
+        } 
+      }
 
-    currentColor = Environment.nextColor()
-     
-  } 
+      def insertActions(actions : List[Action]) : Unit = for { 
+        action <- actions 
+      } { 
+       currentSize += 1
+       insertDependencies(action.dependencies)
+      } 
+
+      def insertConditions(conditions : List[Condition]) : Unit = for { 
+        condition <- conditions
+      } { 
+        currentSize += 1
+        insertActions(condition.actions) 
+      } 
+
+      def insertDependencies(dependencies : List[Dependency]) : Unit = for { 
+        dependency <- dependencies
+      } { 
+       currentSize += 1
+       insertTopics(dependency.clauses)
+      } 
+
+      insertConditions(getConditions(topic.abilities))
+      insertActions(getActions(topic.abilities))
+
+    }
+  }  
 
   /** 
     * @method selectTopics
@@ -193,7 +200,7 @@ class Environment {
           case Some(d) => {
             map += d.value -> Dependency(d.value, 
               d.clauses ++ dependency.clauses,
-              avg(d.color, dependency.color)
+              dependency.color
             )
           } 
           case None => map += dependency.value -> dependency
@@ -213,7 +220,7 @@ class Environment {
             map += a.value -> Action(
               a.value, 
               mergeDependencies(a.dependencies ++ action.dependencies),
-              avg(a.color, action.color)
+              action.color
             )
           } 
           case None => map += action.value -> action
@@ -234,7 +241,7 @@ class Environment {
             map += c.value -> Condition(
               c.value, 
               mergeActions(c.actions ++ condition.actions),
-              avg(c.color, condition.color)
+              condition.color
             )
           } 
           case None => map += condition.value -> condition
@@ -250,25 +257,13 @@ class Environment {
   }
 
   /** 
-    * @method avg 
-    * @param a {Color}
-    * @param b {Color}
-    * @return {Color} - The average of colors a and b.
-   **/
-  private def avg(a : Color, b : Color) = new ColorImpl(
-    (a.getR + b.getR) / 2,
-    (a.getG + b.getG) / 2,
-    (a.getB + b.getB) / 2
-  )
-
-  /** 
     * @method recolor - Changes the colors of each topic, as well as each of 
     * its conditions, actions, and subsequent dependencies.
-    * @param topics {List[Topic]} 
+    * @param topics {Topic} 
     * @param color {Color} 
-    * @return {List[Topic]} - The recolored list of Topics. 
+    * @return {Topic} - The recolored list of Topics. 
    **/
-  private def recolor(topics : List[Topic], color : Color = Environment.nextColor()) : List[Topic] = { 
+  private def recolorTopic(topic : Topic, color : Color = Environment.nextColor()) : Topic = { 
 
     def recolorConditions(conditions : List[Condition]) = for { 
       condition <- conditions
@@ -292,14 +287,13 @@ class Environment {
       dependency.value,
       dependency.clauses,
       color 
-    ) 
+    )
 
-    for (topic <- topics) yield Topic(
-      topic.value, 
-      recolorActions(getActions(topic.abilities)) 
-        ++ recolorConditions(getConditions(topic.abilities)),
-      color
-    ) 
+    val recoloredActions : List[Action] = recolorActions(getActions(topic.abilities)) 
+    val recoloredConditions : List[Condition] = recolorConditions(getConditions(topic.abilities))
+ 
+    val recoloredAbilities : List[Term] = recoloredActions ++ recoloredConditions
+    Topic(topic.value, recoloredAbilities, color) 
 
   } 
 
@@ -445,7 +439,7 @@ object Environment {
 
         val edge : Edge = node.connectTo(edgeId.toString, toNode(term))
 
-        // edge.setColor(currentColor) 
+        edge.setColor(currentColor) 
       } 
 
       node

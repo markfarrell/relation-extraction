@@ -1,5 +1,5 @@
 all:
-	export SBT_OPTS="-Xss1m"
+	export SBT_OPTS="-Xss1m -XX:MaxPermSize=2048m"
 	sbt compile start-script test
 
 bin: 

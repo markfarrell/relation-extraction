@@ -155,6 +155,8 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
   "toGexf" should " produce a Gexf object." in {
 
+    Environment.randomize = false 
+
     // Case 1: 
     { 
     
@@ -173,9 +175,12 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      <attvalues><attvalue for="type" value="Action"/></attvalues>
      </node><node id="3" label="if"><attvalues><attvalue for="type" value="Dependency"/></attvalues></node>
      <node id="4" label="the cat walks."><attvalues><attvalue for="type" value="Topic"/></attvalues></node>
-     </nodes><edges count="4"><edge id="0" source="0" target="1" type="undirected"/>
-     <edge id="1" source="1" target="2" type="undirected"/><edge id="2" source="2" target="3" type="undirected"/>
-     <edge id="3" source="3" target="4" type="undirected"/></edges></graph></gexf>"""
+     </nodes><edges count="4">
+     <edge id="0" source="0" target="1" type="undirected"><viz:color r="0" g="0" b="0"/></edge>
+     <edge id="1" source="1" target="2" type="undirected"><viz:color r="0" g="0" b="0"/></edge>
+     <edge id="2" source="2" target="3" type="undirected"><viz:color r="0" g="0" b="0"/></edge>
+     <edge id="3" source="3" target="4" type="undirected"><viz:color r="0" g="0" b="0"/></edge>
+     </edges></graph></gexf>"""
 
      expectation = expectation.split("\n").map( _.trim ).mkString("")
  
@@ -207,9 +212,12 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      </attvalues></node><node id="2" label="walk."><attvalues><attvalue for="type" value="Action"/>
      </attvalues></node><node id="3" label="must"><attvalues><attvalue for="type" value="Condition"/>
      </attvalues></node><node id="4" label="run."><attvalues><attvalue for="type" value="Action"/></attvalues></node>
-     </nodes><edges count="4"><edge id="0" source="0" target="1" type="undirected"/>
-     <edge id="2" source="0" target="3" type="undirected"/><edge id="1" source="1" target="2" type="undirected"/>
-     <edge id="3" source="3" target="4" type="undirected"/></edges></graph></gexf>"""
+     </nodes><edges count="4">
+     <edge id="0" source="0" target="1" type="undirected"><viz:color r="0" g="0" b="0"/></edge>
+     <edge id="2" source="0" target="3" type="undirected"><viz:color r="0" g="0" b="0"/></edge>
+     <edge id="1" source="1" target="2" type="undirected"><viz:color r="0" g="0" b="0"/></edge>
+     <edge id="3" source="3" target="4" type="undirected"><viz:color r="0" g="0" b="0"/></edge>
+     </edges></graph></gexf>"""
 
      expectation = expectation.split("\n").map( _.trim ).mkString("")
 
@@ -220,7 +228,9 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
      stringWriter.toString() should be (expectation)
      
-   } 
+   }
+
+   Environment.randomize = true 
       
   } 
 
