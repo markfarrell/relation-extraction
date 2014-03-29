@@ -1,8 +1,7 @@
 # Beagle
 
 Take blocks of text and produce visual aids to study the properties of topics and the relations between
-them. Affiliated with [CREA](http://crea.berkeley.edu/). Type <code>./Beagle --help</code> for 
-more information once built. 
+them. Part of a research initiative at [CREA](http://crea.berkeley.edu/), a UC Berkeley research lab. Type <code>./Beagle --help</code> for more information once built. 
 
 ## Dependencies 
 
