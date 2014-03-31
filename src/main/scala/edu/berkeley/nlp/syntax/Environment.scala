@@ -312,7 +312,7 @@ object Environment {
   private val clauseTags : Set[String] = Set[String]("S", "SBAR")
   private val topicClauseTags : Set[String] = Set[String]("S") 
   private val vpTags : Set[String] = Set[String]("VP")
-  private val topicTags : Set[String] = Set[String]("NP", "CC")
+  private val topicTags : Set[String] = Set[String]("NP", "NNS", "NNP", "NNPS", "CC")
   private val actionTags : Set[String] = Set[String]("VB", "VBZ", "VBP", "VBD", "CC")
   
   abstract class Term { 

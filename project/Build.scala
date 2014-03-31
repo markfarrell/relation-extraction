@@ -21,13 +21,11 @@ object ProjectBuild extends Build {
     )
   ) 
 
-  lazy val scala_redis = RootProject(uri("https://github.com/debasishg/scala-redis.git"))
-
   lazy val root = Project(
     id = "root",
     base = file("."),
     settings = standardSettings ++ SbtStartScript.startScriptForClassesSettings
-  ) dependsOn(scala_redis) 
+  ) 
 
 } 
 
