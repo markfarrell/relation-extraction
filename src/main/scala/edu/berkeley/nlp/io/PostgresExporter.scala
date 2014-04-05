@@ -7,6 +7,7 @@ import java.sql.PreparedStatement
 import java.sql.SQLException
 import java.sql.Types
 import java.sql.ResultSet
+import java.sql.BatchUpdateException
 import java.util.Properties
 
 import scala.collection.mutable.{HashMap, MultiMap, Set}
@@ -40,31 +41,31 @@ class PostgresExporter(conn : Connection, env : Environment) {
   private val conditionsTable : ConditionsTable = new ConditionsTable
   private val dependenciesTable : DependenciesTable = new DependenciesTable
 
-  private val yes: Int = Statement.RETURN_GENERATED_KEYS
+  private val yes : Int = Statement.RETURN_GENERATED_KEYS
 
   /** 
     * @method insertTopic
     * @return A new prepared statement for the insertion of topics. 
    **/
-  private def insertTopic : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.topics VALUES(?)")
+  private def insertTopic : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.topics VALUES(?,?)")
   
   /**
     * @method insertAction
     * @return A new prepared statement for the insertion of actions.
    **/
-  private def insertAction : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.actions VALUES(DEFAULT, ?,?,?)", yes)
+  private def insertAction : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.actions VALUES(DEFAULT, ?,?,?,?)", yes)
 
   /**
     * @method insertCondition
     * @return A new prepared statement for the insertion of conditions.
    **/
-  private def insertCondition : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.conditions VALUES(DEFAULT, ?,?)", yes)
+  private def insertCondition : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.conditions VALUES(DEFAULT, ?,?,?)", yes)
 
   /** 
     * @method insertDependency
     * @return A new prepared statement for the insertion of dependencies. 
    **/ 
-  private def insertDependency : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.dependencies VALUES(DEFAULT, ?,?,?)")
+  private def insertDependency : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.dependencies VALUES(DEFAULT, ?,?,?,?)")
 
   /** 
     * @method zipKeys
@@ -99,8 +100,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
     * is comprised of (Int, Term) pairs rather than (Term, Int) pairs because terms are not necessarily unique.
     * @return - A set of keys corresponding each term in the set of terms passed.
     **/
-  private def pluckKeys[A <: Term](terms : Set[A], termsTable : Map[Int, A]) : Iterable[Int] = { 
-    //assert(terms.size == termsTable.size, terms.size + "==" + termsTable.size) 
+  private def pluckKeys[A <: Term](terms : Set[A], termsTable : Map[Int, A]) : Iterable[Int] = {
     termsTable filter { 
       kv : (Int, A)  => terms contains { kv._2 }
     } keys
@@ -146,11 +146,20 @@ class PostgresExporter(conn : Connection, env : Environment) {
 
     for(topic <- topics) { 
       insertedTopic.setString(1, topic.value)
+      insertedTopic.setInt(2, Colors.hex(topic.color))
       insertedTopic.addBatch() // Add current parameters to batch
       insertedTopic.clearParameters()
-    } 
+    }
 
-    insertedTopic.executeBatch()
+    try { 
+
+      insertedTopic.executeBatch()
+
+    } catch { 
+      case e: BatchUpdateException => { 
+        e.getNextException()  
+      } 
+    } 
 
     insertedTopic.close()
 
@@ -174,6 +183,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
             insertedAction.setString(1, action.value)
             insertedAction.setNull(2, Types.INTEGER)
             insertedAction.setString(3, topic.value)
+            insertedAction.setInt(4, Colors.hex(action.color))
             insertedAction.executeUpdate() 
             insertedAction.clearParameters()
 
@@ -207,6 +217,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
 
             insertedCondition.setString(1, condition.value) 
             insertedCondition.setString(2, topic.value) 
+            insertedCondition.setInt(3, Colors.hex(condition.color))
             insertedCondition.executeUpdate()
             insertedCondition.clearParameters()
 
@@ -241,7 +252,8 @@ class PostgresExporter(conn : Connection, env : Environment) {
 
         insertedAction.setString(1, action.value) 
         insertedAction.setInt(2, conditionId) // Set condition ID 
-        insertedAction.setNull(3, Types.VARCHAR) 
+        insertedAction.setNull(3, Types.VARCHAR)
+        insertedAction.setInt(4, Colors.hex(action.color))
         insertedAction.executeUpdate()
         insertedAction.clearParameters()
 
@@ -273,6 +285,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
           insertedDependency.setString(1, dependency.value) 
           insertedDependency.setInt(2, actionId)
           insertedDependency.setString(3, topic.value)
+          insertedDependency.setInt(4, Colors.hex(dependency.color))
           insertedDependency.executeUpdate()
           insertedDependency.clearParameters()
 

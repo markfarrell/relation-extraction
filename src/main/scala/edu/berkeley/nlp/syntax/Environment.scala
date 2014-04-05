@@ -78,8 +78,9 @@ class Environment {
 
           val updatedTopic : Topic = Topic(
             topic.value,
-            mergeTerms(existingTopic.abilities ++ topic.abilities)
-          ) 
+            mergeTerms(topic.abilities, existingTopic.abilities), 
+            topic.color
+          )
 
           topicMap += topic.value -> updatedTopic
 
@@ -108,7 +109,7 @@ class Environment {
         dependency <- dependencies
       } { 
        currentSize += 1
-       insertTopics(dependency.clauses)
+       insertTopics(dependency.clauses, Some(topic.color))
       } 
 
       insertConditions(getConditions(topic.abilities))
@@ -189,7 +190,9 @@ class Environment {
     * @param terms {List[Term]}
     * @return {List[Term]}
    **/
-  private def mergeTerms(terms : List[Term]) : List[Term] = { 
+  private def mergeTerms(existingTerms : List[Term], newTerms : List[Term]) : List[Term] = {
+
+    val terms : List[Term] = newTerms ++ existingTerms
 
     def mergeDependencies(dependencies : List[Dependency]) : List[Dependency]  = {
 
@@ -411,7 +414,6 @@ object Environment {
 
     val attType : Attribute = attrList.createAttribute("type", AttributeType.STRING, "type")
 
-    var currentColor : Color = nextColor() 
     var currentNodeId : Int = 0 // Current node ID 
     var currentEdgeId : Int = 0 // Current edge ID 
 
@@ -439,7 +441,7 @@ object Environment {
 
         val edge : Edge = node.connectTo(edgeId.toString, toNode(term))
 
-        edge.setColor(currentColor) 
+        edge.setColor(term.color) 
       } 
 
       node
@@ -470,7 +472,6 @@ object Environment {
         } 
         case Condition(value, actions, color) => makeNode("Condition", value, actions)
         case Action(value, dependencies, color) => { 
-          currentColor = nextColor()
           makeNode("Action", value, dependencies) 
         } 
       }

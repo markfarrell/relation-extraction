@@ -265,7 +265,7 @@ class PostgresImporter(conn : Connection) {
 
     val env : Environment = new Environment
     
-    env.insertTopics(unsimplifiedTopics.toList) // TODO: Make sure all terms are simplified
+    env.insertTopics(unsimplifiedTopics.toList) 
  
     env 
   }

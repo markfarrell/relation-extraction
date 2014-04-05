@@ -15,7 +15,6 @@ import java.util.Properties
 import scala.collection.mutable.{HashMap, MultiMap, Set}
 
 import edu.berkeley.nlp.PCFGLA.StreamParser
-
 import edu.berkeley.nlp.syntax.Tree
 
 import edu.berkeley.nlp.syntax.TreeConversions._
@@ -27,6 +26,8 @@ import edu.berkeley.nlp.syntax.Environment.Condition
 import edu.berkeley.nlp.syntax.Environment.Action
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
+
+import org.postgresql.util.PSQLException
 
 
 /**
@@ -127,6 +128,32 @@ object Beagle {
 
         DriverManager.getConnection(url, props)
 
+  }
+
+  /** 
+    * @method createEnv - Construct an environment from 
+    * stdin text.
+    * @param cfg {Config} 
+    * @return {Environment} 
+   **/ 
+  def createEnv(cfg : Config) : Environment = { 
+
+    val env : Environment = new Environment
+
+    env.insertTopics { 
+      Blurb.tokens(System.in) map { 
+        str => { 
+          val ret = StreamParser.parseString(str, Array[String]("-gr", cfg.grammar))
+          println(ret)
+          ret
+        } 
+      } flatMap {
+        str => Environment.toTopic(str)
+      }  
+    }
+
+    env
+
   } 
 
   /** 
@@ -144,8 +171,14 @@ object Beagle {
 
           val conn : Connection = connect(cfg) 
 
-          val statement : Statement = conn.createStatement() 
-          statement.executeQuery("DELETE FROM beagle.topics CASCADE")
+          val statement : Statement = conn.createStatement()
+
+          try { 
+            statement.executeQuery("DELETE FROM beagle.topics CASCADE")
+          } catch { 
+            case e : PSQLException => {}  
+          } 
+
           statement.close()
 
           conn.close()
@@ -156,22 +189,7 @@ object Beagle {
 
           val conn : Connection = connect(cfg) 
 
-
-          val env : Environment = new Environment
-
-          env.insertTopics { 
-            Blurb.tokens(System.in) map { 
-              str => { 
-                val ret = StreamParser.parseString(str, Array[String]("-gr", cfg.grammar))
-                println(ret)
-                ret
-              } 
-            } flatMap {
-              str => Environment.toTopic(str)
-            }  
-          }
-
-
+          val env : Environment = createEnv(cfg) 
 
           try {
 
@@ -193,7 +211,8 @@ object Beagle {
 
           val fs : FileOutputStream = new FileOutputStream(cfg.file) 
 
-          val env : Environment = new PostgresImporter(conn).load()
+          //val env : Environment = new PostgresImporter(conn).load()
+          val env : Environment = createEnv(cfg) 
 
           (new StaxGraphWriter).writeToStream(Environment.toGexf(env.selectTopics()), fs, "UTF-8")
 
