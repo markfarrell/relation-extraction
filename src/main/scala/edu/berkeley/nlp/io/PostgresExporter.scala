@@ -47,7 +47,7 @@ class PostgresExporter(conn : Connection, env : Environment) {
     * @method insertTopic
     * @return A new prepared statement for the insertion of topics. 
    **/
-  private def insertTopic : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.topics VALUES(?,?)")
+  private def insertTopic : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.topics VALUES(DEFAULT,?,?)")
   
   /**
     * @method insertAction
@@ -181,9 +181,9 @@ class PostgresExporter(conn : Connection, env : Environment) {
           for(topic <- kv._2) { 
 
             insertedAction.setString(1, action.value)
-            insertedAction.setNull(2, Types.INTEGER)
-            insertedAction.setString(3, topic.value)
-            insertedAction.setInt(4, Colors.hex(action.color))
+            insertedAction.setInt(2, Colors.hex(action.color))
+            insertedAction.setNull(3, Types.INTEGER)
+            insertedAction.setString(4, topic.value)
             insertedAction.executeUpdate() 
             insertedAction.clearParameters()
 
@@ -216,8 +216,8 @@ class PostgresExporter(conn : Connection, env : Environment) {
           for (topic <- kv._2) {
 
             insertedCondition.setString(1, condition.value) 
-            insertedCondition.setString(2, topic.value) 
-            insertedCondition.setInt(3, Colors.hex(condition.color))
+            insertedCondition.setInt(2, Colors.hex(condition.color))
+            insertedCondition.setString(3, topic.value) 
             insertedCondition.executeUpdate()
             insertedCondition.clearParameters()
 
@@ -251,9 +251,9 @@ class PostgresExporter(conn : Connection, env : Environment) {
       for (conditionId <- pluckKeys[Condition](kv._2, conditionsIds)) { 
 
         insertedAction.setString(1, action.value) 
-        insertedAction.setInt(2, conditionId) // Set condition ID 
-        insertedAction.setNull(3, Types.VARCHAR)
-        insertedAction.setInt(4, Colors.hex(action.color))
+        insertedAction.setInt(2, Colors.hex(action.color))
+        insertedAction.setInt(3, conditionId) // Set condition ID 
+        insertedAction.setNull(4, Types.VARCHAR)
         insertedAction.executeUpdate()
         insertedAction.clearParameters()
 
@@ -282,10 +282,10 @@ class PostgresExporter(conn : Connection, env : Environment) {
 
         for(topic <- dependency.clauses) { 
 
-          insertedDependency.setString(1, dependency.value) 
-          insertedDependency.setInt(2, actionId)
-          insertedDependency.setString(3, topic.value)
-          insertedDependency.setInt(4, Colors.hex(dependency.color))
+          insertedDependency.setString(1, dependency.value)
+          insertedDependency.setInt(2, Colors.hex(dependency.color))
+          insertedDependency.setInt(3, actionId)
+          insertedDependency.setString(4, topic.value)
           insertedDependency.executeUpdate()
           insertedDependency.clearParameters()
 
@@ -316,7 +316,6 @@ class PostgresExporter(conn : Connection, env : Environment) {
       conn.setAutoCommit(false) 
 
       // Insert all new topics into the database 
-      // TODO: What happens if a topic already exists?
       exportTopics()     
 
       // Insert new actions that point to a topic

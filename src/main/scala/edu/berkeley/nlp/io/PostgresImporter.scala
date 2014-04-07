@@ -18,6 +18,8 @@ import edu.berkeley.nlp.syntax.Environment.Dependency
 import edu.berkeley.nlp.syntax.Environment.Condition
 import edu.berkeley.nlp.syntax.Environment.Action
 
+import it.uniroma1.dis.wsngroup.gexf4j.core.viz.Color
+
 /**
   * @class PostgresImporter
   * 
@@ -30,13 +32,8 @@ class PostgresImporter(conn : Connection) {
   /** 
     * Importer types 
    **/
-  private class Metadata extends HashMap[Int, String]
-  private class ConditionMetadata extends Metadata
-  private class ActionMetadata extends Metadata
-  private case class DependencyMetadata(id : Int, value : String, actionId : Int)
-  private case class TopicMetadata(value : String, conditionMetadata : ConditionMetadata, actionMetadata : ActionMetadata) 
-
-  private class DependencyGraph extends HashMap[DependencyMetadata, String] 
+  private case class Metadata(id : Int, value : String, color : Color) // For topics, actions, conditions, dependencies ...
+  private case class TopicBuilder(value : String, conditions : List[Metadata], actions : List[Metadata]) 
 
   /** 
     * @method selectTopics
@@ -48,7 +45,7 @@ class PostgresImporter(conn : Connection) {
     * @method selectedAbsoluteActions
     * @return {PreparedStatement}
    **/
-  private def selectAbsoluteActions() : PreparedStatement  = conn.prepareStatement("SELECT * FROM beagle.actions WHERE topic_id = ?")
+  private def selectAbsoluteActions() : PreparedStatement  = conn.prepareStatement("SELECT * FROM beagle.actions WHERE topic_value = ?")
 
   /**
     * @method selectConditionalActions
@@ -60,7 +57,7 @@ class PostgresImporter(conn : Connection) {
     * @method selectConditions
     * @return {PreparedStatement} 
    **/
-  private def selectConditions() : PreparedStatement = conn.prepareStatement("SELECT * FROM beagle.conditions WHERE topic_id = ?") 
+  private def selectConditions() : PreparedStatement = conn.prepareStatement("SELECT * FROM beagle.conditions WHERE topic_value = ?") 
 
   /**
     * @method selectDependencies
@@ -68,67 +65,65 @@ class PostgresImporter(conn : Connection) {
    **/
   private def selectDependencies() : PreparedStatement = conn.prepareStatement("SELECT * FROM beagle.dependencies WHERE action_id = ?") 
 
-  /**
-    * @method getTopicList
-    * @return A list of unique topic IDs.
-   **/
-  private def getTopicList() : List[String] = {
-
-    var topicValues : List[String] = List.empty[String]
-
-    val selectedTopics : PreparedStatement = selectTopics()
-
-    val rs : ResultSet = selectTopics.executeQuery()
-
-    while(rs.next()) { 
-
-      topicValues = rs.getString(1) :: topicValues
-
-    } 
-
-    topicValues 
-  }
 
   /**
     * @method fetchMetadata {T extends Metadata}
     * @param ps {PreparedStatement}
-    * @param map {T}
-    * @return {T}
+    * @return {List[Metadata]}
    **/
-  private def fetchMetadata[T <: Metadata](ps : PreparedStatement, map : T) : T = { 
+  private def fetchMetadata(ps : PreparedStatement) : List[Metadata] = { 
+
     val rs : ResultSet = ps.executeQuery()
-    while(rs.next()) { 
-      map += (rs.getInt(1) -> rs.getString(2))
+    var lst : List[Metadata] = List.empty[Metadata]
+
+    while(rs.next()) {
+
+      val id : Int = rs.getInt(1) 
+      val value : String = rs.getString(2) 
+      val color : Color = Colors.obj(rs.getInt(3))
+      val metadata : Metadata = Metadata(id, value, color) 
+
+      lst = metadata :: lst
+
     } 
+
     ps.close()
-    map
+
+    lst
+
   } 
+
+  /**
+    * @method getTopicList
+    * @return {List[Metadata]} 
+   **/
+  private def getTopicList() : List[Metadata] = fetchMetadata(selectTopics())
 
   /**
     * @method getAbsoluteActionMetadata
     * @param topicId 
-    * @return {ActionMetadata} 
+    * @return {List[Metadata]} 
    **/
-  private def getAbsoluteActionMetadata(topicId : String) : ActionMetadata = {
+  private def getAbsoluteActionMetadata(topicValue : String) : List[Metadata] = {
 
-    val selectedAbsoluteActions : PreparedStatement = selectAbsoluteActions()
-    selectedAbsoluteActions.setString(1, topicId)
+    val ps : PreparedStatement = selectAbsoluteActions()
+    ps.setString(2, topicValue)
     
-    fetchMetadata[ActionMetadata](selectedAbsoluteActions, new ActionMetadata) 
+    fetchMetadata(ps) 
     
   }
 
   /**
     * @method getConditionalActionMetadata
     * @param conditionId {Int}
-    * @return {ActionMetadata}
+    * @return {List[Metadata]}
    **/
-  private def getConditionalActionMetadata(conditionId : Int) : ActionMetadata = { 
+  private def getConditionalActionMetadata(conditionId : Int) : List[Metadata] = { 
 
-    val selectedConditionalActions : PreparedStatement = selectConditionalActions()
-    selectedConditionalActions.setInt(1, conditionId)
+    val ps : PreparedStatement = selectConditionalActions()
+    ps.setInt(1, conditionId)
 
-    fetchMetadata[ActionMetadata](selectedConditionalActions, new ActionMetadata) 
+    fetchMetadata(ps) 
 
   } 
 
@@ -139,21 +134,35 @@ class PostgresImporter(conn : Connection) {
    **/
   private def getConditionMetadata(topicId : String) : ConditionMetadata = { 
 
-    val selectedConditions : PreparedStatement = selectConditions()
-    selectedConditions.setString(1, topicId) 
+    val ps : PreparedStatement = selectConditions()
+    ps.setString(1, topicId) 
 
-    fetchMetadata[ConditionMetadata](selectedConditions, new ConditionMetadata) 
+    fetchMetadata(ps) 
 
   }
 
   /**
-    * @method getDependencyGraph
-    * @param actionId {Int} 
-    * @return DependencyGraph
+    * @method getTopicBuilder
+    * @param topicValue {String}
+    * @return {TopicBuilder}
    **/
-  private def getDependencyGraph(actionId : Int) : DependencyGraph = { 
+  private def getTopicBuilder(topicValue : String) : TopicBuilder = { 
 
-    val graph : DependencyGraph = new DependencyGraph
+    val actionMetadata : List[Metadata] = getAbsoluteActionMetadata(topicValue)
+    val conditionMetadata : List[Metadata] = getConditionMetadata(topicValue) 
+    
+    TopicBuilder(topicValue, conditionMetadata, actionMetadata) 
+    
+  }
+
+  /**
+    * @method unsimplifiedDependencies
+    * @param actionId {Int} 
+    * @return {List[Dependency]}
+   **/
+  private def unsimplifiedDependencies(actionId : Int) : List[Dependency] = {
+
+    var dependencies : List[Dependency] = List.empty[Dependency] 
 
     val ps : PreparedStatement = selectDependencies()
     ps.setInt(1, actionId)
@@ -162,36 +171,23 @@ class PostgresImporter(conn : Connection) {
 
     while(rs.next()) {
 
-      val dependencyMetadata : DependencyMetadata = DependencyMetadata(
-        rs.getInt(1),
-        rs.getString(2),
-        rs.getInt(3)
-      ) 
+      val id : Int = rs.getInt(1)
+      val value : String = rs.getString(2) 
+      val color : Color = Colors.obj(rs.getInt(3))
+      val metadata : Metadata = Metadata(id, value, color) 
 
-      val topicId : String = rs.getString(4)
+      val actionId : Int = rs.getInt(4) 
+      val topicValue : String = rs.getString(5)
 
-      graph += dependencyMetadata -> topicId
+      val topic : Topic = Topic(topicValue, List.empty[Term]) 
+
+      dependencies = Dependency(metadata.value, List(topic)) :: dependencies
 
     } 
 
     ps.close()
-    graph
 
-
-  }
-
-  /**
-    * @method getTopicMetadata
-    * @param topicId {String}
-    * @return {TopicMetadata}
-   **/
-  private def getTopicMetadata(topicId : String) : TopicMetadata = { 
-
-    val actionMetadata : ActionMetadata = getAbsoluteActionMetadata(topicId)
-    val conditionMetadata : ConditionMetadata = getConditionMetadata(topicId) 
-    
-    TopicMetadata(topicId, conditionMetadata, actionMetadata) 
-    
+    dependencies 
   }
 
   /**
@@ -199,11 +195,11 @@ class PostgresImporter(conn : Connection) {
     * @param conditionMetadata {ConditionMetadata}
     * @return {Iterable[Condition]}
    **/
-  private def unsimplifiedConditions(conditionMetadata : ConditionMetadata) : Iterable[Condition] = for { 
-    (conditionId, conditionValue) <- conditionMetadata
+  private def unsimplifiedConditions(conditionMetadata : List[Metadata]) : Iterable[Condition] = for { 
+    metadata <- conditionMetadata
   } yield { 
-    val actions : List[Action] = unsimplifiedActions(getConditionalActionMetadata(conditionId)).toList
-    Condition(conditionValue, actions)
+    val actions : List[Action] = unsimplifiedActions(getConditionalActionMetadata(metadata.id)).toList
+    Condition(metadata.value, actions)
   } 
 
   /** 
@@ -211,29 +207,25 @@ class PostgresImporter(conn : Connection) {
     * @param actionMetadata {ActionMetadata} 
     * @return {Iterable[Action]}
    **/
-  private def unsimplifiedActions(actionMetadata : ActionMetadata) : Iterable[Action] = for {
-    (actionId, actionValue) <- actionMetadata
+  private def unsimplifiedActions(actionMetadata : List[Metadata]) : Iterable[Action] = for {
+    metadata <- actionMetadata
   } yield {
 
-    val dependencies : List[Dependency] = (getDependencyGraph(actionId) map { 
-        tuple : (DependencyMetadata, String)  => { 
-          Dependency(tuple._1.value, List(Topic(tuple._2, List.empty[Term])))
-        } 
-    }).toList
+    val actionId : Int = metadata.id
 
-    Action(actionValue, dependencies)
+    Action(actionValue, unsimplifiedDependencies(actionId))
 
   }
 
   /**
     * @method unsimplifiedTerms
-    * @param topicsMetadata {TopicMetadata} 
+    * @param topicBuilder {TopicBuilder} 
     * @return {Iterable[Term]}
    **/
-  private def unsimplifiedTerms(topicMetadata : TopicMetadata) : Iterable[Term] = { 
+  private def unsimplifiedTerms(topicBuilder : TopicBuilder) : Iterable[Term] = { 
 
-    val a : ActionMetadata = topicMetadata.actionMetadata
-    val c : ConditionMetadata = topicMetadata.conditionMetadata
+    val a : List[Metadata] = topicBuilder.actionMetadata
+    val c : List[Metadata] = topicBuilder.conditionMetadata
 
     unsimplifiedActions(a) ++ unsimplifiedConditions(c) 
 
@@ -247,13 +239,13 @@ class PostgresImporter(conn : Connection) {
 
     val topicList : List[String] = getTopicList
 
-    val topicsMetadata : List[TopicMetadata] = topicList map { 
-      getTopicMetadata(_)
+    val topicBuilders : List[TopicBuilder] = topicList map { 
+      getTopicBuilder(_)
     }
 
     for { 
-      topicMetadata <- topicsMetadata 
-    } yield Topic(topicMetadata.value, unsimplifiedTerms(topicMetadata).toList)
+      topicBuilder <- topicBuilders
+    } yield Topic(topicBuilder.value, unsimplifiedTerms(topicBuilder).toList)
 
   } 
 
