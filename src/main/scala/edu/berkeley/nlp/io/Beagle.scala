@@ -14,7 +14,6 @@ import java.util.Properties
 
 import scala.collection.mutable.{HashMap, MultiMap, Set}
 
-import edu.berkeley.nlp.PCFGLA.StreamParser
 import edu.berkeley.nlp.syntax.Tree
 
 import edu.berkeley.nlp.syntax.TreeConversions._
@@ -136,19 +135,20 @@ object Beagle {
     * @param cfg {Config} 
     * @return {Environment} 
    **/ 
-  def createEnv(cfg : Config) : Environment = { 
+  def createEnv(cfg : Config) : Environment = {
 
     val env : Environment = new Environment
+    val parser : DefaultParser = new DefaultParser(cfg.grammar) 
+
+    def parse(str : String) : Tree[String]  = {
+      val ret : Tree[String] = parser.parse(str) 
+      println(str + " -> " + ret.toString) 
+      ret
+    }
 
     env.insertTopics { 
-      Blurb.tokens(System.in) map { 
-        str => { 
-          val ret = StreamParser.parseString(str, Array[String]("-gr", cfg.grammar))
-          println(ret)
-          ret
-        } 
-      } flatMap {
-        str => Environment.toTopic(str)
+      Blurb.tokens(System.in) map parse flatMap {
+        tree => Environment.toTopic(tree)
       }  
     }
 
@@ -164,7 +164,6 @@ object Beagle {
 
     parser.parse(args, Config()) map { 
       cfg => { 
-
 
         // Clear existing contents of database
         if(cfg.clear) {
@@ -211,8 +210,8 @@ object Beagle {
 
           val fs : FileOutputStream = new FileOutputStream(cfg.file) 
 
-          //val env : Environment = new PostgresImporter(conn).load()
-          val env : Environment = createEnv(cfg) 
+          val env : Environment = new PostgresImporter(conn).load()
+          //val env = createEnv(cfg) 
 
           (new StaxGraphWriter).writeToStream(Environment.toGexf(env.selectTopics()), fs, "UTF-8")
 

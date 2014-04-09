@@ -46,9 +46,8 @@ class Environment {
   import Environment.Dependency
 
   private var topicMap : Map[String, Topic] = Map.empty
-  
-  private var currentSize : Int = 0 // Number of unique terms inserted so far. 
-  
+  private var currentSize : Int = 0 // Number of unique terms inserted so far.
+
   /**
     * @method size
     * @return - Number of unique terms in the environment.
@@ -59,17 +58,21 @@ class Environment {
     * @method insertTopics
     * @param topics - The list of topics to be loaded 
     * into the environment. 
+    * @param shouldRecolor - Optionally specify whether or not to recolor terms 
+    * at all. 
+    * @param color - The call-by-name color to perform recoloring operations with. 
     * @post - currentColor is rechosen before this method returns. The
-    * currentSize of the is also updated. 
+    * currentSize of the is also updated.
    **/
-  def insertTopics(topics : List[Topic], maybeColor : Option[Color] = None) : Unit = { 
+  def insertTopics(topics : List[Topic], shouldRecolor : Boolean = true, color : => Color = Environment.nextColor()) : Unit = { 
     
-    def recolor(topic : Topic) : Topic = maybeColor match {   
-      case Some(color) => recolorTopic(topic, color)
-      case None => recolorTopic(topic) 
-    }
-    
-    val recoloredTopics : List[Topic] = topics map recolor 
+    def recolor(topic : Topic) : Topic = recolorTopic(topic, color) 
+   
+    val recoloredTopics : List[Topic] = if(shouldRecolor) { 
+      topics map recolor
+    } else { 
+      topics
+    } 
     
     for(topic <- recoloredTopics) {
 
@@ -109,13 +112,14 @@ class Environment {
         dependency <- dependencies
       } { 
        currentSize += 1
-       insertTopics(dependency.clauses, Some(topic.color))
+       insertTopics(dependency.clauses, color = topic.color)
       } 
 
       insertConditions(getConditions(topic.abilities))
       insertActions(getActions(topic.abilities))
 
     }
+
   }  
 
   /** 
@@ -266,7 +270,7 @@ class Environment {
     * @param color {Color} 
     * @return {Topic} - The recolored list of Topics. 
    **/
-  private def recolorTopic(topic : Topic, color : Color = Environment.nextColor()) : Topic = { 
+  private def recolorTopic(topic : Topic, color : Color) : Topic = { 
 
     def recolorConditions(conditions : List[Condition]) = for { 
       condition <- conditions
@@ -307,7 +311,7 @@ object Environment {
   // Set to false to make nextColor 
   var randomize : Boolean = true 
 
-  private val random : Random = new Random(0)
+  private val random : Random = new Random()
   private val defaultColor : Color = new ColorImpl(0,0,0)
 
   private val conditionTags : Set[String] = Set[String]("MD")

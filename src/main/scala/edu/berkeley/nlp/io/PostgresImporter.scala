@@ -33,7 +33,7 @@ class PostgresImporter(conn : Connection) {
     * Importer types 
    **/
   private case class Metadata(id : Int, value : String, color : Color) // For topics, actions, conditions, dependencies ...
-  private case class TopicBuilder(value : String, conditions : List[Metadata], actions : List[Metadata]) 
+  private case class TopicBuilder(value : String, conditions : List[Metadata], actions : List[Metadata], color : Color) 
 
   /** 
     * @method selectTopics
@@ -69,6 +69,8 @@ class PostgresImporter(conn : Connection) {
   /**
     * @method fetchMetadata {T extends Metadata}
     * @param ps {PreparedStatement}
+    * @pre The PreparedStatement, ps, has been parameterized and is ready to be iterated over. 
+    * @post Closes the prepared statement ps.
     * @return {List[Metadata]}
    **/
   private def fetchMetadata(ps : PreparedStatement) : List[Metadata] = { 
@@ -94,12 +96,6 @@ class PostgresImporter(conn : Connection) {
   } 
 
   /**
-    * @method getTopicList
-    * @return {List[Metadata]} 
-   **/
-  private def getTopicList() : List[Metadata] = fetchMetadata(selectTopics())
-
-  /**
     * @method getAbsoluteActionMetadata
     * @param topicId 
     * @return {List[Metadata]} 
@@ -107,7 +103,7 @@ class PostgresImporter(conn : Connection) {
   private def getAbsoluteActionMetadata(topicValue : String) : List[Metadata] = {
 
     val ps : PreparedStatement = selectAbsoluteActions()
-    ps.setString(2, topicValue)
+    ps.setString(1, topicValue)
     
     fetchMetadata(ps) 
     
@@ -130,9 +126,9 @@ class PostgresImporter(conn : Connection) {
   /** 
     * @method getConditionMetadata
     * @param topicId {String}
-    * @return {ConditionMetadata}
+    * @return {List[Metadata]}
    **/
-  private def getConditionMetadata(topicId : String) : ConditionMetadata = { 
+  private def getConditionMetadata(topicId : String) : List[Metadata] = { 
 
     val ps : PreparedStatement = selectConditions()
     ps.setString(1, topicId) 
@@ -143,24 +139,27 @@ class PostgresImporter(conn : Connection) {
 
   /**
     * @method getTopicBuilder
-    * @param topicValue {String}
+    * @param topicMetadata {Metadata}
     * @return {TopicBuilder}
    **/
-  private def getTopicBuilder(topicValue : String) : TopicBuilder = { 
+  private def getTopicBuilder(topicMetadata : Metadata) : TopicBuilder = { 
+
+    val topicValue : String = topicMetadata.value
+    val topicColor : Color = topicMetadata.color 
 
     val actionMetadata : List[Metadata] = getAbsoluteActionMetadata(topicValue)
     val conditionMetadata : List[Metadata] = getConditionMetadata(topicValue) 
     
-    TopicBuilder(topicValue, conditionMetadata, actionMetadata) 
+    TopicBuilder(topicValue, conditionMetadata, actionMetadata, topicColor) 
     
   }
 
   /**
-    * @method unsimplifiedDependencies
+    * @method partDependencies
     * @param actionId {Int} 
     * @return {List[Dependency]}
    **/
-  private def unsimplifiedDependencies(actionId : Int) : List[Dependency] = {
+  private def partDependencies(actionId : Int) : List[Dependency] = {
 
     var dependencies : List[Dependency] = List.empty[Dependency] 
 
@@ -181,7 +180,7 @@ class PostgresImporter(conn : Connection) {
 
       val topic : Topic = Topic(topicValue, List.empty[Term]) 
 
-      dependencies = Dependency(metadata.value, List(topic)) :: dependencies
+      dependencies = Dependency(metadata.value, List(topic), color) :: dependencies
 
     } 
 
@@ -191,61 +190,50 @@ class PostgresImporter(conn : Connection) {
   }
 
   /**
-    * @method unsimplifiedConditions
+    * @method partConditions
     * @param conditionMetadata {ConditionMetadata}
     * @return {Iterable[Condition]}
    **/
-  private def unsimplifiedConditions(conditionMetadata : List[Metadata]) : Iterable[Condition] = for { 
+  private def partConditions(conditionMetadata : List[Metadata]) : Iterable[Condition] = for { 
     metadata <- conditionMetadata
   } yield { 
-    val actions : List[Action] = unsimplifiedActions(getConditionalActionMetadata(metadata.id)).toList
-    Condition(metadata.value, actions)
+    val actions : List[Action] = partActions(getConditionalActionMetadata(metadata.id)).toList
+    Condition(metadata.value, actions, metadata.color)
   } 
 
   /** 
-    * @method unsimplifiedActions 
+    * @method partActions 
     * @param actionMetadata {ActionMetadata} 
     * @return {Iterable[Action]}
    **/
-  private def unsimplifiedActions(actionMetadata : List[Metadata]) : Iterable[Action] = for {
-    metadata <- actionMetadata
-  } yield {
-
-    val actionId : Int = metadata.id
-
-    Action(actionValue, unsimplifiedDependencies(actionId))
-
-  }
+  private def partActions(actionMetadata : List[Metadata]) : Iterable[Action] = for {
+    a <- actionMetadata
+  } yield Action(a.value, partDependencies(a.id), a.color)
 
   /**
-    * @method unsimplifiedTerms
-    * @param topicBuilder {TopicBuilder} 
+    * @method partTerms
+    * @param builder {TopicBuilder} 
     * @return {Iterable[Term]}
    **/
-  private def unsimplifiedTerms(topicBuilder : TopicBuilder) : Iterable[Term] = { 
-
-    val a : List[Metadata] = topicBuilder.actionMetadata
-    val c : List[Metadata] = topicBuilder.conditionMetadata
-
-    unsimplifiedActions(a) ++ unsimplifiedConditions(c) 
-
+  private def partTerms(builder : TopicBuilder) : Iterable[Term] = { 
+    partActions(builder.actions) ++ partConditions(builder.conditions) 
   }
 
   /**
-    * @method unsimplifiedTopics
+    * @method partTopics
     * @return {Iterable[Topic]}
    **/
-  private def unsimplifiedTopics() : Iterable[Topic] = {
+  private def partTopics() : Iterable[Topic] = {
 
-    val topicList : List[String] = getTopicList
+    val topicMetadata : List[Metadata] = fetchMetadata(selectTopics()) 
 
-    val topicBuilders : List[TopicBuilder] = topicList map { 
+    val topicBuilders : List[TopicBuilder] = topicMetadata map { 
       getTopicBuilder(_)
     }
 
     for { 
       topicBuilder <- topicBuilders
-    } yield Topic(topicBuilder.value, unsimplifiedTerms(topicBuilder).toList)
+    } yield Topic(topicBuilder.value, partTerms(topicBuilder).toList, topicBuilder.color)
 
   } 
 
@@ -257,9 +245,10 @@ class PostgresImporter(conn : Connection) {
 
     val env : Environment = new Environment
     
-    env.insertTopics(unsimplifiedTopics.toList) 
+    env.insertTopics(partTopics.toList, shouldRecolor = false) 
  
-    env 
+    env
+
   }
 
 

@@ -6,9 +6,13 @@ bin:
 	mkdir -p bin
 
 %.gexf: %.txt
-	./Beagle --clear -f bin/$(notdir $@) < $<
+	./Beagle --clear --export -f bin/$(notdir $@) < $<
 
 samples: bin $(patsubst %.txt, %.gexf, $(wildcard samples/*.txt))
+
+schema: 
+	psql -d test -f ./install/clean.sql
+	psql -d test -f ./install/create.sql
 
 clean:
 	sbt clean

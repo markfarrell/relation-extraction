@@ -42,6 +42,6 @@ CREATE TABLE IF NOT EXISTS beagle.dependencies (
     action_id integer CHECK (action_id IS NOT NULL),
     topic_value text, -- Point to a topic this dependency relies on 
     FOREIGN KEY (action_id) REFERENCES beagle.actions(id) ON DELETE CASCADE,
-    FOREIGN KEY (topic_value) REFERENCES beagle.topics(topic_value) ON DELETE CASCADE
+    FOREIGN KEY (topic_value) REFERENCES beagle.topics(value) ON DELETE CASCADE
 );
  

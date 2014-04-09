@@ -1,5 +1,5 @@
 #!/bin/sh
 
-export JAVA_OPTS="-Xss4m -Xmx1g"
+export JAVA_OPTS="-Xmx2048m"
 
-target/start $@
+target/start $@ 
