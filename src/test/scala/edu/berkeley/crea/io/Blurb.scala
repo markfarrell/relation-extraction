@@ -1,4 +1,4 @@
-package edu.berkeley.nlp.io
+package edu.berkeley.crea.io
 
 import org.scalatest._ 
 

@@ -1,6 +1,8 @@
-package edu.berkeley.nlp.syntax
+package edu.berkeley.crea.syntax
 
 import java.util.Calendar
+
+import edu.berkeley.nlp.syntax.{ Tree, Trees } 
 
 import scala.language.implicitConversions
 import scala.language.postfixOps

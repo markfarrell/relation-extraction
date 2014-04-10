@@ -1,4 +1,4 @@
-package edu.berkeley.nlp.io
+package edu.berkeley.crea.io
 
 import edu.berkeley.nlp.util.Numberer
 import edu.berkeley.nlp.syntax.Tree
@@ -7,8 +7,7 @@ import edu.berkeley.nlp.PCFGLA.Grammar
 import edu.berkeley.nlp.PCFGLA.Lexicon 
 import edu.berkeley.nlp.PCFGLA.CoarseToFineMaxRuleParser
 
-// Comment out this import until package conventions are rechosne 
-///import edu.berkeley.nlp.io.PTBLineLexer
+import edu.berkeley.nlp.io.PTBLineLexer
 
 /** 
   * @class DefaultParser  Enables the use of the BerkeleyParser for parsing sentences 

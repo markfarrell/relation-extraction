@@ -1,4 +1,4 @@
-package edu.berkeley.nlp.io
+package edu.berkeley.crea.io
 
 import java.io.File
 import java.io.FileOutputStream
@@ -16,13 +16,13 @@ import scala.collection.mutable.{HashMap, MultiMap, Set}
 
 import edu.berkeley.nlp.syntax.Tree
 
-import edu.berkeley.nlp.syntax.TreeConversions._
-import edu.berkeley.nlp.syntax.Environment
-import edu.berkeley.nlp.syntax.Environment.Term
-import edu.berkeley.nlp.syntax.Environment.Topic
-import edu.berkeley.nlp.syntax.Environment.Dependency
-import edu.berkeley.nlp.syntax.Environment.Condition
-import edu.berkeley.nlp.syntax.Environment.Action
+import edu.berkeley.crea.syntax.TreeConversions._
+import edu.berkeley.crea.syntax.Environment
+import edu.berkeley.crea.syntax.Environment.Term
+import edu.berkeley.crea.syntax.Environment.Topic
+import edu.berkeley.crea.syntax.Environment.Dependency
+import edu.berkeley.crea.syntax.Environment.Condition
+import edu.berkeley.crea.syntax.Environment.Action
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 
@@ -138,7 +138,7 @@ object Beagle {
   def createEnv(cfg : Config) : Environment = {
 
     val env : Environment = new Environment
-    val parser : DefaultParser = new DefaultParser(cfg.grammar) 
+    val parser : DefaultParser = new DefaultParser(cfg.grammar)
 
     def parse(str : String) : Tree[String]  = {
       val ret : Tree[String] = parser.parse(str) 

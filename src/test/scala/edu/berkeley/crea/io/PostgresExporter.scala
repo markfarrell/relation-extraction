@@ -1,11 +1,9 @@
-package edu.berkeley.nlp.io
+package edu.berkeley.crea.io
 
-import edu.berkeley.nlp.syntax.Environment
-import edu.berkeley.nlp.syntax.Environment.Term
-import edu.berkeley.nlp.syntax.Environment.Topic
-import edu.berkeley.nlp.syntax.Environment.Action
-import edu.berkeley.nlp.syntax.Environment.Condition
-import edu.berkeley.nlp.syntax.Environment.Dependency
+import edu.berkeley.crea.syntax.Environment
+import edu.berkeley.crea.syntax.Environment.{ 
+  Term, Topic, Action, Condition, Dependency
+} 
 
 import java.sql.DriverManager
 import java.sql.Connection

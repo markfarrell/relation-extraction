@@ -1,4 +1,4 @@
-package edu.berkeley.nlp.io
+package edu.berkeley.crea.io
 
 import java.sql.DriverManager
 import java.sql.Connection
@@ -11,12 +11,12 @@ import java.util.Properties
 
 import scala.collection.mutable.HashMap
 
-import edu.berkeley.nlp.syntax.Environment
-import edu.berkeley.nlp.syntax.Environment.Term
-import edu.berkeley.nlp.syntax.Environment.Topic
-import edu.berkeley.nlp.syntax.Environment.Dependency
-import edu.berkeley.nlp.syntax.Environment.Condition
-import edu.berkeley.nlp.syntax.Environment.Action
+import edu.berkeley.crea.syntax.Environment
+import edu.berkeley.crea.syntax.Environment.Term
+import edu.berkeley.crea.syntax.Environment.Topic
+import edu.berkeley.crea.syntax.Environment.Dependency
+import edu.berkeley.crea.syntax.Environment.Condition
+import edu.berkeley.crea.syntax.Environment.Action
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.viz.Color
 

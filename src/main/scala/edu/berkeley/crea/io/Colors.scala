@@ -1,4 +1,4 @@
-package edu.berkeley.nlp.io
+package edu.berkeley.crea.io
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.viz.Color
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.viz.ColorImpl

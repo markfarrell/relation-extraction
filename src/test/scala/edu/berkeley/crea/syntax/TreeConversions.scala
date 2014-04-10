@@ -1,4 +1,6 @@
-package edu.berkeley.nlp.syntax
+package edu.berkeley.crea.syntax
+
+import edu.berkeley.nlp.syntax.Tree
 
 import org.scalatest._
 import TreeConversions._ 
