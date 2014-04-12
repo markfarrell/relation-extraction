@@ -48,7 +48,9 @@ object Beagle {
     file : File = null,
     grammar : String = "./lib/eng_sm6.gr", 
     clear : Boolean = false, 
-    export : Boolean = false
+    export : Boolean = false,
+    dumpgrammar : Boolean = false,
+    columns : Int = 4
   )
 
   /** 
@@ -98,7 +100,15 @@ object Beagle {
 
     opt[Unit]('e', "export") action { 
       (_, c) => c.copy(export = true) 
+    }
+
+    opt[Unit]('D', "dumpgrammar") action {
+      (_, c) => c.copy(dumpgrammar = true) 
     } 
+
+    opt[Int]('C', "columns") action { 
+      (x, c) => c.copy(columns = x)
+    }  
 
     help("help") text("Prints this help message.")
 
@@ -157,13 +167,38 @@ object Beagle {
   } 
 
   /** 
+    * @method makeTable 
+    * @param columns {Int} - Produce a table with this many columns per row.
+    * @param lines {String} - A string with items separated by newline
+    * characters. 
+    * @return - A function to make tables with said number of columns, which
+    * then takes newline-delimited strings and produces HTML tables.
+    **/ 
+  private def makeTable(columns : Int)(lines : String) : String = {
+    for { 
+      group <- { lines split("\n") grouped(columns) } 
+    } yield {
+      val column = group map { s => "<td>" + s + "</td>" } 
+      column mkString("<tr>", "", "</tr>") 
+    } 
+  } mkString("<table>", "", "</table>")  
+
+  /** 
     * @method main - Entry point for the tool.
     * @param args - {Array[String]} 
    **/
   def main(args : Array[String]) : Unit = { 
 
     parser.parse(args, Config()) map { 
-      cfg => { 
+      cfg => {
+
+        if(cfg.dumpgrammar) { 
+          println { 
+            makeTable(cfg.columns) { 
+              new GrammarTable( new DefaultParser(cfg.grammar).getGrammar ).toString
+            }        
+          } 
+        } 
 
         // Clear existing contents of database
         if(cfg.clear) {

@@ -48,6 +48,7 @@ class Environment {
   private var topicMap : Map[String, Topic] = Map.empty
   private var currentSize : Int = 0 // Number of unique terms inserted so far.
 
+
   /**
     * @method size
     * @return - Number of unique terms in the environment.
@@ -321,6 +322,12 @@ object Environment {
   private val vpTags : Set[String] = Set[String]("VP")
   private val topicTags : Set[String] = Set[String]("NP", "NNS", "NNP", "NNPS", "CC")
   private val actionTags : Set[String] = Set[String]("VB", "VBZ", "VBP", "VBD", "CC")
+
+  // TODO: 
+  // Treat gerund verbs as topics
+  // Switch toTopic to traversing the whole tree, matching certain rules i.e. S -> NP VP, looking for subtrees 
+  // beginning with those tags and recursively matching from there. Store state long the way: create a topic as soon
+  // as a NP is matched and append it with actions whenever verb phrases (VP) are discovered. Order of dependency topic relationship does not matter.  
   
   abstract class Term { 
     def color : Color;  
@@ -372,7 +379,6 @@ object Environment {
       case None => List()
     }))
   } yield action
-
 
   /**
     * @method toCondition

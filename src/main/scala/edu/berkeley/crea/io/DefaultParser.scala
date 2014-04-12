@@ -25,7 +25,6 @@ class DefaultParser(grammarFile : String) {
   private val variational : Boolean = false 
 
   private val tokenizer : PTBLineLexer = new PTBLineLexer
-
   private val pData : ParserData = ParserData.Load(grammarFile)
 
   private val parser : CoarseToFineMaxRuleParser = {
@@ -42,7 +41,13 @@ class DefaultParser(grammarFile : String) {
 
     p
 
-  } 
+  }
+
+  /**
+    * @method getGrammar 
+    * @return {Grammar} 
+   **/
+  def getGrammar() = pData.getGrammar
 
  /** 
    * @method parse - Parse an English sentence and return a linguistic tree.

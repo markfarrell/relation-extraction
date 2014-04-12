@@ -92,7 +92,7 @@ class GrammarTable(grammar : Grammar) {
       CollectionUtils.sort(ruleStrings.asJava).asScala.toList
     } mkString("\n") 
 
-  } 
+  }
 
 } 
 
