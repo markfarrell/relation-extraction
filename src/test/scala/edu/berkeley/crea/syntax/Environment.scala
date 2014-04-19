@@ -13,6 +13,8 @@ import java.io.StringWriter
 import org.scalatest._
 import TreeConversions._
 
+import scala.collection.immutable.Stack 
+
 import it.uniroma1.dis.wsngroup.gexf4j.core.GexfWriter
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 import it.uniroma1.dis.wsngroup.gexf4j.core.EdgeType
@@ -232,6 +234,15 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
    Environment.randomize = true 
       
+  }
+
+  "parse" should " produce a stack of Topics." in {
+
+     val s1 : LinguisticTree = "((S (NP (DT The) (NN dog)) (VP (MD can) (VP (VB walk.)))))"
+     val e1 : Stack[Topic] = Stack[Topic](Topic("the dog",List(Condition("can",List(Action("walk",List()))))))
+
+     Environment.parse(s1).toString should be (e1.toString)
+
   } 
 
 } 

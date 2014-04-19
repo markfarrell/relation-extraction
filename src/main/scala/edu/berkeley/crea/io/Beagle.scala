@@ -18,11 +18,9 @@ import edu.berkeley.nlp.syntax.Tree
 
 import edu.berkeley.crea.syntax.TreeConversions._
 import edu.berkeley.crea.syntax.Environment
-import edu.berkeley.crea.syntax.Environment.Term
-import edu.berkeley.crea.syntax.Environment.Topic
-import edu.berkeley.crea.syntax.Environment.Dependency
-import edu.berkeley.crea.syntax.Environment.Condition
-import edu.berkeley.crea.syntax.Environment.Action
+import edu.berkeley.crea.syntax.Environment.{ 
+  Term, Topic, Dependency, Condition, Action
+}
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 

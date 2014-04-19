@@ -1,29 +1,28 @@
 package edu.berkeley.crea.syntax
 
 import java.util.Calendar
-
 import java.io.StringWriter
 
 import scala.util.Random
 
 import scala.collection.JavaConverters._
 import scala.collection.Iterator
-import scala.collection.immutable.List
-import scala.collection.immutable.Set
-import scala.collection.immutable.Map
+import scala.collection.immutable.{ 
+  List, Set, Map, Stack
+}
 
-import it.uniroma1.dis.wsngroup.gexf4j.core.EdgeType
-import it.uniroma1.dis.wsngroup.gexf4j.core.Gexf
-import it.uniroma1.dis.wsngroup.gexf4j.core.Graph
-import it.uniroma1.dis.wsngroup.gexf4j.core.Mode
-import it.uniroma1.dis.wsngroup.gexf4j.core.Node
-import it.uniroma1.dis.wsngroup.gexf4j.core.Edge
-import it.uniroma1.dis.wsngroup.gexf4j.core.data.Attribute
-import it.uniroma1.dis.wsngroup.gexf4j.core.data.AttributeClass
-import it.uniroma1.dis.wsngroup.gexf4j.core.data.AttributeList
-import it.uniroma1.dis.wsngroup.gexf4j.core.data.AttributeType
-import it.uniroma1.dis.wsngroup.gexf4j.core.impl.GexfImpl
-import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
+import it.uniroma1.dis.wsngroup.gexf4j.core.{ 
+  EdgeType, Gexf, Graph, Mode, Node, Edge
+}
+
+import it.uniroma1.dis.wsngroup.gexf4j.core.data.{ 
+  Attribute, AttributeClass, AttributeList, AttributeType
+}
+
+import it.uniroma1.dis.wsngroup.gexf4j.core.impl.{ 
+  GexfImpl, StaxGraphWriter
+}
+
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.data.AttributeListImpl
 import it.uniroma1.dis.wsngroup.gexf4j.core.viz.NodeShape
 import it.uniroma1.dis.wsngroup.gexf4j.core.viz.Color
@@ -47,7 +46,6 @@ class Environment {
 
   private var topicMap : Map[String, Topic] = Map.empty
   private var currentSize : Int = 0 // Number of unique terms inserted so far.
-
 
   /**
     * @method size
@@ -323,8 +321,11 @@ object Environment {
   private val topicTags : Set[String] = Set[String]("NP", "NNS", "NNP", "NNPS", "CC")
   private val actionTags : Set[String] = Set[String]("VB", "VBZ", "VBP", "VBD", "CC")
 
-  // TODO: 
-  // Treat gerund verbs as topics
+  // The seven english coordinating conjunctions 
+  private val coordinatingConjunctions : Set[String] = { 
+    Set[String]("for", "and", "nor", "but", "or", "yet", "so") 
+  } 
+
   // Switch toTopic to traversing the whole tree, matching certain rules i.e. S -> NP VP, looking for subtrees 
   // beginning with those tags and recursively matching from there. Store state long the way: create a topic as soon
   // as a NP is matched and append it with actions whenever verb phrases (VP) are discovered. Order of dependency topic relationship does not matter.  
@@ -405,6 +406,223 @@ object Environment {
       case "SBAR" => toDependency(t)
     } 
   } orElse(toTopic(tree))
+
+  /**
+    * @method toValue
+    * @param tree {LinguisticTree} 
+    * @return {String} 
+   **/ 
+  private def toValue(tree : LinguisticTree) : String = { 
+
+    val str : String = tree.getTerminals.asScala map { 
+      _.getLabel 
+    } mkString(" ") 
+
+    str.toLowerCase.replaceAll("[.!?]", "")
+
+  } 
+
+  /**
+    * @method nextPair
+    * @param tree {LinguisticTree} 
+    * @return {(LinguisticTree, LinguisticTree)} 
+   **/ 
+  private def nextPair(tree : LinguisticTree) : (LinguisticTree, LinguisticTree) = { 
+
+    val children = tree.getChildren.asScala
+
+    assert(children.size == 2, "tree has " + children.size + " child node(s), not 2") 
+
+    (children.head, children.last) 
+  }
+
+  /**
+    * @method isRule
+    * @param tree {LinguisticTree}
+    * @param pairs {Set[(String, String)]} 
+    * @return {Boolean} 
+   **/
+  private def isRule(tree : LinguisticTree, pairs : Set[(String, String)]) : Boolean  = {
+
+    val children = tree.getChildren.asScala 
+
+    if(children.size != 2) { 
+      false 
+    } else {
+
+      val (left, right) = nextPair(tree)
+
+      // Or map 
+      pairs.foldRight(false) { 
+        (p : (String, String), b : Boolean) => { 
+          if(!b) { 
+            p == (left.getLabel, right.getLabel) 
+          } else true 
+        }
+      } 
+
+    }
+  } 
+
+  /**
+    * @method parseDependencies
+    * @param tree {LinguisticTree} 
+    * @return {Stack[Dependency]}
+   **/
+  private def parseDependencies(tree : LinguisticTree, 
+    stack : Stack[Dependency] = Stack.empty[Dependency]) : Stack[Dependency] = {
+
+    val prepositionRules : Set[(String, String)] = { 
+      Set[(String, String)](("IN", "NP"))
+    } 
+    
+    tree.getLabel match { 
+      case "NP" => { 
+        stack.push(Dependency("", parse(tree).toList)) 
+      }
+      case "PP" | "SBAR"  if isRule(tree, prepositionRules) => { 
+
+        val (left, right) = nextPair(tree) 
+
+        val value : String = toValue(tree) 
+        val topics : List[Topic] = parse(tree).toList 
+
+        stack.push(Dependency(value, topics))
+
+      }
+      case _ => { 
+        stack 
+      } 
+    } 
+
+  } 
+
+  /** 
+    * @method parseVerb
+    * @param tree {LinguisticTree}
+    * @return {Stack[Term]}
+   **/
+  private def parseVerb(tree : LinguisticTree, stack : Stack[Term] = Stack.empty[Term]) : Stack[Term] = {
+
+    val pastRules : Set[(String, String)] = { 
+      Set[(String, String)](("VBZ", "VP"))
+    } 
+
+    val conditionRules : Set[(String, String)] = { 
+      Set[(String, String)](("MD", "VP"))
+    }
+
+    val dependencyRules : Set[(String, String)] = { 
+      Set[(String, String)](
+       // Base form rules 
+       ("VB", "PP"), ("VB", "SBAR"), ("VB", "NP"), 
+       // Past tense rules 
+       ("VBD", "PP"), ("VBD", "SBAR"), ("VBD", "NP"), 
+       // 3rd person singular present rules, e.g. walks  
+       ("VBZ", "PP"), ("VBZ", "SBAR"), ("VBZ", "NP"), 
+       // 3rd person non-singular present rules 
+       ("VBP", "PP"), ("VBP", "SBAR"), ("VBP", "NP"),
+       // Gerund verbs, e.g. living 
+       ("VBG", "PP"), ("VBG", "SBAR"), ("VBG", "NP"),
+       // Past participle verbs, e.g. lived 
+       ("VBN", "PP"), ("VBN", "SBAR"), ("VBN", "NP"))
+    } 
+    
+    tree.getLabel match { 
+      case "VP" if isRule(tree, conditionRules) => { 
+
+        val (left, right) = nextPair(tree)
+
+        val condition : Condition = {
+
+          val restTerms : List[Term] = parseVerb(right).toList
+
+          val actions : List[Action] = restTerms collect { 
+            case a : Action => a 
+          } 
+
+          val conditions : List[Condition] = restTerms collect { 
+            case c : Condition => c 
+          }
+
+          assert(conditions.size == 0, "Conditions should not be nested!")
+
+          Condition(toValue(left), actions)
+
+        } 
+
+        stack.push(condition) 
+
+      } 
+      case "VP" if isRule(tree, dependencyRules) => {
+
+        val (left, right) = nextPair(tree) 
+      
+        val action : Action = { 
+          Action(toValue(left), parseDependencies(right).toList) 
+        }
+
+        stack.push(action) 
+
+      }
+      case "VP" if isRule(tree, pastRules) => {
+
+        val (left, right) = nextPair(tree)
+
+        parseVerb(right, stack)
+
+      }
+      case "VP" => { 
+
+        val action : Action = { 
+          Action(toValue(tree), List.empty[Dependency])
+        } 
+
+        stack.push(action) 
+
+      }
+      case _ => { 
+
+       tree.getChildren.asScala.foldLeft(stack) { 
+          (s : Stack[Term], c : LinguisticTree) => { 
+            parseVerb(c,s)
+          } 
+        } 
+
+      } 
+    } 
+    
+  } 
+
+  /** 
+    * @method parse 
+    * @param tree {LinguisticTree} 
+    * @return {Stack[Topic]} 
+   **/
+  def parse(tree : LinguisticTree, stack : Stack[Topic] = Stack.empty[Topic]) : Stack[Topic] = { 
+
+    tree.getLabel match {
+      case "NP" => {
+
+        val topic : Topic = { 
+          Topic(toValue(tree), List.empty[Term]) 
+        } 
+
+        stack.push(topic) 
+
+      }
+      case "VP" => { 
+        assert(stack.size > 0, "Cannot add verb before topic is created.") 
+        val (topic : Topic, poppedStack : Stack[Topic]) = stack.pop2 
+        poppedStack.push(Topic(topic.value, parseVerb(tree).toList))
+      } 
+      case _ => { // Fold right over the tree's children 
+        tree.getChildren.asScala.foldLeft(stack) { 
+          (s : Stack[Topic], c : LinguisticTree) => parse(c,s)
+        } 
+      } 
+    } 
+  } 
 
   /**
     * @method toGexf
