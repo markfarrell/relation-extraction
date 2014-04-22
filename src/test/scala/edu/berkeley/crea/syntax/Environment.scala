@@ -229,7 +229,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
      gexfWriter.writeToStream(gexf, stringWriter, "UTF-8")
 
      stringWriter.toString() should be (expectation)
-     
+
    }
 
    Environment.randomize = true 
@@ -238,10 +238,67 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
   "parse" should " produce a stack of Topics." in {
 
-     val s1 : LinguisticTree = "((S (NP (DT The) (NN dog)) (VP (MD can) (VP (VB walk.)))))"
-     val e1 : Stack[Topic] = Stack[Topic](Topic("the dog",List(Condition("can",List(Action("walk",List()))))))
+    { 
+      val s1 : LinguisticTree = "((S (NP (DT The) (NN dog)) (VP (MD can) (VP (VB walk.)))))"
 
-     Environment.parse(s1).toString should be (e1.toString)
+      val e1 : Stack[Topic] = { 
+        Stack[Topic](Topic("the dog", List(Condition("can", List(Action("walk", List()))))))
+      } 
+
+      Environment.parse(s1).toString should be (e1.toString)
+    } 
+
+    {
+      val s2 : LinguisticTree = { 
+        "((S (NP (DT The) (NN man)) (VP (MD can) (VP (VB walk) (NP (DT the) (NN dog.))))))"
+      }
+
+      val e2 : Stack[Topic] = { 
+        Stack[Topic](Topic("the man", List(Condition("can", List(Action("walk", List(Dependency("", List(Topic("the dog", List()))))))))))
+      } 
+
+      Environment.parse(s2).toString should be (e2.toString) 
+      
+    }
+
+    {
+
+      val s3 : LinguisticTree = { 
+        "((SQ (MD Will) (NP (DT the) (JJ quick) (NN man)) (VP (VB walk) (NP (DT the) (NN dog?)))))"
+      } 
+
+      val e3 : Stack[Topic] = { 
+        Stack[Topic](Topic("the quick man", List(Action("walk", List(Dependency("", List(Topic("the dog", List()))))))))
+      } 
+
+      Environment.parse(s3).toString should be (e3.toString) 
+    }
+
+    { 
+      val s4 : LinguisticTree = { 
+        "((S (NP (EX There)) (VP (VBZ is) (NP (NP (DT a) (NN man)) (SBAR (WHNP (WDT that)) (S (VP (MD can) (VP (VB walk)))))))))"
+      }
+
+      val e4 : Stack[Topic] = { 
+        Stack[Topic](Topic("there", List(Action("is", List(Dependency("", List(Topic("a man", List(Condition("can", List(Action("walk", List()))))))))))))
+      } 
+
+      Environment.parse(s4).toString should be (e4.toString) 
+
+    }
+
+    {
+      val s5 : LinguisticTree = { 
+        "((S (NP (DT the) (NN man)) (VP (VBZ has) (VP (VBN hunted) (SBAR (IN until) (S (NP (DT the) (NN dog)) (VP (VBD ate))))))))" 
+      }
+
+      val e5 : Stack[Topic] = { 
+        Stack[Topic](Topic("the man", List(Action("hunted", List(Dependency("until", List(Topic("the dog", List(Action("ate", List()))))))))))
+      } 
+
+      Environment.parse(s5).toString should be (e5.toString)
+
+    } 
 
   } 
 

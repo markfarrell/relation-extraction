@@ -473,24 +473,25 @@ object Environment {
     stack : Stack[Dependency] = Stack.empty[Dependency]) : Stack[Dependency] = {
 
     val prepositionRules : Set[(String, String)] = { 
-      Set[(String, String)](("IN", "NP"))
+      Set[(String, String)](("IN", "NP"), ("IN", "S"))
     } 
     
     tree.getLabel match { 
       case "NP" => { 
         stack.push(Dependency("", parse(tree).toList)) 
       }
-      case "PP" | "SBAR"  if isRule(tree, prepositionRules) => { 
+      case "PP" | "SBAR" if isRule(tree, prepositionRules) => { 
 
         val (left, right) = nextPair(tree) 
 
-        val value : String = toValue(tree) 
-        val topics : List[Topic] = parse(tree).toList 
+        val value : String = toValue(left) 
+        val topics : List[Topic] = parse(right).toList 
 
         stack.push(Dependency(value, topics))
 
       }
-      case _ => { 
+      case _ => {
+        println("default")
         stack 
       } 
     } 
@@ -599,10 +600,14 @@ object Environment {
     * @param tree {LinguisticTree} 
     * @return {Stack[Topic]} 
    **/
-  def parse(tree : LinguisticTree, stack : Stack[Topic] = Stack.empty[Topic]) : Stack[Topic] = { 
+  def parse(tree : LinguisticTree, stack : Stack[Topic] = Stack.empty[Topic]) : Stack[Topic] = {
+
+    val thatRules : Set[(String, String)] = { 
+      Set[(String, String)](("NP", "SBAR"))
+    } 
 
     tree.getLabel match {
-      case "NP" => {
+      case "NP" if !isRule(tree, thatRules)  => {
 
         val topic : Topic = { 
           Topic(toValue(tree), List.empty[Term]) 
