@@ -171,22 +171,18 @@ class Environment {
     * @param terms {List[Term} 
     * @return {List[Action]}
    **/
-  private def getActions(terms : List[Term]) : List[Action] = terms filter { 
-    _.isInstanceOf[Action]
-  } map { 
-    _.asInstanceOf[Action] 
-  }
+  private def getActions(terms : List[Term]) : List[Action] = terms collect { 
+    case a : Action => a
+  } 
 
   /**
     * @method getConditions
     * @param terms {List[Terms]}
     * @return {List[Condition]}
    **/
-  private def getConditions(terms : List[Term]) : List[Condition]  = terms filter { // type select 
-    _.isInstanceOf[Condition]
-  } map { 
-    _.asInstanceOf[Condition]
-  }
+  private def getConditions(terms : List[Term]) : List[Condition]  = terms collect { 
+    case c : Condition => c
+  } 
 
   /**
     * @method mergeTerms
@@ -305,6 +301,9 @@ class Environment {
 
 } 
 
+/** 
+  * @object Environment
+ **/ 
 object Environment { 
 
   // Set to false to make nextColor 
@@ -313,23 +312,6 @@ object Environment {
   private val random : Random = new Random()
   private val defaultColor : Color = new ColorImpl(0,0,0)
 
-  private val conditionTags : Set[String] = Set[String]("MD")
-  private val dependencyTags : Set[String] = Set[String]("IN")
-  private val clauseTags : Set[String] = Set[String]("S", "SBAR")
-  private val topicClauseTags : Set[String] = Set[String]("S") 
-  private val vpTags : Set[String] = Set[String]("VP")
-  private val topicTags : Set[String] = Set[String]("NP", "NNS", "NNP", "NNPS", "CC")
-  private val actionTags : Set[String] = Set[String]("VB", "VBZ", "VBP", "VBD", "CC")
-
-  // The seven english coordinating conjunctions 
-  private val coordinatingConjunctions : Set[String] = { 
-    Set[String]("for", "and", "nor", "but", "or", "yet", "so") 
-  } 
-
-  // Switch toTopic to traversing the whole tree, matching certain rules i.e. S -> NP VP, looking for subtrees 
-  // beginning with those tags and recursively matching from there. Store state long the way: create a topic as soon
-  // as a NP is matched and append it with actions whenever verb phrases (VP) are discovered. Order of dependency topic relationship does not matter.  
-  
   abstract class Term { 
     def color : Color;  
   }
@@ -345,67 +327,6 @@ object Environment {
 
   case class Topic(value : String, abilities : List[Term],
     color : Color = defaultColor) extends Term //VGD, NP, CC
-
- /** 
-   * @method toTopic
-   * @param tree
-  **/
-  def toTopic(tree : LinguisticTree) : Option[Topic] = tree.findCut(topicTags) map { 
-    (t : LinguisticTree) => Topic(t.terminalList().mkString(" ").toLowerCase, toCondition(tree).orElse(toAction(tree)) match { 
-        case Some(term) => List(term)
-        case None => List()
-     })
-  } 
-
-  /**
-    * @method toDependency
-    * @param tree
-   **/
-  def toDependency(tree : LinguisticTree) : Option[Dependency] = tree.findCut(dependencyTags) map { 
-    (t : LinguisticTree) => Dependency(t.terminalList().mkString(" "), tree.findCut(topicClauseTags) flatMap { toTopic(_) } match { 
-      case Some(term) => List(term)
-      case None => List()
-    })
-  }
-
-  /**
-    * @method toAction
-    * @param tree
-   **/
-  def toAction(tree : LinguisticTree) : Option[Action] = for { 
-    t1 <- tree.findCut(vpTags)
-    t2 <- t1.findCut(actionTags)
-    action <- Some(Action(t2.terminalList().mkString(" "), toDependency(t1) match {
-      case Some(term) => List(term)
-      case None => List()
-    }))
-  } yield action
-
-  /**
-    * @method toCondition
-    * @param tree
-   **/
-  def toCondition(tree : LinguisticTree) : Option[Condition] = for { 
-    t1 <- tree.findCut(vpTags)
-    t2 <- t1.findCut(conditionTags) 
-    condition <- Some(Condition(t2.terminalList().mkString(" "), toAction(t1) match { 
-      case Some(term) => List(term)
-      case None => List()
-    }))
-  } yield condition
-
-  /**
-    * @method toClause
-    * @param tree
-   **/
-  def toClause(tree : LinguisticTree) : Option[Term] = tree.iterator().asScala find { 
-    (t : LinguisticTree) => clauseTags contains { t.getLabel() } 
-  } flatMap { 
-    (t : LinguisticTree) => t.getLabel() match { 
-      case "S" => toTopic(t)
-      case "SBAR" => toDependency(t)
-    } 
-  } orElse(toTopic(tree))
 
   /**
     * @method toValue
