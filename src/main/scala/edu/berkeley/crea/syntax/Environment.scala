@@ -540,7 +540,7 @@ object Environment {
       case "VP" => { 
         assert(stack.size > 0, "Cannot add verb before topic is created.") 
         val (topic : Topic, poppedStack : Stack[Topic]) = stack.pop2 
-        poppedStack.push(Topic(topic.value, parseVerb(tree).toList))
+        poppedStack.push(Topic(topic.value, topic.abilities ++ parseVerb(tree).toList))
       } 
       case _ => { // Fold right over the tree's children 
         tree.getChildren.asScala.foldLeft(stack) { 

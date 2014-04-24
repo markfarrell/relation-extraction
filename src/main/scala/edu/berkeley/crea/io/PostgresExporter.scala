@@ -224,7 +224,8 @@ class PostgresExporter(conn : Connection, env : Environment) {
             ids = ids ++ zipKeys[Condition](insertedCondition, List[Condition](condition))
 
           } 
-        } 
+        }
+        case action : Action => Unit 
       }
 
     }
