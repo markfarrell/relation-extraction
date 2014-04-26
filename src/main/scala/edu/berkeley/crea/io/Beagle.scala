@@ -156,7 +156,7 @@ object Beagle {
 
     env.insertTopics { 
       Blurb.tokens(System.in) map parse flatMap {
-        tree => Environment.parse(tree).toList
+        tree => Environment.parse(tree)
       }  
     }
 

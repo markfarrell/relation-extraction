@@ -301,61 +301,17 @@ class Environment {
 
   } 
 
-} 
+}
 
-/** 
-  * @object Environment
- **/ 
-object Environment { 
+class EnvironmentParser {
 
-  // Set to false to make nextColor 
-  var randomize : Boolean = true 
+  import Environment.Term
+  import Environment.Topic
+  import Environment.Condition
+  import Environment.Action
+  import Environment.Dependency
 
-  private val random : Random = new Random()
-  private val defaultColor : Color = new ColorImpl(0,0,0)
-
-  abstract class Term { 
-    def color : Color;  
-  }
-
-  case class Action(value : String, dependencies : List[Dependency],
-    color : Color = defaultColor) extends Term 
-
-  case class Dependency(value : String, clauses: List[Topic],
-    color : Color = defaultColor) extends Term { 
-
-    def depEq(d : Dependency) : Boolean = {
-
-      def andmap[T](t : List[T]) : Boolean = { 
-        val tests = t collect { 
-          case (a, b) => a == b
-        }
-        tests.foldRight(true)( _ && _ )
-      } 
-
-      val t1 : List[Topic] = clauses
-      val t2 : List[Topic] = d.clauses 
-
-      if(t1.size != t2.size) { 
-        false
-      } else andmap { 
-
-        t1 zip t2 map { 
-          case (a,b) => (a.value, b.value)
-        }
-
-      } 
-
-    } 
-
-  } 
-
-  case class Condition(value : String, actions : List[Action],
-    color : Color = defaultColor) extends Term
-
-  case class Topic(value : String, abilities : List[Term],
-    color : Color = defaultColor) extends Term 
-
+  private var topicStack : Stack[Topic] = Stack.empty[Topic]
 
   /**
     * @method toValue
@@ -433,9 +389,11 @@ object Environment {
         val (left, right) = nextPair(tree) 
 
         val value : String = toValue(left) 
-        val topics : List[Topic] = parse(right).toList 
+        val topics : Stack[Topic] = parse(right) 
 
-        stack.push(Dependency(value, topics))
+        topicStack = topics 
+
+        stack.push(Dependency(value, topics.toList))
 
       }
       case _ => stack 
@@ -549,7 +507,7 @@ object Environment {
 
     val thatRules : Set[(String, String)] = { 
       Set[(String, String)](("NP", "SBAR"))
-    } 
+    }
 
     tree.getLabel match {
       case "NP" if !isRule(tree, thatRules)  => {
@@ -558,20 +516,103 @@ object Environment {
           Topic(toValue(tree), List.empty[Term]) 
         } 
 
-        stack.push(topic) 
+        stack.push(topic)
 
       }
       case "VP" => { 
-        assert(stack.size > 0, "Cannot add verb before topic is created.") 
-        val (topic : Topic, poppedStack : Stack[Topic]) = stack.pop2 
-        poppedStack.push(Topic(topic.value, topic.abilities ++ parseVerb(tree).toList))
+
+        assert(stack.size > 0 || topicStack.size > 0, "Cannot add verb before topic is created.")
+
+        var newStack : Stack[Topic] = stack 
+
+        val (topic : Topic, poppedStack : Stack[Topic]) = if(topicStack.size > 0) {
+          
+          val tmp = topicStack.pop2
+          topicStack = topicStack.pop
+          tmp
+
+        } else {
+
+          val tmp = stack.pop2
+          newStack = stack.pop
+          tmp
+
+        } 
+
+        val newTopic : Topic = Topic(topic.value, topic.abilities ++ parseVerb(tree).toList)
+
+        newStack.push(newTopic)
+
       } 
       case _ => { // Fold right over the tree's children 
         tree.getChildren.asScala.foldLeft(stack) { 
-          (s : Stack[Topic], c : LinguisticTree) => parse(c,s)
+          (s : Stack[Topic], c : LinguisticTree) => parse(c, s)
         } 
       } 
     } 
+
+  } 
+} 
+
+
+/** 
+  * @object Environment
+ **/ 
+object Environment { 
+
+  // Set to false to make nextColor 
+  var randomize : Boolean = true 
+
+  private val random : Random = new Random()
+  private val defaultColor : Color = new ColorImpl(0,0,0)
+
+  abstract class Term {
+    def value : String;
+    def color : Color;  
+  }
+
+  case class Action(value : String, dependencies : List[Dependency],
+    color : Color = defaultColor) extends Term 
+
+  case class Dependency(value : String, clauses: List[Topic],
+    color : Color = defaultColor) extends Term { 
+
+    def depEq(d : Dependency) : Boolean = {
+
+      def andmap[T](t : List[T]) : Boolean = { 
+        val tests = t collect { 
+          case (a, b) => a == b
+        }
+        tests.foldRight(true)( _ && _ )
+      } 
+
+      val t1 : List[Topic] = clauses
+      val t2 : List[Topic] = d.clauses 
+
+      if(t1.size != t2.size) { 
+        false
+      } else andmap { 
+
+        t1 zip t2 map { 
+          case (a,b) => (a.value, b.value)
+        }
+
+      } 
+
+    } 
+
+  } 
+
+  case class Condition(value : String, actions : List[Action],
+    color : Color = defaultColor) extends Term
+
+  case class Topic(value : String, abilities : List[Term],
+    color : Color = defaultColor) extends Term 
+
+
+  def parse(tree : LinguisticTree) : List[Topic] = { 
+    val parser : EnvironmentParser = new EnvironmentParser
+    parser.parse(tree).toList
   } 
 
   /**
