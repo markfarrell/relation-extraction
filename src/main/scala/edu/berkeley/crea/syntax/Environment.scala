@@ -23,9 +23,11 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.impl.{
   GexfImpl, StaxGraphWriter
 }
 
+import it.uniroma1.dis.wsngroup.gexf4j.core.viz.{
+    NodeShape, EdgeShape, Color
+}
+
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.data.AttributeListImpl
-import it.uniroma1.dis.wsngroup.gexf4j.core.viz.NodeShape
-import it.uniroma1.dis.wsngroup.gexf4j.core.viz.Color
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.viz.ColorImpl
 
 import TreeConversions._
@@ -317,16 +319,43 @@ object Environment {
   }
 
   case class Action(value : String, dependencies : List[Dependency],
-    color : Color = defaultColor) extends Term // VB, VBZ, VBP, VBD, CC
+    color : Color = defaultColor) extends Term 
 
   case class Dependency(value : String, clauses: List[Topic],
-    color : Color = defaultColor) extends Term
+    color : Color = defaultColor) extends Term { 
+
+    def depEq(d : Dependency) : Boolean = {
+
+      def andmap[T](t : List[T]) : Boolean = { 
+        val tests = t collect { 
+          case (a, b) => a == b
+        }
+        tests.foldRight(true)( _ && _ )
+      } 
+
+      val t1 : List[Topic] = clauses
+      val t2 : List[Topic] = d.clauses 
+
+      if(t1.size != t2.size) { 
+        false
+      } else andmap { 
+
+        t1 zip t2 map { 
+          case (a,b) => (a.value, b.value)
+        }
+
+      } 
+
+    } 
+
+  } 
 
   case class Condition(value : String, actions : List[Action],
     color : Color = defaultColor) extends Term
 
   case class Topic(value : String, abilities : List[Term],
-    color : Color = defaultColor) extends Term //VGD, NP, CC
+    color : Color = defaultColor) extends Term 
+
 
   /**
     * @method toValue
@@ -392,16 +421,14 @@ object Environment {
    **/
   private def parseDependencies(tree : LinguisticTree, 
     stack : Stack[Dependency] = Stack.empty[Dependency]) : Stack[Dependency] = {
+   
+    val hasPair : Boolean = tree.getChildren.asScala.size == 2 
 
-    val prepositionRules : Set[(String, String)] = { 
-      Set[(String, String)](("IN", "NP"), ("IN", "S"))
-    } 
-    
     tree.getLabel match { 
       case "NP" => { 
         stack.push(Dependency("", parse(tree).toList)) 
       }
-      case "PP" | "SBAR" if isRule(tree, prepositionRules) => { 
+      case "PP" | "SBAR" if hasPair => { 
 
         val (left, right) = nextPair(tree) 
 
@@ -411,10 +438,7 @@ object Environment {
         stack.push(Dependency(value, topics))
 
       }
-      case _ => {
-        println("default")
-        stack 
-      } 
+      case _ => stack 
     } 
 
   } 
@@ -568,35 +592,72 @@ object Environment {
 
     val attType : Attribute = attrList.createAttribute("type", AttributeType.STRING, "type")
 
-    var currentNodeId : Int = 0 // Current node ID 
-    var currentEdgeId : Int = 0 // Current edge ID 
-
     // Map of already visited topic nodes
     var visitedTopics : Map[String, Node] = Map.empty[String, Node] 
 
     // Map of already visited dependencies, to make two different actions
     // point to the same dependency. 
-    var visitedDependencies : Map[String, Node] = Map.empty[String, Node]
+    var visitedDependencies : Map[Dependency, Node] = Map.empty[Dependency, Node]
 
-    def makeNode(typename : String, value : String, terms : List[Term]) : Node = { 
+    object IDs { 
+      private var currentNodeId : Int = 0 
+      private var currentEdgeId : Int = 0 
 
-      val nodeId : Int = currentNodeId
+      def nextNode() : String = { 
+        val id : Int = currentNodeId
+        currentNodeId += 1
+        id.toString
+      }
+
+      def nextEdge() : String = { 
+        val id : Int = currentEdgeId
+        currentEdgeId += 1
+        id.toString
+      } 
+
+    } 
+
+    def makeEdges(node : Node, terms : List[Term]) : List[Edge] = { 
+
+      var edges : List[Edge] = List.empty[Edge]
       
-      currentNodeId += 1
+      for(term <- terms) {
 
-      val node : Node = graph.createNode(nodeId.toString).setLabel(value) // Look for or get if existing 
+        val newEdges : List[Edge] = term match { 
+          case dep : Dependency if dep.value == "" => { 
+            makeEdges(node, dep.clauses) 
+          } 
+          case _ => {
+
+            val edge : Edge = node.connectTo(IDs.nextEdge, toNode(term))
+
+            edge.setEdgeType(EdgeType.DIRECTED)
+            edge.setColor(term.color)
+
+            term match { 
+              case _ : Dependency => edge.setShape(EdgeShape.DASHED)
+              case _ : Action => edge.setShape(EdgeShape.DASHED)
+              case _ => Unit
+            } 
+
+            List[Edge](edge) 
+          } 
+        } 
+
+        edges = edges ++ newEdges 
+
+      }
+
+      edges
+    } 
+
+    def makeNode(typename : String)(value : String, terms : List[Term]) : Node = { 
+
+      val node : Node = graph.createNode(IDs.nextNode).setLabel(value)  
 
       node.getAttributeValues().addValue(attType, typename)
 
-      for(term <- terms) {
-
-        val edgeId : Int = currentEdgeId
-        currentEdgeId += 1
-
-        val edge : Edge = node.connectTo(edgeId.toString, toNode(term))
-
-        edge.setColor(term.color) 
-      } 
+      makeEdges(node, terms)
 
       node
 
@@ -606,27 +667,32 @@ object Environment {
 
       term match { 
         case Topic(value, abilities, color) => visitedTopics.get(value).getOrElse({ 
-          val node : Node = makeNode("Topic", value, abilities)
+          val node : Node = makeNode("Topic")(value, abilities)
           visitedTopics += value -> node
           node
         })
-        case Dependency(value, clauses, color) => {
+        case dep : Dependency => {
+         
+          visitedDependencies.find(x => x._1 depEq dep) match {
+            case Some(kv) => { 
+              val (_, node) = kv
+              node
+            } 
+            case None => { 
+              var node : Node = makeNode("Dependency")(dep.value, dep.clauses)
+              visitedDependencies += dep -> node
+              node 
+            }
+          }
 
-          // Test for equality by summing dependency value + all topic values
-          val key : String = { 
-            val strings : List[String] = value :: (clauses map { _.value })
-            strings.mkString("")
-          } 
-
-          visitedDependencies.get(key).getOrElse({
-            val node : Node = makeNode("Dependency", value, clauses)
-            visitedDependencies += key -> node
-            node 
-          })
         } 
-        case Condition(value, actions, color) => makeNode("Condition", value, actions)
+        case Condition(value, actions, color) => { 
+          val node : Node = makeNode("Condition")(value, actions)
+          node.getShapeEntity.setNodeShape(NodeShape.SQUARE) 
+          node 
+        } 
         case Action(value, dependencies, color) => { 
-          makeNode("Action", value, dependencies) 
+          makeNode("Action")(value, dependencies) 
         } 
       }
 
