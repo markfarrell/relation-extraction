@@ -244,7 +244,6 @@ object Beagle {
           val fs : FileOutputStream = new FileOutputStream(cfg.file) 
 
           val env : Environment = new PostgresImporter(conn).load()
-          //val env = createEnv(cfg) 
 
           (new StaxGraphWriter).writeToStream(Environment.toGexf(env.selectTopics()), fs, "UTF-8")
 

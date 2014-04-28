@@ -24,7 +24,7 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.impl.{
 }
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.viz.{
-    NodeShape, EdgeShape, Color
+  NodeShape, EdgeShape, Color
 }
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.data.AttributeListImpl
@@ -40,11 +40,9 @@ import TreeConversions._
  **/
 class Environment {
 
-  import Environment.Term
-  import Environment.Topic
-  import Environment.Condition
-  import Environment.Action
-  import Environment.Dependency
+  import Environment.{ 
+    Term, Topic, Condition, Action, Dependency
+  } 
 
   private var topicMap : Map[String, Topic] = Map.empty
   private var currentSize : Int = 0 // Number of unique terms inserted so far.
@@ -98,8 +96,8 @@ class Environment {
       def insertActions(actions : List[Action]) : Unit = for { 
         action <- actions 
       } { 
-       currentSize += 1
-       insertDependencies(action.dependencies)
+        currentSize += 1
+        insertDependencies(action.dependencies)
       } 
 
       def insertConditions(conditions : List[Condition]) : Unit = for { 
@@ -112,8 +110,8 @@ class Environment {
       def insertDependencies(dependencies : List[Dependency]) : Unit = for { 
         dependency <- dependencies
       } { 
-       currentSize += 1
-       insertTopics(dependency.clauses, color = topic.color)
+         currentSize += 1
+         insertTopics(dependency.clauses, color = topic.color)
       } 
 
       insertConditions(getConditions(topic.abilities))
@@ -130,7 +128,30 @@ class Environment {
     **/
   def selectTopics() : List[Topic] = {
 
-    def selectActions(terms : List[Term]) : List[Action]  = for { 
+    var selectedTopics : Map[String, Topic] = Map.empty[String, Topic]
+
+    def selectTopic(t : Topic) : Topic = { 
+      selectedTopics.get(t.value) match { 
+        case Some(selectedTopic) => selectedTopic
+        case None => {
+
+          val newTopic : Topic = topicMap.get(t.value) match { 
+            case Some(topic) => Topic( 
+              topic.value,
+              selectActions(topic.abilities) ++ selectConditions(topic.abilities),
+              topic.color
+            )
+          } 
+
+          selectedTopics += t.value -> newTopic
+
+          newTopic
+
+        } 
+      }
+    } 
+
+    def selectActions(terms : List[Term]) : List[Action] = for { 
       action <- getActions(terms)
     } yield Action(
       action.value,
@@ -150,21 +171,15 @@ class Environment {
       dependency <- dependencies
     } yield Dependency(
       dependency.value, 
-      dependency.clauses map { 
-        (t : Topic) => topicMap.get(t.value)
-      } flatten,
+      dependency.clauses.map(selectTopic),
       dependency.color
     )
-  
-    { 
-      for { 
-        topic <- topicMap.values 
-      } yield Topic ( 
-        topic.value,
-        selectActions(topic.abilities) ++ selectConditions(topic.abilities),
-        topic.color
-      )
-    } toList
+    
+    val topics : Iterable[Topic] = for { 
+      topic <- topicMap.values 
+    } yield selectTopic(topic) 
+
+    topics.toList
 
   }
 
@@ -182,7 +197,7 @@ class Environment {
     * @param terms {List[Terms]}
     * @return {List[Condition]}
    **/
-  private def getConditions(terms : List[Term]) : List[Condition]  = terms collect { 
+  private def getConditions(terms : List[Term]) : List[Condition] = terms collect { 
     case c : Condition => c
   } 
 
@@ -202,8 +217,26 @@ class Environment {
       for(dependency <- dependencies) {
         map.get(dependency.value) match { 
           case Some(d) => {
+
+            // As seen on StackOverflow:
+            // http://stackoverflow.com/questions/3912753/scala-remove-duplicates-in-list-of-objects
+
+            val uniqueClauses : List[Topic] = { 
+              (d.clauses ++ dependency.clauses) filterNot { 
+
+                var set : Set[String] = Set.empty[String]
+
+                clause => { 
+                  val b : Boolean = set(clause.value)
+                  set += clause.value
+                  b
+                } 
+
+              } 
+            } 
+
             map += d.value -> Dependency(d.value, 
-              d.clauses ++ dependency.clauses,
+              uniqueClauses,
               dependency.color
             )
           } 
@@ -305,11 +338,9 @@ class Environment {
 
 class EnvironmentParser {
 
-  import Environment.Term
-  import Environment.Topic
-  import Environment.Condition
-  import Environment.Action
-  import Environment.Dependency
+  import Environment.{ 
+    Term, Topic, Condition, Action, Dependency
+  } 
 
   private var topicStack : Stack[Topic] = Stack.empty[Topic]
 
@@ -381,8 +412,14 @@ class EnvironmentParser {
     val hasPair : Boolean = tree.getChildren.asScala.size == 2 
 
     tree.getLabel match { 
-      case "NP" => { 
-        stack.push(Dependency("", parse(tree).toList)) 
+      case "NP" | "S"  => {
+
+        val topics : Stack[Topic] = parse(tree)
+
+        topicStack = topics
+
+        stack.push(Dependency("", topics.toList))
+
       }
       case "PP" | "SBAR" if hasPair => { 
 
@@ -396,7 +433,6 @@ class EnvironmentParser {
         stack.push(Dependency(value, topics.toList))
 
       }
-      case _ => stack 
     } 
 
   } 
@@ -408,8 +444,12 @@ class EnvironmentParser {
    **/
   private def parseVerb(tree : LinguisticTree, stack : Stack[Term] = Stack.empty[Term]) : Stack[Term] = {
 
-    val pastRules : Set[(String, String)] = { 
-      Set[(String, String)](("VBZ", "VP"))
+    val doubleRules : Set[(String, String)] = { 
+      Set[(String, String)](
+        ("VBZ", "VP"), ("VB", "VP"), 
+        ("VBD", "VP"), ("VBP", "VP"),
+        ("VBG", "VP"), ("VBN", "VP"),
+        ("TO", "VP"))
     } 
 
     val conditionRules : Set[(String, String)] = { 
@@ -419,17 +459,17 @@ class EnvironmentParser {
     val dependencyRules : Set[(String, String)] = { 
       Set[(String, String)](
        // Base form rules 
-       ("VB", "PP"), ("VB", "SBAR"), ("VB", "NP"), 
+       ("VB", "PP"), ("VB", "S"), ("VB", "SBAR"), ("VB", "NP"), 
        // Past tense rules 
-       ("VBD", "PP"), ("VBD", "SBAR"), ("VBD", "NP"), 
+       ("VBD", "PP"), ("VBD", "S"), ("VBD", "SBAR"), ("VBD", "NP"), 
        // 3rd person singular present rules, e.g. walks  
-       ("VBZ", "PP"), ("VBZ", "SBAR"), ("VBZ", "NP"), 
+       ("VBZ", "PP"), ("VBZ", "S"), ("VBZ", "SBAR"), ("VBZ", "NP"), 
        // 3rd person non-singular present rules 
-       ("VBP", "PP"), ("VBP", "SBAR"), ("VBP", "NP"),
+       ("VBP", "PP"), ("VBP", "S"), ("VBP", "SBAR"), ("VBP", "NP"),
        // Gerund verbs, e.g. living 
-       ("VBG", "PP"), ("VBG", "SBAR"), ("VBG", "NP"),
+       ("VBG", "PP"), ("VBG", "S"), ("VBG", "SBAR"), ("VBG", "NP"),
        // Past participle verbs, e.g. lived 
-       ("VBN", "PP"), ("VBN", "SBAR"), ("VBN", "NP"))
+       ("VBN", "PP"), ("VBN", "S"), ("VBN", "SBAR"), ("VBN", "NP"))
     } 
     
     tree.getLabel match { 
@@ -469,16 +509,21 @@ class EnvironmentParser {
         stack.push(action) 
 
       }
-      case "VP" if isRule(tree, pastRules) => {
+      case "VP" if isRule(tree, doubleRules) => {
 
         val (left, right) = nextPair(tree)
 
-        parseVerb(right, stack)
+        val value : String = toValue(left) 
 
-      }
+        parseVerb(right, stack)  map {
+          case a : Action => Action(value + " " + a.value, a.dependencies)
+          case c : Condition => c
+        } 
+
+      } 
       case "VP" => { 
 
-        val action : Action = { 
+        val action : Action = {
           Action(toValue(tree), List.empty[Dependency])
         } 
 
@@ -510,7 +555,7 @@ class EnvironmentParser {
     }
 
     tree.getLabel match {
-      case "NP" if !isRule(tree, thatRules)  => {
+      case "NP" if !isRule(tree, thatRules) => {
 
         val topic : Topic = { 
           Topic(toValue(tree), List.empty[Term]) 
@@ -519,21 +564,19 @@ class EnvironmentParser {
         stack.push(topic)
 
       }
-      case "VP" => { 
-
-        assert(stack.size > 0 || topicStack.size > 0, "Cannot add verb before topic is created.")
+      case "VP" if (stack.size > 0 || topicStack.size > 0) => { 
 
         var newStack : Stack[Topic] = stack 
 
-        val (topic : Topic, poppedStack : Stack[Topic]) = if(topicStack.size > 0) {
+        val topic : Topic = if(topicStack.size > 0) {
           
-          val tmp = topicStack.pop2
-          topicStack = topicStack.pop
+          val tmp = topicStack.head
+          topicStack = Stack.empty[Topic]
           tmp
 
         } else {
 
-          val tmp = stack.pop2
+          val tmp = stack.head
           newStack = stack.pop
           tmp
 
@@ -543,8 +586,8 @@ class EnvironmentParser {
 
         newStack.push(newTopic)
 
-      } 
-      case _ => { // Fold right over the tree's children 
+      }
+      case _ => { // Fold left over the tree's children 
         tree.getChildren.asScala.foldLeft(stack) { 
           (s : Stack[Topic], c : LinguisticTree) => parse(c, s)
         } 
@@ -692,7 +735,7 @@ object Environment {
       edges
     } 
 
-    def makeNode(typename : String)(value : String, terms : List[Term]) : Node = { 
+    def makeNode(typename : String)(value : String, terms : List[Term]) : Node = {
 
       val node : Node = graph.createNode(IDs.nextNode).setLabel(value)  
 
@@ -732,8 +775,8 @@ object Environment {
           node.getShapeEntity.setNodeShape(NodeShape.SQUARE) 
           node 
         } 
-        case Action(value, dependencies, color) => { 
-          makeNode("Action")(value, dependencies) 
+        case a : Action => {
+          makeNode("Action")(a.value, a.dependencies) 
         } 
       }
 
