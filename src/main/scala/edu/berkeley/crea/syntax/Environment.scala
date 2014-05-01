@@ -129,11 +129,17 @@ class Environment {
   def selectTopics() : List[Topic] = {
 
     var selectedTopics : Map[String, Topic] = Map.empty[String, Topic]
+    var selecting : Option[Topic] = None
+
+    def isSelecting(t : Topic) : Boolean = selecting match { 
+      case Some(topic) => t.value == topic.value
+      case None => false
+    } 
 
     def selectTopic(t : Topic) : Topic = { 
       selectedTopics.get(t.value) match { 
         case Some(selectedTopic) => selectedTopic
-        case None => {
+        case None => { 
 
           val newTopic : Topic = topicMap.get(t.value) match { 
             case Some(topic) => Topic( 
@@ -147,7 +153,8 @@ class Environment {
 
           newTopic
 
-        } 
+        }
+        
       }
     } 
 
@@ -171,13 +178,18 @@ class Environment {
       dependency <- dependencies
     } yield Dependency(
       dependency.value, 
-      dependency.clauses.map(selectTopic),
+      dependency.clauses.filterNot(isSelecting).map(selectTopic),
       dependency.color
     )
     
     val topics : Iterable[Topic] = for { 
       topic <- topicMap.values 
-    } yield selectTopic(topic) 
+    } yield { 
+      selecting = Some(topic)
+      val newTopic : Topic = selectTopic(topic)
+      selecting = None
+      newTopic
+    } 
 
     topics.toList
 
@@ -409,26 +421,31 @@ class EnvironmentParser {
   private def parseDependencies(tree : LinguisticTree, 
     stack : Stack[Dependency] = Stack.empty[Dependency]) : Stack[Dependency] = {
    
-    val hasPair : Boolean = tree.getChildren.asScala.size == 2 
+    def hasAPair(tree : LinguisticTree) : Boolean = tree.getChildren.asScala.size == 2 
+
+    def containsTopic(topics : Stack[Topic])(topic : Topic) : Boolean = { 
+      topics.find(_.value == topic.value) match { 
+        case Some(_) => true
+        case None => false
+      } 
+    } 
 
     tree.getLabel match { 
-      case "NP" | "S"  => {
+      case "NP" | "S" => {
 
-        val topics : Stack[Topic] = parse(tree)
-
-        topicStack = topics
+        val excludeTopics : Stack[Topic] = topicStack
+        val topics : Stack[Topic] = parse(tree).filterNot(containsTopic(excludeTopics)) 
 
         stack.push(Dependency("", topics.toList))
 
       }
-      case "PP" | "SBAR" if hasPair => { 
+      case "PP" | "SBAR" if hasAPair(tree) => { 
 
         val (left, right) = nextPair(tree) 
 
         val value : String = toValue(left) 
-        val topics : Stack[Topic] = parse(right) 
-
-        topicStack = topics 
+        val excludeTopics : Stack[Topic] = topicStack
+        val topics : Stack[Topic] = parse(right).filterNot(containsTopic(excludeTopics)) 
 
         stack.push(Dependency(value, topics.toList))
 
@@ -548,7 +565,7 @@ class EnvironmentParser {
     * @param tree {LinguisticTree} 
     * @return {Stack[Topic]} 
    **/
-  def parse(tree : LinguisticTree, stack : Stack[Topic] = Stack.empty[Topic]) : Stack[Topic] = {
+  def parse(tree : LinguisticTree) : Stack[Topic] = {
 
     val thatRules : Set[(String, String)] = { 
       Set[(String, String)](("NP", "SBAR"))
@@ -561,35 +578,29 @@ class EnvironmentParser {
           Topic(toValue(tree), List.empty[Term]) 
         } 
 
-        stack.push(topic)
+        topicStack = topicStack.push(topic)
+        topicStack
 
       }
-      case "VP" if (stack.size > 0 || topicStack.size > 0) => { 
+      case "VP" if topicStack.size > 0 => { 
 
-        var newStack : Stack[Topic] = stack 
+        val topic : Topic = {
 
-        val topic : Topic = if(topicStack.size > 0) {
-          
           val tmp = topicStack.head
-          topicStack = Stack.empty[Topic]
-          tmp
-
-        } else {
-
-          val tmp = stack.head
-          newStack = stack.pop
+          topicStack = topicStack.pop
           tmp
 
         } 
 
         val newTopic : Topic = Topic(topic.value, topic.abilities ++ parseVerb(tree).toList)
 
-        newStack.push(newTopic)
+        topicStack = topicStack.push(newTopic)
+        topicStack
 
       }
       case _ => { // Fold left over the tree's children 
-        tree.getChildren.asScala.foldLeft(stack) { 
-          (s : Stack[Topic], c : LinguisticTree) => parse(c, s)
+        tree.getChildren.asScala.foldLeft(topicStack) { 
+          (s : Stack[Topic], c : LinguisticTree) => parse(c)
         } 
       } 
     } 

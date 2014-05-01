@@ -273,7 +273,8 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       }
 
       val e2 : List[Topic] = { 
-        List[Topic](Topic("the man", List(Condition("can", List(Action("walk", List(Dependency("", List(Topic("the dog", List()))))))))))
+        List[Topic](Topic("the man", List(Condition("can", List(Action("walk", List(Dependency("", List(Topic("the dog", List()))))))))),
+          Topic("the dog", List()))
       } 
 
       Environment.parse(s2).toString should be (e2.toString) 
@@ -287,7 +288,8 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       } 
 
       val e3 : List[Topic] = { 
-        List[Topic](Topic("the quick man", List(Action("walk", List(Dependency("", List(Topic("the dog", List()))))))))
+        List[Topic](Topic("the quick man", List(Action("walk", List(Dependency("", List(Topic("the dog", List()))))))),
+          Topic("the dog", List()))
       } 
 
       Environment.parse(s3).toString should be (e3.toString) 
@@ -299,7 +301,8 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       }
 
       val e4 : List[Topic] = { 
-        List[Topic](Topic("there", List(Action("is", List(Dependency("", List(Topic("a man", List(Condition("can", List(Action("walk", List()))))))))))))
+        List[Topic](Topic("there", List(Action("is", List(Dependency("", List(Topic("a man", List(Condition("can", List(Action("walk", List()))))))))))),
+          Topic("a man", List(Condition("can", List(Action("walk", List()))))))
       } 
 
       Environment.parse(s4).toString should be (e4.toString) 
@@ -312,7 +315,8 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       }
 
       val e5 : List[Topic] = { 
-        List[Topic](Topic("the man", List(Action("has hunted", List(Dependency("until", List(Topic("the dog", List(Action("ate", List()))))))))))
+        List[Topic](Topic("the man", List(Action("has hunted", List(Dependency("until", List(Topic("the dog", List(Action("ate", List()))))))))),
+          Topic("the dog", List(Action("ate", List()))))
       } 
 
       Environment.parse(s5).toString should be (e5.toString)
