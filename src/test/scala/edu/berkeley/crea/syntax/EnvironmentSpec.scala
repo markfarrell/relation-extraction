@@ -301,7 +301,8 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       }
 
       val e4 : List[Topic] = { 
-        List[Topic](Topic("there", List(Action("is", List(Dependency("", List(Topic("a man", List(Condition("can", List(Action("walk", List()))))))))))),
+        List[Topic](Topic("there", List(Action("is", List(Dependency("", List(Topic("a man", List(Condition("can", List(Action("walk", List()))))))), 
+          Dependency("", List(Topic("a man", List()))), Dependency("that", List()))))),
           Topic("a man", List(Condition("can", List(Action("walk", List()))))))
       } 
 

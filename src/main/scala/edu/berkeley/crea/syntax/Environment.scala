@@ -129,15 +129,17 @@ class Environment {
   def selectTopics() : List[Topic] = {
 
     var selectedTopics : Map[String, Topic] = Map.empty[String, Topic]
-    var selecting : Option[Topic] = None
+    var selecting : Stack[Topic] = Stack.empty[Topic]
 
-    def isSelecting(t : Topic) : Boolean = selecting match { 
-      case Some(topic) => t.value == topic.value
-      case None => false
+    def isSelecting(t : Topic) : Boolean = selecting exists { 
+      _.value == t.value
     } 
 
-    def selectTopic(t : Topic) : Topic = { 
-      selectedTopics.get(t.value) match { 
+    def selectTopic(t : Topic) : Topic = {
+
+      selecting = selecting.push(t) 
+
+      val newTopic : Topic = selectedTopics.get(t.value) match { 
         case Some(selectedTopic) => selectedTopic
         case None => { 
 
@@ -160,6 +162,11 @@ class Environment {
         }
         
       }
+
+      selecting = selecting.pop
+
+      newTopic 
+
     } 
 
     def selectActions(terms : List[Term]) : List[Action] = for { 
@@ -188,12 +195,7 @@ class Environment {
     
     val topics : Iterable[Topic] = for { 
       topic <- topicMap.values 
-    } yield { 
-      selecting = Some(topic)
-      val newTopic : Topic = selectTopic(topic)
-      selecting = None
-      newTopic
-    } 
+    } yield selectTopic(topic)
 
     topics.toList
 
@@ -359,6 +361,7 @@ class EnvironmentParser {
   } 
 
   private var topicStack : Stack[Topic] = Stack.empty[Topic]
+  private var verbStack : Stack[Term] = Stack.empty[Term] 
   private var dependencyStack : Stack[Dependency] = Stack.empty[Dependency]
 
   /**
@@ -391,12 +394,12 @@ class EnvironmentParser {
   }
 
   /**
-    * @method isBinaryRule
+    * @method existsBinaryRules
     * @param tree {LinguisticTree}
     * @param pairs {Set[(String, String)]} 
     * @return {Boolean} 
    **/
-  private def isBinaryRule(tree : LinguisticTree, pairs : Set[(String, String)]) : Boolean  = {
+  private def existsBinaryRules(tree : LinguisticTree, pairs : Set[(String, String)]) : Boolean  = {
 
     val children = tree.getChildren.asScala 
 
@@ -404,19 +407,43 @@ class EnvironmentParser {
       false 
     } else {
 
-      val (left, right) = nextPair(tree)
-
-      // Or map 
-      pairs.foldRight(false) { 
-        (p : (String, String), b : Boolean) => { 
-          if(!b) { 
-            p == (left.getLabel, right.getLabel) 
-          } else true 
-        }
+      pairs exists { 
+        rule : (String, String) => existsBinaryRule(tree, rule) 
       } 
 
     }
+  }
+
+  /**
+    * @method existsBinaryRule
+    * @param tree {LinguisticTree} 
+    * @param rule {(String, String)}
+    * @return {Boolean} 
+   **/
+  private def existsBinaryRule(tree : LinguisticTree, rule : (String, String)) : Boolean = { 
+
+    findBinaryRule(tree, rule) match { 
+      case Some(_) => true
+      case None => false 
+    } 
+
   } 
+
+  /** 
+    * @method findBinaryRule
+    * @param tree {LinguisticTree} 
+    * @param rule {(String, String)} 
+    * @return {Option[(LinguisticTree, LinguisticTree)]}  
+   **/
+  private def findBinaryRule(tree : LinguisticTree, rule : (String, String)) : Option[(LinguisticTree, LinguisticTree)] = { 
+    
+    tree.getChildren.asScala.toList match {
+      case List(a, b, _*) if (a.getLabel, b.getLabel) == rule => Some((a,b))
+      case List(_, a, b, _*) if (a.getLabel, b.getLabel) == rule => Some((a,b))
+      case List(_*) => None 
+    } 
+
+  }
 
   /**
     * @method parseDependencies
@@ -472,7 +499,7 @@ class EnvironmentParser {
    **/
   private def parseVerb(tree : LinguisticTree, stack : Stack[Term] = Stack.empty[Term]) : Stack[Term] = {
 
-    val doubleRules : Set[(String, String)] = { 
+    def doubleRules : Set[(String, String)] = { 
       Set[(String, String)](
         ("VBZ", "VP"), ("VB", "VP"), 
         ("VBD", "VP"), ("VBP", "VP"),
@@ -480,11 +507,11 @@ class EnvironmentParser {
         ("TO", "VP"))
     } 
 
-    val conditionRules : Set[(String, String)] = { 
+    def conditionRules : Set[(String, String)] = { 
       Set[(String, String)](("MD", "VP"))
     }
 
-    val dependencyRules : Set[(String, String)] = { 
+    def dependencyRules : Set[(String, String)] = { 
       Set[(String, String)](
        // Base form rules 
        ("VB", "PP"), ("VB", "S"), ("VB", "SBAR"), ("VB", "NP"), 
@@ -498,10 +525,10 @@ class EnvironmentParser {
        ("VBG", "PP"), ("VBG", "S"), ("VBG", "SBAR"), ("VBG", "NP"),
        // Past participle verbs, e.g. lived 
        ("VBN", "PP"), ("VBN", "S"), ("VBN", "SBAR"), ("VBN", "NP"))
-    } 
+    }
     
     tree.getLabel match { 
-      case "VP" if isBinaryRule(tree, conditionRules) => { 
+      case "VP" if existsBinaryRules(tree, conditionRules) => { 
 
         val (left, right) = nextPair(tree)
 
@@ -526,12 +553,12 @@ class EnvironmentParser {
         stack.push(condition) 
 
       } 
-      case "VP" | "PP" if isBinaryRule(tree, dependencyRules) => {
+      case "VP" | "PP" if existsBinaryRules(tree, dependencyRules) => {
 
         val (left, right) = nextPair(tree) 
       
         val action : Action = { 
-          Action(terminalValue(left), dependencyStack.toList ++ parseDependencies(right).toList) 
+          Action(terminalValue(left), parseDependencies(right).toList ++ dependencyStack.toList) 
         }
 
         dependencyStack = Stack.empty[Dependency]
@@ -539,7 +566,7 @@ class EnvironmentParser {
         stack.push(action) 
 
       }
-      case "VP" if isBinaryRule(tree, doubleRules) => {
+      case "VP" if existsBinaryRules(tree, doubleRules) => {
 
         val (left, right) = nextPair(tree)
 
@@ -549,7 +576,7 @@ class EnvironmentParser {
           parseVerb(right) map {
             case a : Action => {
 
-              val newAction : Action = Action(value + " " + a.value, dependencyStack.toList ++ a.dependencies)
+              val newAction : Action = Action(value + " " + a.value, a.dependencies ++ dependencyStack.toList)
               dependencyStack = Stack.empty[Dependency]
               newAction
             } 
@@ -582,7 +609,7 @@ class EnvironmentParser {
 
         val newAction : Action = Action(
           action.value,
-          dependencyStack.toList ++ action.dependencies ++ parseDependencies(tree).toList,
+          action.dependencies ++ parseDependencies(tree).toList ++ dependencyStack.toList,
           action.color
         )
 
@@ -611,32 +638,36 @@ class EnvironmentParser {
    **/
   def parse(tree : LinguisticTree) : Stack[Topic] = {
 
-    val thatRules : Set[(String, String)] = { 
-      Set[(String, String)](("NP", "SBAR"))
+    def thatRules : Set[(String, String)] = { 
+      Set[(String, String)](("NP", "SBAR"), ("NP", "PP"))
     }
 
-    val gerundRules : Set[(String, String)] = { 
+    def gerundRules : Set[(String, String)] = { 
       Set[(String, String)](("VBG", "NP"))
     } 
 
     tree.getLabel match {
-      case "NP" if !isBinaryRule(tree, thatRules)  => {
+      case "NP" if !existsBinaryRules(tree, thatRules)  => {
 
         val topic : Topic = { 
-          Topic(terminalValue(tree), List.empty[Term]) 
-        } 
+          Topic(terminalValue(tree), verbStack.toList) 
+        }
+
+        verbStack = Stack.empty[Term] 
 
         topicStack = topicStack.push(topic)
         topicStack
 
       }
-      case "VP" if isBinaryRule(tree, gerundRules) => { 
+      case "VP" if existsBinaryRules(tree, gerundRules) => { 
         
         val (left, right) = nextPair(tree) 
 
         val topic : Topic = { 
-          Topic(terminalValue(right), parseVerb(left).toList)
-        } 
+          Topic(terminalValue(right), parseVerb(left).toList ++ verbStack.toList)
+        }
+
+        verbStack = Stack.empty[Term]
 
         topicStack = topicStack.push(topic) 
         topicStack 
@@ -652,15 +683,34 @@ class EnvironmentParser {
 
         } 
 
-        val newTopic : Topic = Topic(topic.value, topic.abilities ++ parseVerb(tree).toList)
+        val newTopic : Topic = { 
+          Topic(topic.value, topic.abilities ++ parseVerb(tree).toList ++ verbStack.toList)
+        }
+
+        verbStack = Stack.empty[Term] 
 
         topicStack = topicStack.push(newTopic)
         topicStack
 
       }
-      case "SBAR" => { 
+      case "VP" => { 
+        verbStack = parseVerb(tree) ++ verbStack
+        topicStack
+      } 
+      case "NP" if existsBinaryRules(tree, thatRules) => { 
 
-        dependencyStack = parseDependencies(tree) 
+        val (left, right) = nextPair(tree)
+
+        dependencyStack = { 
+          dependencyStack ++ parseDependencies(left) ++ parseDependencies(right)
+        }
+
+        topicStack
+
+      } 
+      case "SBAR" | "PP" => { 
+
+        dependencyStack = dependencyStack ++ parseDependencies(tree) 
         topicStack 
 
       } 
@@ -788,7 +838,7 @@ object Environment {
           case dep : Dependency if dep.value == "" => { 
             makeEdges(node, dep.clauses) 
           } 
-          case _ => {
+          case _ => try {
 
             val edge : Edge = node.connectTo(IDs.nextEdge, toNode(term))
 
@@ -802,6 +852,8 @@ object Environment {
             } 
 
             List[Edge](edge) 
+          } catch { 
+            case e : IllegalArgumentException => List.empty[Edge]
           } 
         } 
 
