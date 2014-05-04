@@ -1,7 +1,7 @@
 all: build 
 
 build:
-	export SBT_OPTS="-Xss1m -XX:MaxPermSize=2048m"
+	export SBT_OPTS="-Xss1m -XX:MaxPermSize=2048m -XX:+CMSClassUnloadingEnabled"
 	sbt compile start-script test
 
 bin: 

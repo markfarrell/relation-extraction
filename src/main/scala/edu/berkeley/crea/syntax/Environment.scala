@@ -11,6 +11,8 @@ import scala.collection.immutable.{
   List, Set, Map, Stack
 }
 
+import com.github.aztek.porterstemmer.PorterStemmer
+
 import it.uniroma1.dis.wsngroup.gexf4j.core.{ 
   EdgeType, Gexf, Graph, Mode, Node, Edge
 }
@@ -75,16 +77,16 @@ class Environment {
     
     for(topic <- recoloredTopics) {
 
-      topicMap.get(topic.value) match { 
+      topicMap.values.find(_.topicEq(topic)) match { 
         case Some(existingTopic) => {
 
           val updatedTopic : Topic = Topic(
-            topic.value,
+            existingTopic.value,
             mergeTerms(topic.abilities, existingTopic.abilities), 
             topic.color
           )
 
-          topicMap += topic.value -> updatedTopic
+          topicMap += existingTopic.value -> updatedTopic
 
         } 
         case None => { 
@@ -132,20 +134,20 @@ class Environment {
     var selecting : Stack[Topic] = Stack.empty[Topic]
 
     def isSelecting(t : Topic) : Boolean = selecting exists { 
-      _.value == t.value
+      _.topicEq(t)   
     } 
 
     def selectTopic(t : Topic) : Topic = {
 
       selecting = selecting.push(t) 
 
-      val newTopic : Topic = selectedTopics.get(t.value) match { 
+      val newTopic : Topic = selectedTopics.values.find(_.topicEq(t)) match { 
         case Some(selectedTopic) => selectedTopic
         case None => { 
 
           val newTopic : Topic = { 
 
-            val topic : Topic = topicMap.get(t.value).get 
+            val topic : Topic = topicMap.values.find(_.topicEq(t)).get 
 
             Topic( 
               topic.value,
@@ -369,11 +371,26 @@ class EnvironmentParser {
     * @param tree {LinguisticTree} 
     * @return {String} 
    **/ 
-  private def terminalValue(tree : LinguisticTree) : String = { 
+  private def terminalValue(tree : LinguisticTree) : String = {
 
-    val str : String = tree.getTerminals.asScala map { 
-      _.getLabel 
-    } mkString(" ") 
+    def lemmatize(str : String) : String = str 
+
+    def terminalLabels(tree : LinguisticTree) : String = {
+      tree.getTerminals.asScala map { 
+        _.getLabel 
+      } mkString("") 
+    } 
+
+    val str = tree.iterator.asScala.toList filter { 
+      _.isPreTerminal
+    } collect { 
+      t => t.getLabel match {
+        case "VB" | "VBD" | "VBZ" | "VBP" | "VBG" | "VBN" => { 
+          lemmatize(terminalLabels(t))
+        } 
+        case s if !( s == "PDT" || s == "DT") => terminalLabels(t)
+      } 
+    } mkString(" ")
 
     str.toLowerCase.replaceAll("[.!?]", "")
 
@@ -568,21 +585,9 @@ class EnvironmentParser {
       }
       case "VP" if existsBinaryRules(tree, doubleRules) => {
 
-        val (left, right) = nextPair(tree)
+        val (_, right) = nextPair(tree)
 
-        val value : String = terminalValue(left) 
-
-        stack ++ { 
-          parseVerb(right) map {
-            case a : Action => {
-
-              val newAction : Action = Action(value + " " + a.value, a.dependencies ++ dependencyStack.toList)
-              dependencyStack = Stack.empty[Dependency]
-              newAction
-            } 
-            case c : Condition => c
-          } 
-        } 
+        stack ++ parseVerb(right) 
 
       } 
       case "VB" | "VBD" | "VBZ" | "VBP" | "VBG" | "VBN" => { 
@@ -749,11 +754,8 @@ object Environment {
 
     def depEq(d : Dependency) : Boolean = {
 
-      def andmap[T](t : List[T]) : Boolean = { 
-        val tests = t collect { 
-          case (a, b) => a == b
-        }
-        tests.foldRight(true)( _ && _ )
+      def andmap(t : List[Boolean]) : Boolean = { 
+        t.foldRight(true)( _ && _ )
       } 
 
       val t1 : List[Topic] = clauses
@@ -764,7 +766,7 @@ object Environment {
       } else andmap { 
 
         t1 zip t2 map { 
-          case (a,b) => (a.value, b.value)
+          case (a,b) => a.topicEq(b)
         }
 
       } 
@@ -777,7 +779,13 @@ object Environment {
     color : Color = defaultColor) extends Term
 
   case class Topic(value : String, abilities : List[Term],
-    color : Color = defaultColor) extends Term 
+    color : Color = defaultColor) extends Term { 
+
+    def topicEq(t : Topic) : Boolean = { 
+      PorterStemmer.stem(value) == PorterStemmer.stem(t.value)
+    } 
+
+  } 
 
 
   def parse(tree : LinguisticTree) : List[Topic] = { 

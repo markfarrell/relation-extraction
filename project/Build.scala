@@ -17,7 +17,9 @@ object ProjectBuild extends Build {
       "org.slf4j" % "slf4j-simple" % "1.7.5",
       "it.uniroma1.dis.wsngroup.gexf4j" % "gexf4j" % "0.4.4-BETA",
       "postgresql" % "postgresql" % "8.4-701.jdbc4",
-      "com.github.scopt" %% "scopt" % "3.2.0"
+      "com.github.scopt" %% "scopt" % "3.2.0",
+      "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1",
+      "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models" 
     )
   ) 
 
@@ -25,7 +27,7 @@ object ProjectBuild extends Build {
     id = "root",
     base = file("."),
     settings = standardSettings ++ SbtStartScript.startScriptForClassesSettings
-  ) 
+  ).dependsOn(uri("git://github.com/aztek/porterstemmer.git")) 
 
 } 
 

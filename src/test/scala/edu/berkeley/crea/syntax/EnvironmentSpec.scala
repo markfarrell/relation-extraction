@@ -193,7 +193,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
                 <attribute id="type" title="type" type="string"/>
             </attributes>
             <nodes count="5">
-                <node id="0" label="the dog">
+                <node id="0" label="dog">
                     <attvalues>
                         <attvalue for="type" value="Topic"/>
                     </attvalues>
@@ -261,7 +261,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       val s1 : LinguisticTree = "((S (NP (DT The) (NN dog)) (VP (MD can) (VP (VB walk.)))))"
 
       val e1 : List[Topic] = { 
-        List[Topic](Topic("the dog", List(Condition("can", List(Action("walk", List()))))))
+        List[Topic](Topic("dog", List(Condition("can", List(Action("walk", List()))))))
       } 
 
       Environment.parse(s1).toString should be (e1.toString)
@@ -273,8 +273,8 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       }
 
       val e2 : List[Topic] = { 
-        List[Topic](Topic("the man", List(Condition("can", List(Action("walk", List(Dependency("", List(Topic("the dog", List()))))))))),
-          Topic("the dog", List()))
+        List[Topic](Topic("man", List(Condition("can", List(Action("walk", List(Dependency("", List(Topic("dog", List()))))))))),
+          Topic("dog", List()))
       } 
 
       Environment.parse(s2).toString should be (e2.toString) 
@@ -288,8 +288,8 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       } 
 
       val e3 : List[Topic] = { 
-        List[Topic](Topic("the quick man", List(Action("walk", List(Dependency("", List(Topic("the dog", List()))))))),
-          Topic("the dog", List()))
+        List[Topic](Topic("quick man", List(Action("walk", List(Dependency("", List(Topic("dog", List()))))))),
+          Topic("dog", List()))
       } 
 
       Environment.parse(s3).toString should be (e3.toString) 
@@ -301,9 +301,9 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       }
 
       val e4 : List[Topic] = { 
-        List[Topic](Topic("there", List(Action("is", List(Dependency("", List(Topic("a man", List(Condition("can", List(Action("walk", List()))))))), 
-          Dependency("", List(Topic("a man", List()))), Dependency("that", List()))))),
-          Topic("a man", List(Condition("can", List(Action("walk", List()))))))
+        List[Topic](Topic("there", List(Action("is", List(Dependency("", List(Topic("man", List(Condition("can", List(Action("walk", List()))))))), 
+          Dependency("", List(Topic("man", List()))), Dependency("that", List()))))),
+          Topic("man", List(Condition("can", List(Action("walk", List()))))))
       } 
 
       Environment.parse(s4).toString should be (e4.toString) 
@@ -316,8 +316,8 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       }
 
       val e5 : List[Topic] = { 
-        List[Topic](Topic("the man", List(Action("has hunted", List(Dependency("until", List(Topic("the dog", List(Action("ate", List()))))))))),
-          Topic("the dog", List(Action("ate", List()))))
+        List[Topic](Topic("man", List(Action("hunted", List(Dependency("until", List(Topic("dog", List(Action("ate", List()))))))))),
+          Topic("dog", List(Action("ate", List()))))
       } 
 
       Environment.parse(s5).toString should be (e5.toString)
