@@ -301,7 +301,7 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       }
 
       val e4 : List[Topic] = { 
-        List[Topic](Topic("there", List(Action("is", List(Dependency("", List(Topic("man", List(Condition("can", List(Action("walk", List()))))))), 
+        List[Topic](Topic("there", List(Action("be", List(Dependency("", List(Topic("man", List(Condition("can", List(Action("walk", List()))))))), 
           Dependency("", List(Topic("man", List()))), Dependency("that", List()))))),
           Topic("man", List(Condition("can", List(Action("walk", List()))))))
       } 
@@ -316,8 +316,8 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
       }
 
       val e5 : List[Topic] = { 
-        List[Topic](Topic("man", List(Action("hunted", List(Dependency("until", List(Topic("dog", List(Action("ate", List()))))))))),
-          Topic("dog", List(Action("ate", List()))))
+        List[Topic](Topic("man", List(Action("hunt", List(Dependency("until", List(Topic("dog", List(Action("eat", List()))))))))),
+          Topic("dog", List(Action("eat", List()))))
       } 
 
       Environment.parse(s5).toString should be (e5.toString)
