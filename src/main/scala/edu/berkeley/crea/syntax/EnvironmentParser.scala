@@ -267,8 +267,7 @@ class EnvironmentParser {
 
         val newAction : Action = Action(
           action.value,
-          action.dependencies ++ parseDependencies(tree).toList ++ dependencyStack.toList,
-          action.color
+          action.dependencies ++ parseDependencies(tree).toList ++ dependencyStack.toList
         )
 
         dependencyStack = Stack.empty[Dependency]

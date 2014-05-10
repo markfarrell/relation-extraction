@@ -48,7 +48,6 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
   "Environments" should " join topics with the same values together when they are inserted." in {
 
-    Environment.randomize = false 
 
     // Case 1: 
     { 
@@ -67,11 +66,11 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
       val topicAB : Environment.Topic = Environment.Topic("the dog", 
         List(Environment.Condition("could", 
-          List(Environment.Action("sit", List()))),
-            Environment.Condition("might", 
+               List(Environment.Action("sit", List()))),
+             Environment.Condition("might", 
                List(Environment.Action("walk", 
-                 List(Environment.Dependency("if",
-                   List(Environment.Topic("the cat walks.", List())))))))))
+               List(Environment.Dependency("if",
+               List(Environment.Topic("the cat walks.", List())))))))))
 
        val env : Environment = new Environment
 
@@ -98,13 +97,9 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
     } 
 
-    Environment.randomize = true
-
   } 
 
   "toGexf" should " produce a Gexf object." in {
-
-    Environment.randomize = false 
 
     // Case 1: 
     { 
@@ -251,7 +246,6 @@ class EnvironmentSpec extends FlatSpec with Matchers  {
 
    }
 
-   Environment.randomize = true 
       
   }
 

@@ -31,15 +31,7 @@ import edu.berkeley.crea.syntax.Environment.Action
   **/
 class PostgresExporter(conn : Connection, env : Environment) { 
 
-  class DependenciesTable extends HashMap[Dependency, Set[Action]] with MultiMap[Dependency, Action]
-  class TopicsTable extends HashMap[Term, Set[Topic]] with MultiMap[Term, Topic]
-  class ConditionsTable extends HashMap[Action, Set[Condition]] with MultiMap[Action, Condition]
-
   private val topics : List[Topic] = env.selectTopics()
-
-  private val topicsTable : TopicsTable = new TopicsTable 
-  private val conditionsTable : ConditionsTable = new ConditionsTable
-  private val dependenciesTable : DependenciesTable = new DependenciesTable
 
   private val yes : Int = Statement.RETURN_GENERATED_KEYS
 
@@ -67,82 +59,149 @@ class PostgresExporter(conn : Connection, env : Environment) {
    **/ 
   private def insertDependency : PreparedStatement = conn.prepareStatement("INSERT INTO beagle.dependencies VALUES(DEFAULT, ?,?,?,?)")
 
-  /** 
-    * @method zipKeys
-    * @param prepareStatement - A prepareStatement to a get a result of generated keys for 
-    * after making insertions into a table.
-    * @param terms - A list of terms to associate each generated ID with.
-    * @return An immutable map containing (unique generated ID, term) pairs.
-   **/ 
-  private def zipKeys[A <: Term](preparedStatement : PreparedStatement, terms : List[A]) : Map[Int, A] = { 
 
-    var ids : Map[Int, A] = Map.empty[Int, A]
+  private def getGeneratedKey(preparedStatement : PreparedStatement) : Option[Int] = { 
+
+    var ids : List[Int] = List.empty[Int]
     val rs : ResultSet = preparedStatement.getGeneratedKeys()
-    var i : Int = 0 
 
-    assert(rs != null)
+    if (rs == null) None else {
 
-    while( rs.next() ) { 
-      ids += rs.getInt(1) -> terms(i)
-      i = i+1  
-    }
-
-    assert(ids.keys.size == terms.size, ids.keys.size + "==" + terms.size) 
-
-    ids
-
-  }
-
-  /**
-    * @method pluckKeys 
-    * @param terms - Terms to retrieve an iterable of primary keys for. 
-    * @param termsTable - A table of keys corresponding to a certain terms. Note that the table
-    * is comprised of (Int, Term) pairs rather than (Term, Int) pairs because terms are not necessarily unique.
-    * @return - A set of keys corresponding each term in the set of terms passed.
-    **/
-  private def pluckKeys[A <: Term](terms : Set[A], termsTable : Map[Int, A]) : Iterable[Int] = {
-    termsTable filter { 
-      kv : (Int, A)  => terms contains { kv._2 }
-    } keys
-  } 
-
-  /** 
-    * @method extractDependencies - Adds a key-value entry to the dependencies
-    * table for each dependenchy that the action has.
-    * @param action 
-   **/
-  private def extractDependencies(action : Action) : Unit = for (dependency <- action.dependencies) { 
-    dependenciesTable.addBinding(dependency, action) 
-  }
-
-  /**
-    * @method extract - Populates tables of many-to-one mappings
-    * for terms in the environment, preparing export. 
-   **/
-  private def extract() : Unit = for (topic <- topics) {
-
-    for(term <- topic.abilities) { 
-
-      topicsTable.addBinding(term, topic)
-
-      term match {
-        case condition : Condition => for (action <- condition.actions ) { 
-          conditionsTable.addBinding(action, condition) 
-          extractDependencies(action)
-        }
-        case action : Action => extractDependencies(action)
+      while( rs.next() ) { 
+        ids = rs.getInt(1) :: ids
       }
 
-    }
+      if (ids.size != 1) None else { 
+        Some(ids.head)
+      } 
+
+    } 
 
   }
+
+  /**
+    * @method extract 
+   **/
+  private def extract(terms : List[Term]) : List[(Term, Term)] = {
+
+    var relation : List[(Term, Term)] = List.empty[(Term, Term)]
+
+    for (term <- terms) {
+
+      val arrows : List[Term] = term match { 
+        case topic : Topic => topic.abilities
+        case condition : Condition => condition.actions
+        case action : Action =>  action.dependencies
+        case _ => List.empty[Term]
+      }
+
+      relation = relation ++ arrows.map { _ -> term } ++ extract(arrows)  
+
+    }
+
+    relation
+
+  }
+
+  private def exportRelation(relation : List[(Term, Term)], target : Option[Term] = None, key : Option[Int] = None) : Unit = {
+
+    val insertedTopic : PreparedStatement = insertTopic
+    val insertedAction : PreparedStatement = insertAction
+    val insertedCondition : PreparedStatement = insertCondition
+    val insertedDependency : PreparedStatement = insertDependency
+
+    for(pair <- relation) pair match { 
+      case (action : Action, topic : Topic) => { 
+
+        insertedAction.setString(1, action.value)
+        insertedAction.setInt(2, Colors.hex(action.color))
+        insertedAction.setNull(3, Types.INTEGER)
+        insertedAction.setString(4, topic.value)
+        insertedAction.executeUpdate() 
+        insertedAction.clearParameters()
+
+        val newRelation : List[(Term, Term)] = relation collect {
+          case (d : Dependency, a : Action) => (d,a)
+        } 
+
+        exportRelation(newRelation, Some(action), getGeneratedKey(insertedAction))
+
+      } 
+      case (condition : Condition, topic : Topic) => {
+
+        insertedCondition.setString(1, condition.value) 
+        insertedCondition.setInt(2, Colors.hex(condition.color))
+        insertedCondition.setString(3, topic.value) 
+        insertedCondition.executeUpdate()
+        insertedCondition.clearParameters()
+
+        val newRelation : List[(Term, Term)] = relation collect { 
+          case (a : Action, c : Condition) => (a,c) 
+          case (d : Dependency, a : Action) => (d,a)
+        } 
+
+        exportRelation(newRelation, Some(condition),  getGeneratedKey(insertedCondition))
+
+      }
+
+      case (action : Action, condition : Condition) if Some(condition) == target => {
+
+        key match { 
+          case Some(conditionId) => { 
+
+            insertedAction.setString(1, action.value) 
+            insertedAction.setInt(2, Colors.hex(action.color))
+            insertedAction.setInt(3, conditionId) // Set condition ID 
+            insertedAction.setNull(4, Types.VARCHAR)
+            insertedAction.executeUpdate()
+            insertedAction.clearParameters()
+
+            val newRelation : List[(Term, Term)] = relation collect { 
+              case (d : Dependency, a : Action) => (d,a) 
+            }
+
+            exportRelation(newRelation, Some(action), getGeneratedKey(insertedAction))
+
+          } 
+          case None => Unit 
+        } 
+
+      }
+      case (dependency : Dependency, action : Action) if Some(action) == target => {
+
+        key match { 
+          case Some(actionId) => { 
+            for(topic <- dependency.topics.collect{case t : Topic => t}) { 
+
+              insertedDependency.setString(1, dependency.value)
+              insertedDependency.setInt(2, Colors.hex(dependency.color))
+              insertedDependency.setInt(3, actionId)
+              insertedDependency.setString(4, topic.value)
+              insertedDependency.executeUpdate()
+              insertedDependency.clearParameters()
+
+            }
+          } 
+          case None => Unit
+        } 
+
+      } 
+      case _ => Unit
+    } 
+
+    insertedTopic.close()
+    insertedAction.close()
+    insertedCondition.close()
+    insertedDependency.close() 
+
+  } 
 
   /**
     * @method exportTopics
    **/
   private def exportTopics() : Unit = {
 
-    val insertedTopic : PreparedStatement = insertTopic
+    val insertedTopic : PreparedStatement = insertTopic 
 
     for(topic <- topics) { 
       insertedTopic.setString(1, topic.value)
@@ -165,173 +224,21 @@ class PostgresExporter(conn : Connection, env : Environment) {
 
   }
 
-  /**
-    * @method exportAbsoluteActions
-    * @return - A map of primary key -> action pairs.
-   **/
-  private def exportAbsoluteActions() : Map[Int, Action] = { 
-
-    var ids : Map[Int, Action] = Map.empty[Int, Action] 
-
-    val insertedAction : PreparedStatement = insertAction
-
-    for(kv <- topicsTable.iterator) {
-      kv._1 match { 
-        case action : Action => { 
-          for(topic <- kv._2) { 
-
-            insertedAction.setString(1, action.value)
-            insertedAction.setInt(2, Colors.hex(action.color))
-            insertedAction.setNull(3, Types.INTEGER)
-            insertedAction.setString(4, topic.value)
-            insertedAction.executeUpdate() 
-            insertedAction.clearParameters()
-
-            ids = ids ++ zipKeys[Action](insertedAction, List[Action](action))
-
-          }
-        }
-        case _ => {} 
-      }
-    }
-
-    insertedAction.close()
-    ids // Produce ID table
-
-  }
-
-  /**
-    * @method exportConditions
-    * @return - A map of primary key -> condition pairs.
-   **/
-  private def exportConditions() : Map[Int, Condition] = {
-
-    var ids : Map[Int, Condition] = Map.empty[Int, Condition] 
-
-    val insertedCondition : PreparedStatement = insertCondition
-
-    for(kv <- topicsTable.iterator) {
-      kv._1 match { 
-        case condition : Condition => {
-          for (topic <- kv._2) {
-
-            insertedCondition.setString(1, condition.value) 
-            insertedCondition.setInt(2, Colors.hex(condition.color))
-            insertedCondition.setString(3, topic.value) 
-            insertedCondition.executeUpdate()
-            insertedCondition.clearParameters()
-
-            ids = ids ++ zipKeys[Condition](insertedCondition, List[Condition](condition))
-
-          } 
-        }
-        case action : Action => Unit 
-      }
-
-    }
-
-    insertedCondition.close()
-    ids
-
-  }
-
-  /**
-    * @method exportConditionalActions
-    * @return - A map of primary key -> action pairs.
-   **/
-  private def exportConditionalActions(conditionsIds : Map[Int, Condition]) : Map[Int, Action] = {
-
-    var ids : Map[Int, Action] = Map.empty[Int, Action] 
-
-    val insertedAction : PreparedStatement = insertAction
-
-    for(kv <- conditionsTable) { 
-
-      val action : Action = kv._1
-
-      for (conditionId <- pluckKeys[Condition](kv._2, conditionsIds)) { 
-
-        insertedAction.setString(1, action.value) 
-        insertedAction.setInt(2, Colors.hex(action.color))
-        insertedAction.setInt(3, conditionId) // Set condition ID 
-        insertedAction.setNull(4, Types.VARCHAR)
-        insertedAction.executeUpdate()
-        insertedAction.clearParameters()
-
-        ids = ids ++ zipKeys[Action](insertedAction, List[Action](action))
-
-      } 
-
-    } 
-
-    insertedAction.close()
-    ids
-
-  }
-
-  /**
-    * @method exportDependencies
-   **/
-  private def exportDependencies(actionsIds : Map[Int, Action]) : Unit = {
-    val insertedDependency : PreparedStatement = insertDependency
-
-    for( kv <- dependenciesTable ) { 
-
-      val dependency : Dependency = kv._1 
-
-      for(actionId <- pluckKeys[Action](kv._2, actionsIds)) {
-
-        for(topic <- dependency.clauses) { 
-
-          insertedDependency.setString(1, dependency.value)
-          insertedDependency.setInt(2, Colors.hex(dependency.color))
-          insertedDependency.setInt(3, actionId)
-          insertedDependency.setString(4, topic.value)
-          insertedDependency.executeUpdate()
-          insertedDependency.clearParameters()
-
-        } 
-
-      } 
-    }
-
-    insertedDependency.close()
-
-  }
-
   /** 
     * @method export - Exports terms loaded in the environment passed
     * as constructor argument to the database.
    **/
   def export() : Unit = {
 
-    extract()
-
     try { 
-
-      var actionsIds : Map[Int, Action] = Map.empty[Int, Action]
-      var conditionsIds : Map[Int, Condition] = Map.empty[Int, Condition]
 
       // Commit all or nothing, since we want to enforce the same relationship 
       // between terms in the environment. 
       conn.setAutoCommit(false) 
 
       // Insert all new topics into the database 
-      exportTopics()     
-
-      // Insert new actions that point to a topic
-      actionsIds = exportAbsoluteActions()
-
-      // Insert new conditions that point to a topic
-      conditionsIds = exportConditions()  
-
-      // Grab all generated condition keys
-      // Insert new actions that point to a condition
-      actionsIds = actionsIds ++ exportConditionalActions(conditionsIds)
-
-      // Grab all generated action keys
-      // Insert dependencies that point to actions
-      exportDependencies(actionsIds)   
+      exportTopics()
+      exportRelation(extract(topics))
 
       conn.commit() // Complete transaction
 

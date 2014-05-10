@@ -180,7 +180,7 @@ class PostgresImporter(conn : Connection) {
 
       val topic : Topic = Topic(topicValue, List.empty[Term]) 
 
-      dependencies = Dependency(metadata.value, List(topic), color) :: dependencies
+      dependencies = Dependency(metadata.value, List(topic)) :: dependencies
 
     } 
 
@@ -198,7 +198,7 @@ class PostgresImporter(conn : Connection) {
     metadata <- conditionMetadata
   } yield { 
     val actions : List[Action] = partActions(getConditionalActionMetadata(metadata.id)).toList
-    Condition(metadata.value, actions, metadata.color)
+    Condition(metadata.value, actions)
   } 
 
   /** 
@@ -208,7 +208,7 @@ class PostgresImporter(conn : Connection) {
    **/
   private def partActions(actionMetadata : List[Metadata]) : Iterable[Action] = for {
     a <- actionMetadata
-  } yield Action(a.value, partDependencies(a.id), a.color)
+  } yield Action(a.value, partDependencies(a.id))
 
   /**
     * @method partTerms
@@ -233,7 +233,7 @@ class PostgresImporter(conn : Connection) {
 
     for { 
       topicBuilder <- topicBuilders
-    } yield Topic(topicBuilder.value, partTerms(topicBuilder).toList, topicBuilder.color)
+    } yield Topic(topicBuilder.value, partTerms(topicBuilder).toList)
 
   } 
 
@@ -245,7 +245,7 @@ class PostgresImporter(conn : Connection) {
 
     val env : Environment = new Environment
     
-    env.insertTopics(partTopics.toList, shouldRecolor = false) 
+    env.insertTopics(partTopics.toList) 
  
     env
 

@@ -53,73 +53,57 @@ class Environment {
    **/
   def size() : Int = currentSize
 
+  private def insert(terms : List[Term]) : Unit = for(term <- terms) {
+
+    term match { 
+      case topic : Topic => {
+
+        topicMap.get(topic.value) match { 
+          case Some(existingTopic) => {
+
+            val newTerms : List[Term] = { 
+              mergeTerms(existingTopic.abilities ++ topic.abilities)
+            } 
+
+            val newTopic : Topic = { 
+              existingTopic.copy(abilities = newTerms) 
+            } 
+
+            topicMap += existingTopic.value -> newTopic
+
+          } 
+          case None => { 
+            currentSize += 1
+            topicMap += topic.value -> topic
+          } 
+        }
+        
+        insert(topic.abilities) 
+
+      } 
+      case action : Action => { 
+        currentSize += 1 
+        insert(action.dependencies) 
+      } 
+      case condition : Condition => { 
+        currentSize += 1
+        insert(condition.actions) 
+      } 
+      case dependency : Dependency => { 
+        currentSize += 1
+        insert(dependency.topics) 
+      } 
+
+    }
+  } 
+
+
   /** 
     * @method insertTopics
     * @param topics - The list of topics to be loaded 
     * into the environment. 
-    * @param shouldRecolor - Optionally specify whether or not to recolor terms 
-    * at all. 
-    * @param color - The call-by-name color to perform recoloring operations with. 
-    * @post - currentColor is rechosen before this method returns. The
-    * currentSize of the is also updated.
    **/
-  def insertTopics(topics : List[Topic], shouldRecolor : Boolean = true, color : => Color = Environment.nextColor()) : Unit = { 
-    
-    def recolor(topic : Topic) : Topic = recolorTopic(topic, color) 
-   
-    val recoloredTopics : List[Topic] = if(shouldRecolor) { 
-      topics map recolor
-    } else { 
-      topics
-    } 
-    
-    for(topic <- recoloredTopics) {
-
-      topicMap.get(topic.value) match { 
-        case Some(existingTopic) => {
-
-          val updatedTopic : Topic = Topic(
-            existingTopic.value,
-            mergeTerms(topic.abilities, existingTopic.abilities), 
-            topic.color
-          )
-
-          topicMap += existingTopic.value -> updatedTopic
-
-        } 
-        case None => { 
-          currentSize += 1
-          topicMap += topic.value -> topic
-        } 
-      }
-
-      def insertActions(actions : List[Action]) : Unit = for { 
-        action <- actions 
-      } { 
-        currentSize += 1
-        insertDependencies(action.dependencies)
-      } 
-
-      def insertConditions(conditions : List[Condition]) : Unit = for { 
-        condition <- conditions
-      } { 
-        currentSize += 1
-        insertActions(condition.actions) 
-      } 
-
-      def insertDependencies(dependencies : List[Dependency]) : Unit = for { 
-        dependency <- dependencies
-      } { 
-         currentSize += 1
-         insertTopics(dependency.clauses, color = topic.color)
-      } 
-
-      insertConditions(getConditions(topic.abilities))
-      insertActions(getActions(topic.abilities))
-
-    }
-
-  }  
+  def insertTopics(topics : List[Topic]) : Unit = insert(topics)
 
   /** 
     * @method selectTopics
@@ -135,88 +119,74 @@ class Environment {
       _.value == t.value
     } 
 
-    def selectTopic(t : Topic) : Topic = {
+    def select(term : Term) : Term = term match { 
+      case topic : Topic => {
 
-      selecting = selecting.push(t) 
+        selecting = selecting.push(topic) 
 
-      val newTopic : Topic = selectedTopics.get(t.value) match { 
-        case Some(selectedTopic) => selectedTopic
-        case None => { 
+        val newTopic : Topic = selectedTopics.get(topic.value) match { 
+          case Some(selectedTopic) => selectedTopic
+          case None => { 
 
-          val newTopic : Topic = { 
+            val newTopic : Topic = { 
+              val oldTopic : Topic = topicMap.get(topic.value).get
+              oldTopic.copy(abilities = oldTopic.abilities.map(select)) 
+            }
 
-            val topic : Topic = topicMap.get(t.value).get 
+            selectedTopics += topic.value -> newTopic
 
-            Topic( 
-              topic.value,
-              selectActions(topic.abilities) ++ selectConditions(topic.abilities),
-              topic.color
-            )
+            newTopic
 
-          } 
-
-          selectedTopics += newTopic.value -> newTopic
-
-          newTopic
+          }
 
         }
-        
+
+        selecting = selecting.pop
+
+        newTopic 
+
       }
+      case action : Action => { 
+        action.copy(dependencies = action.dependencies.map(select)) 
+      } 
+      case condition : Condition => { 
+        condition.copy(actions = condition.actions.map(select))
+      }
+      case dependency : Dependency => {
 
-      selecting = selecting.pop
+        val newTopics : List[Term] = { 
+          dependency.topics.collect { case t : Topic => t}.filterNot(isSelecting).map(select)
+        }
 
-      newTopic 
+        dependency.copy(topics = newTopics)
 
+      } 
     } 
 
-    def selectActions(terms : List[Term]) : List[Action] = for { 
-      action <- getActions(terms)
-    } yield Action(
-      action.value,
-      selectDependencies(action.dependencies),
-      action.color
-    )
+    val topics = topicMap.values.map(select).collect{ case t : Topic => t }.toList 
 
-    def selectConditions(terms : List[Term]) = for { 
-      condition <- getConditions(terms)
-    } yield Condition(
-      condition.value, 
-      selectActions(condition.actions), 
-      condition.color
-    )
-
-    def selectDependencies(dependencies : List[Dependency]) : List[Dependency] = for { 
-      dependency <- dependencies
-    } yield Dependency(
-      dependency.value, 
-      dependency.clauses.filterNot(isSelecting).map(selectTopic),
-      dependency.color
-    )
-    
-    val topics : Iterable[Topic] = for { 
-      topic <- topicMap.values 
-    } yield selectTopic(topic)
-
-    topics.toList
+    topics
 
   }
 
   /** 
-    * @method getActions
-    * @param terms {List[Term} 
-    * @return {List[Action]}
+    *  As seen on StackOverflow:
+    *  http://stackoverflow.com/questions/3912753/scala-remove-duplicates-in-list-of-objects 
    **/
-  private def getActions(terms : List[Term]) : List[Action] = terms collect { 
-    case a : Action => a
-  } 
+  private def uniqueValues(lst : List[Term]) : List[Term] = { 
 
-  /**
-    * @method getConditions
-    * @param terms {List[Terms]}
-    * @return {List[Condition]}
-   **/
-  private def getConditions(terms : List[Term]) : List[Condition] = terms collect { 
-    case c : Condition => c
+    lst filterNot { 
+
+      var set : Set[String] = Set.empty[String]
+
+      clause => { 
+        val b : Boolean = set(clause.value)
+        set += clause.value
+        b
+      }
+
+    } 
+
   } 
 
   /**
@@ -224,186 +194,132 @@ class Environment {
     * @param terms {List[Term]}
     * @return {List[Term]}
    **/
-  private def mergeTerms(existingTerms : List[Term], newTerms : List[Term]) : List[Term] = {
+  private def mergeTerms(terms : List[Term]) : List[Term] = {
 
-    val terms : List[Term] = newTerms ++ existingTerms
+    var map : Map[String, Term] = Map.empty[String, Term]
 
-    def mergeDependencies(dependencies : List[Dependency]) : List[Dependency]  = {
-
-      var map : Map[String, Dependency] = Map.empty
-
-      for(dependency <- dependencies) {
-        map.get(dependency.value) match { 
-          case Some(d) => {
-
-            // As seen on StackOverflow:
-            // http://stackoverflow.com/questions/3912753/scala-remove-duplicates-in-list-of-objects
-
-            val uniqueClauses : List[Topic] = { 
-              (d.clauses ++ dependency.clauses) filterNot { 
-
-                var set : Set[String] = Set.empty[String]
-
-                clause => { 
-                  val b : Boolean = set(clause.value)
-                  set += clause.value
-                  b
-                } 
-
-              } 
+    for(term <- terms) { 
+      map.get(term.value) match { 
+        case Some(t) => map += term.value -> { 
+          term match {
+            case topic : Topic if t.isInstanceOf[Topic] => { 
+              topic.copy(abilities = { 
+                mergeTerms(topic.abilities ++ t.asInstanceOf[Topic].abilities)
+              })
+            }
+            case condition : Condition if t.isInstanceOf[Condition] => { 
+              condition.copy(actions = { 
+                mergeTerms(condition.actions ++ t.asInstanceOf[Condition].actions)
+              }) 
             } 
-
-            map += d.value -> Dependency(d.value, 
-              uniqueClauses,
-              dependency.color
-            )
+            case action : Action if t.isInstanceOf[Action] => { 
+              action.copy(dependencies = { 
+                mergeTerms(action.dependencies ++ t.asInstanceOf[Action].dependencies)
+              })
+            } 
+            case dependency : Dependency if t.isInstanceOf[Dependency] => { 
+              dependency.copy(topics = { 
+                uniqueValues(dependency.topics ++ t.asInstanceOf[Dependency].topics) 
+              }) 
+            }
           } 
-          case None => map += dependency.value -> dependency
-        }
+        } 
+        case None => map += term.value -> term
       } 
-
-      map.values.toList 
     }
 
-    def mergeActions(actions : List[Action]) : List[Action] = {
-
-      var map : Map[String, Action] = Map.empty
-
-      for(action <- actions) {
-        map.get(action.value) match { 
-          case Some(a) => {
-            map += a.value -> Action(
-              a.value, 
-              mergeDependencies(a.dependencies ++ action.dependencies),
-              action.color
-            )
-          } 
-          case None => map += action.value -> action
-        }
-      } 
-
-      map.values.toList 
-
-    }
-
-    def mergeConditions(conditions : List[Condition]) : List[Condition] = {
-
-      var map : Map[String, Condition] = Map.empty
-
-      for(condition <- conditions) {
-        map.get(condition.value) match { 
-          case Some(c) => {
-            map += c.value -> Condition(
-              c.value, 
-              mergeActions(c.actions ++ condition.actions),
-              condition.color
-            )
-          } 
-          case None => map += condition.value -> condition
-        }
-      } 
-
-      map.values.toList 
-
-    } 
-
-    mergeActions(getActions(terms)) ++ mergeConditions(getConditions(terms))
-
-  }
-
-  /** 
-    * @method recolor - Changes the colors of each topic, as well as each of 
-    * its conditions, actions, and subsequent dependencies.
-    * @param topics {Topic} 
-    * @param color {Color} 
-    * @return {Topic} - The recolored list of Topics. 
-   **/
-  private def recolorTopic(topic : Topic, color : Color) : Topic = { 
-
-    def recolorConditions(conditions : List[Condition]) = for { 
-      condition <- conditions
-    } yield Condition(  
-      condition.value,
-      recolorActions(condition.actions), 
-      color 
-    ) 
-
-    def recolorActions(actions : List[Action]) = for { 
-      action <- actions 
-    } yield Action(
-      action.value,
-      recolorDependencies(action.dependencies),
-      color 
-    )  
-
-    def recolorDependencies(dependencies : List[Dependency]) = for { 
-      dependency <- dependencies
-    } yield Dependency(  
-      dependency.value,
-      dependency.clauses,
-      color 
-    )
-
-    val recoloredActions : List[Action] = recolorActions(getActions(topic.abilities)) 
-    val recoloredConditions : List[Condition] = recolorConditions(getConditions(topic.abilities))
- 
-    val recoloredAbilities : List[Term] = recoloredActions ++ recoloredConditions
-    Topic(topic.value, recoloredAbilities, color) 
+    map.values.toList
 
   } 
-
 }
 
 /** 
   * @object Environment
  **/ 
-object Environment { 
+object Environment {
 
-  // Set to false to make nextColor 
-  var randomize : Boolean = true 
+  val defaultColor : Color = new ColorImpl(0, 0, 0) 
 
-  private val random : Random = new Random()
-  private val defaultColor : Color = new ColorImpl(0,0,0)
-
-  abstract class Term {
+  sealed abstract class Term {
     def value : String;
-    def color : Color;  
+    def color : Color = defaultColor
   }
 
-  case class Action(value : String, dependencies : List[Dependency],
-    color : Color = defaultColor) extends Term 
+  case class Action(value : String, dependencies : List[Term]) extends Term { 
 
-  case class Dependency(value : String, clauses: List[Topic],
-    color : Color = defaultColor) extends Term { 
+    override def equals(other : Any) : Boolean = other match { 
+      case action : Action => { 
 
-    def depEq(d : Dependency) : Boolean = {
+        action.value == this.value && { 
 
-      def andmap(t : List[Boolean]) : Boolean = { 
-        t.foldRight(true)( _ && _ )
-      } 
+          action.dependencies.zip(this.dependencies).map { 
+            t => t._1 == t._2
+          }.foldRight(true) (_ && _) 
 
-      val t1 : List[Topic] = clauses
-      val t2 : List[Topic] = d.clauses 
-
-      if(t1.size != t2.size) { 
-        false
-      } else andmap { 
-
-        t1 zip t2 map { 
-          case (a,b) => a.value == b.value
-        }
+        } 
 
       } 
-
+      case _ => false 
     } 
 
   } 
 
-  case class Condition(value : String, actions : List[Action],
-    color : Color = defaultColor) extends Term
+  case class Dependency(value : String, topics : List[Term]) extends Term {
 
-  case class Topic(value : String, abilities : List[Term],
-    color : Color = defaultColor) extends Term 
+    override def equals(other : Any) : Boolean = other match { 
+      case dependency : Dependency  => { 
+
+        dependency.value == this.value && { 
+
+          dependency.topics.zip(this.topics).map { 
+            t => t._1 == t._2
+          }.foldRight(true) (_ && _) 
+
+        } 
+
+      } 
+      case _ => false 
+    } 
+
+  } 
+
+  case class Condition(value : String, actions : List[Term]) extends Term { 
+
+    override def equals(other : Any) : Boolean = other match { 
+      case condition : Condition => { 
+
+        condition.value == this.value && { 
+
+          condition.actions.zip(this.actions).map { 
+            t => t._1 == t._2
+          }.foldRight(true) (_ && _) 
+
+        } 
+
+      } 
+      case _ => false 
+    } 
+
+  } 
+
+  case class Topic(value : String, abilities : List[Term]) extends Term { 
+
+    override def equals(other : Any) : Boolean = other match { 
+      case topic : Topic  => { 
+
+        topic.value == this.value && { 
+
+          topic.abilities.zip(this.abilities).map { 
+            t => t._1 == t._2
+          }.foldRight(true) (_ && _) 
+
+        } 
+
+      } 
+      case _ => false 
+    } 
+
+  } 
 
 
   def parse(tree : LinguisticTree) : List[Topic] = { 
@@ -430,7 +346,7 @@ object Environment {
     val attType : Attribute = attrList.createAttribute("type", AttributeType.STRING, "type")
 
     // Map of already visited topic nodes
-    var visitedTopics : Map[String, Node] = Map.empty[String, Node] 
+    var visitedTopics : Map[Topic, Node] = Map.empty[Topic, Node] 
 
     // Map of already visited dependencies, to make two different actions
     // point to the same dependency. 
@@ -462,14 +378,14 @@ object Environment {
 
         val newEdges : List[Edge] = term match { 
           case dep : Dependency if dep.value == "" => { 
-            makeEdges(node, dep.clauses) 
+            makeEdges(node, dep.topics) 
           } 
           case _ => try {
 
             val edge : Edge = node.connectTo(IDs.nextEdge, toNode(term))
 
             edge.setEdgeType(EdgeType.DIRECTED)
-            edge.setColor(term.color)
+            edge.setColor(new ColorImpl(0,0,0))
 
             term match { 
               case _ : Dependency => edge.setShape(EdgeShape.DASHED)
@@ -505,28 +421,25 @@ object Environment {
     def toNode(term : Term) : Node = {
 
       term match { 
-        case Topic(value, abilities, color) => visitedTopics.get(value).getOrElse({ 
-          val node : Node = makeNode("Topic")(value, abilities)
-          visitedTopics += value -> node
+        case topic : Topic => visitedTopics.get(topic).getOrElse({ 
+          val node : Node = makeNode("Topic")(topic.value, topic.abilities)
+          visitedTopics += topic -> node
           node
         })
         case dep : Dependency => {
          
-          visitedDependencies.find(x => x._1 depEq dep) match {
-            case Some(kv) => { 
-              val (_, node) = kv
-              node
-            } 
+          visitedDependencies.get(dep) match {
+            case Some(node) => node
             case None => { 
-              var node : Node = makeNode("Dependency")(dep.value, dep.clauses)
+              var node : Node = makeNode("Dependency")(dep.value, dep.topics)
               visitedDependencies += dep -> node
               node 
             }
           }
 
         } 
-        case Condition(value, actions, color) => { 
-          val node : Node = makeNode("Condition")(value, actions)
+        case condition : Condition => { 
+          val node : Node = makeNode("Condition")(condition.value, condition.actions)
           node.getShapeEntity.setNodeShape(NodeShape.SQUARE) 
           node 
         } 
@@ -543,21 +456,6 @@ object Environment {
 
   }
 
-  /** 
-    * @method nextColor - Generates a random color. 
-    * @return {Color} - A random color. 
-   **/
-  private def nextColor() : Color = if(randomize) { 
-
-    val rgb : Tuple3[Int, Int, Int] = (
-      random.nextInt(256),
-      random.nextInt(256), 
-      random.nextInt(256)
-    ) 
-
-    new ColorImpl(rgb._1, rgb._2, rgb._3) 
-
-  } else defaultColor
 
 } 
  
