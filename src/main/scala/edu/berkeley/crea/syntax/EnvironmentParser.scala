@@ -57,17 +57,10 @@ class EnvironmentParser {
    **/
   private def existsBinaryRules(tree : LinguisticTree, pairs : Set[(String, String)]) : Boolean  = {
 
-    val children = tree.getChildren.asScala 
+    pairs exists { 
+      rule : (String, String) => existsBinaryRule(tree, rule) 
+    } 
 
-    if(children.size != 2) { 
-      false 
-    } else {
-
-      pairs exists { 
-        rule : (String, String) => existsBinaryRule(tree, rule) 
-      } 
-
-    }
   }
 
   /**
@@ -92,10 +85,9 @@ class EnvironmentParser {
     * @return {Option[(LinguisticTree, LinguisticTree)]}  
    **/
   private def findBinaryRule(tree : LinguisticTree, rule : (String, String)) : Option[(LinguisticTree, LinguisticTree)] = { 
-    
+
     tree.getChildren.asScala.toList match {
-      case List(a, b, _*) if (a.getLabel, b.getLabel) == rule => Some((a,b))
-      case List(_, a, b, _*) if (a.getLabel, b.getLabel) == rule => Some((a,b))
+      case (List(a, b, _*) if (a.getLabel, b.getLabel) == rule => Some((a,b))
       case List(_*) => None 
     } 
 
@@ -148,7 +140,7 @@ class EnvironmentParser {
     val children = tree.getChildren.asScala
 
     tree.getLabel match { 
-      case "NP" | "S" => {
+      case "NP" |"@NP" | "S" => {
 
         stack.push(buildDependency(tree))
 
@@ -300,7 +292,7 @@ class EnvironmentParser {
   def parse(tree : LinguisticTree) : Stack[Topic] = {
 
     def thatRules : Set[(String, String)] = { 
-      Set[(String, String)](("NP", "SBAR"), ("NP", "PP"))
+      Set[(String, String)](("NP", "SBAR"), ("NP", "PP"), ("@NP", "SBAR"), ("@NP", "PP"))
     }
 
     def gerundRules : Set[(String, String)] = { 
@@ -308,7 +300,7 @@ class EnvironmentParser {
     } 
 
     tree.getLabel match {
-      case "NP" if !existsBinaryRules(tree, thatRules)  => {
+      case "NP" | "@NP" if !existsBinaryRules(tree, thatRules)  => {
 
         val topic : Topic = { 
           Topic(terminalValue(tree), verbStack.toList) 
@@ -358,7 +350,7 @@ class EnvironmentParser {
         verbStack = parseVerb(tree) ++ verbStack
         topicStack
       } 
-      case "NP" if existsBinaryRules(tree, thatRules) => { 
+      case "NP" | "@NP" if existsBinaryRules(tree, thatRules) => { 
 
         val (left, right) = findBinaryRules(tree, thatRules).get
 
