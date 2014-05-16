@@ -32,9 +32,103 @@ package object TreeConversions {
   type LinguisticTree = Tree[String]
    
   /** 
-   * Implicitly convert a string containing an s-expression, valid according to Penn Treebank guidelines,
+   * @method StringToTree - Implicitly convert a string containing an s-expression, valid according to Penn Treebank guidelines,
    * to a Tree with string labels.
+   * @param str {String} 
+   * @return {LinguisticTree}
    **/
-  implicit def StringToTree(str : String) : Tree[String] = Trees.PennTreeReader.parseEasy(str, false)
+  implicit def StringToTree(str : String) : LinguisticTree = Trees.PennTreeReader.parseEasy(str, false)
+
+  /** 
+    * @class TreeEnhancer
+    * @param tree {LinguisticTree}
+   **/
+  implicit class TreeEnhancer(tree : LinguisticTree) { 
+
+    /**
+      * @method terminalValue
+      * @return {String} 
+     **/ 
+    def terminalValue : String = {
+
+      def terminalLabels(tree : LinguisticTree) : String = {
+        tree.getTerminals.asScala map { 
+          _.getLabel 
+        } mkString("") 
+      } 
+
+      val str = tree.iterator.asScala.toList filter { 
+        _.isPreTerminal
+      } filter { 
+        _.getLabel match { 
+          case "PDT" | "DT" | "PRP$" => false
+          case _ => true
+        } 
+      } map {  
+        t => Lemmatizer.lemmatize(terminalLabels(t)) 
+      } mkString(" ")
+
+      str.toLowerCase.replaceAll("[.!?]", "")
+
+    } 
+
+    /**
+      * @method existsBinaryRules
+      * @param pairs {Set[(String, String)]} 
+      * @return {Boolean} 
+      **/
+    def existsBinaryRules(pairs : Set[(String, String)]) : Boolean  = {
+
+      pairs exists { 
+        rule : (String, String) => tree.existsBinaryRule(rule) 
+      } 
+
+    }
+
+    /**
+      * @method existsBinaryRule
+      * @param rule {(String, String)}
+      * @return {Boolean} 
+      **/
+    def existsBinaryRule(rule : (String, String)) : Boolean = { 
+
+      tree.findBinaryRule(rule) match { 
+        case Some(_) => true
+        case None => false 
+      } 
+
+    } 
+
+    /** 
+      * @method findBinaryRule
+      * @param rule {(String, String)} 
+      * @return {Option[(LinguisticTree, LinguisticTree)]}  
+      **/
+    def findBinaryRule(rule : (String, String)) : Option[(LinguisticTree, LinguisticTree)] = { 
+
+      tree.getChildren.asScala.toList match {
+        case List(a, b, _*) if (a.getLabel, b.getLabel) == rule => Some((a,b))
+        case List(_*) => None 
+      } 
+
+    } 
+
+    /** 
+      * @method findBinaryRules 
+      * @param rule {(String, String)} 
+      * @return {Option[(LinguisticTree, LinguisticTree)]}
+      **/
+    def findBinaryRules(rules : Set[(String, String)]) : Option[(LinguisticTree, LinguisticTree)] = { 
+
+      rules.foldLeft[Option[(LinguisticTree, LinguisticTree)]](None) { 
+        (result, rule) => result match { 
+          case Some(_) => result
+          case None => tree.findBinaryRule(rule)
+        } 
+      } 
+
+    } 
+
+  } 
 
 } 

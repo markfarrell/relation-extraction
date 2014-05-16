@@ -22,95 +22,6 @@ class EnvironmentParser {
   private var dependencyStack : Stack[Dependency] = Stack.empty[Dependency]
 
   /**
-    * @method terminalValue
-    * @param tree {LinguisticTree} 
-    * @return {String} 
-   **/ 
-  private def terminalValue(tree : LinguisticTree) : String = {
-
-    def terminalLabels(tree : LinguisticTree) : String = {
-      tree.getTerminals.asScala map { 
-        _.getLabel 
-      } mkString("") 
-    } 
-
-    val str = tree.iterator.asScala.toList filter { 
-      _.isPreTerminal
-    } filter { 
-      _.getLabel match { 
-        case "PDT" | "DT" | "PRP$" => false
-        case _ => true
-      } 
-    } map {  
-      t => Lemmatizer.lemmatize(terminalLabels(t)) 
-    } mkString(" ")
-
-    str.toLowerCase.replaceAll("[.!?]", "")
-
-  } 
-
-  /**
-    * @method existsBinaryRules
-    * @param tree {LinguisticTree}
-    * @param pairs {Set[(String, String)]} 
-    * @return {Boolean} 
-   **/
-  private def existsBinaryRules(tree : LinguisticTree, pairs : Set[(String, String)]) : Boolean  = {
-
-    pairs exists { 
-      rule : (String, String) => existsBinaryRule(tree, rule) 
-    } 
-
-  }
-
-  /**
-    * @method existsBinaryRule
-    * @param tree {LinguisticTree} 
-    * @param rule {(String, String)}
-    * @return {Boolean} 
-   **/
-  private def existsBinaryRule(tree : LinguisticTree, rule : (String, String)) : Boolean = { 
-
-    findBinaryRule(tree, rule) match { 
-      case Some(_) => true
-      case None => false 
-    } 
-
-  } 
-
-  /** 
-    * @method findBinaryRule
-    * @param tree {LinguisticTree} 
-    * @param rule {(String, String)} 
-    * @return {Option[(LinguisticTree, LinguisticTree)]}  
-   **/
-  private def findBinaryRule(tree : LinguisticTree, rule : (String, String)) : Option[(LinguisticTree, LinguisticTree)] = { 
-
-    tree.getChildren.asScala.toList match {
-      case (List(a, b, _*) if (a.getLabel, b.getLabel) == rule => Some((a,b))
-      case List(_*) => None 
-    } 
-
-  } 
-
-  /** 
-    * @method findBinaryRules 
-    * @param tree {LinguisticTree}
-    * @param rule {(String, String)} 
-    * @return {Option[(LinguisticTree, LinguisticTree)]}
-   **/
-  private def findBinaryRules(tree : LinguisticTree, rules : Set[(String, String)]) : Option[(LinguisticTree, LinguisticTree)] = { 
-
-    rules.foldLeft[Option[(LinguisticTree, LinguisticTree)]](None) { 
-      (result, rule) => result match { 
-        case Some(_) => result
-        case None => findBinaryRule(tree, rule)
-      } 
-    } 
-
-  } 
-
-  /**
     * @method parseDependencies
     * @param tree {LinguisticTree} 
     * @return {Stack[Dependency]}
@@ -128,7 +39,7 @@ class EnvironmentParser {
     def buildDependency(tree : LinguisticTree, value : String = "") : Dependency = {
 
         val excludeTopics : Stack[Topic] = topicStack
-        val topics : List[Topic] = parse(tree).filterNot(containsTopic(excludeTopics)).headOption match { 
+        val topics : List[Topic] = parse(tree).filterNot(containsTopic(excludeTopics)).lastOption match { 
           case Some(headTopic) => List[Topic](headTopic)
           case None => List.empty[Topic]
         }
@@ -140,7 +51,7 @@ class EnvironmentParser {
     val children = tree.getChildren.asScala
 
     tree.getLabel match { 
-      case "NP" |"@NP" | "S" => {
+      case "NP" | "@NP" | "S" => {
 
         stack.push(buildDependency(tree))
 
@@ -149,7 +60,7 @@ class EnvironmentParser {
 
         val (left, right) = (children.head, children.last)
         
-        val value : String = terminalValue(left) 
+        val value : String = left.terminalValue 
 
         stack.push(buildDependency(right, value))
 
@@ -194,9 +105,9 @@ class EnvironmentParser {
     }
     
     tree.getLabel match { 
-      case "VP" if existsBinaryRules(tree, conditionRules) => { 
+      case "VP" if tree.existsBinaryRules(conditionRules) => { 
 
-        val (left, right) = findBinaryRules(tree, conditionRules).get
+        val (left, right) = tree.findBinaryRules(conditionRules).get
 
         val condition : Condition = {
 
@@ -212,19 +123,19 @@ class EnvironmentParser {
 
           assert(conditions.size == 0, "Conditions should not be nested!")
 
-          Condition(terminalValue(left), actions)
+          Condition(left.terminalValue, actions)
 
         } 
 
         stack.push(condition) 
 
       } 
-      case "VP" | "PP" if existsBinaryRules(tree, dependencyRules) => {
+      case "VP" | "PP" if tree.existsBinaryRules(dependencyRules) => {
 
-        val (left, right) = findBinaryRules(tree, dependencyRules).get
+        val (left, right) = tree.findBinaryRules(dependencyRules).get
       
         val action : Action = { 
-          Action(terminalValue(left), parseDependencies(right).toList ++ dependencyStack.toList) 
+          Action(left.terminalValue, parseDependencies(right).toList ++ dependencyStack.toList) 
         }
 
         dependencyStack = Stack.empty[Dependency]
@@ -232,9 +143,9 @@ class EnvironmentParser {
         stack.push(action) 
 
       }
-      case "VP" if existsBinaryRules(tree, doubleRules) => {
+      case "VP" if tree.existsBinaryRules(doubleRules) => {
 
-        val (_, right) = findBinaryRules(tree, doubleRules).get
+        val (_, right) = tree.findBinaryRules(doubleRules).get
 
         stack ++ parseVerb(right) 
 
@@ -242,7 +153,7 @@ class EnvironmentParser {
       case "VB" | "VBD" | "VBZ" | "VBP" | "VBG" | "VBN" => { 
 
         val action : Action = {
-          Action(terminalValue(tree), dependencyStack.toList)
+          Action(tree.terminalValue, dependencyStack.toList)
         } 
 
         dependencyStack = Stack.empty[Dependency] 
@@ -300,10 +211,10 @@ class EnvironmentParser {
     } 
 
     tree.getLabel match {
-      case "NP" | "@NP" if !existsBinaryRules(tree, thatRules)  => {
+      case "NP" | "@NP" if !tree.existsBinaryRules(thatRules)  => {
 
         val topic : Topic = { 
-          Topic(terminalValue(tree), verbStack.toList) 
+          Topic(tree.terminalValue, verbStack.toList) 
         }
 
         verbStack = Stack.empty[Term] 
@@ -312,12 +223,12 @@ class EnvironmentParser {
         topicStack
 
       }
-      case "VP" if existsBinaryRules(tree, gerundRules) => { 
+      case "VP" if tree.existsBinaryRules(gerundRules) => { 
         
-        val (left, right) = findBinaryRules(tree, gerundRules).get
+        val (left, right) = tree.findBinaryRules(gerundRules).get
 
         val topic : Topic = { 
-          Topic(terminalValue(right), parseVerb(left).toList ++ verbStack.toList)
+          Topic(right.terminalValue, parseVerb(left).toList ++ verbStack.toList)
         }
 
         verbStack = Stack.empty[Term]
@@ -350,9 +261,9 @@ class EnvironmentParser {
         verbStack = parseVerb(tree) ++ verbStack
         topicStack
       } 
-      case "NP" | "@NP" if existsBinaryRules(tree, thatRules) => { 
+      case "NP" | "@NP" if tree.existsBinaryRules(thatRules) => { 
 
-        val (left, right) = findBinaryRules(tree, thatRules).get
+        val (left, right) = tree.findBinaryRules(thatRules).get
 
         dependencyStack = { 
           dependencyStack ++ parseDependencies(left) ++ parseDependencies(right)
