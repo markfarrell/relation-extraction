@@ -10,7 +10,8 @@ object ProjectBuild extends Build {
     version := "0.1",
     scalaVersion := "2.10.3",
     resolvers ++= Seq( 
-      "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases"
+      "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
+      "gephi-nexus" at "http://nexus.gephi.org/nexus/content/repositories/snapshots"
     ),
     libraryDependencies ++= Seq(
       "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
@@ -19,7 +20,8 @@ object ProjectBuild extends Build {
       "postgresql" % "postgresql" % "8.4-701.jdbc4",
       "com.github.scopt" %% "scopt" % "3.2.0",
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1",
-      "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models" 
+      "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models",
+      "org.gephi" % "graphstore" % "0.1-SNAPSHOT"
     )
   ) 
 
@@ -27,7 +29,7 @@ object ProjectBuild extends Build {
     id = "root",
     base = file("."),
     settings = standardSettings ++ SbtStartScript.startScriptForClassesSettings
-  ).dependsOn(uri("git://github.com/aztek/porterstemmer.git")) 
+  )
 
 } 
 
