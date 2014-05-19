@@ -6,7 +6,7 @@ import scala.collection.immutable.{
   List, Set, Stack
 }
 
-import org.gephi.graph.api.{ Graph, Node, Edge, GraphFactory } 
+import org.gephi.graph.api.{ Graph, Node, Edge, GraphFactory, GraphModel } 
 
 import TreeConversions._
 
@@ -15,90 +15,9 @@ import TreeConversions._
  * whose contents can then be written to a GEXF file or database back-end. 
  * TODO: Make factory an implicit parameter. 
  **/ 
-class Compiler(factory : GraphFactory) {
+class Compiler(model : GraphModel) {
 
-  object Topic { 
-
-    def apply(label : String, targets : Stack[Node]) : Node = {
-
-      val topic = factory.newNode()
-      topic.setLabel(label) 
-      topic.setAttribute("type", "Topic") 
-
-      for(node <- targets) { 
-        factory.newEdge(topic, node) 
-      } 
-
-      topic 
-
-    } 
-
-  } 
-
-  object Dependency { 
-
-    def apply(label : String, targets : Stack[Node], excludeTopics : Stack[Node]) : Node = {
-
-      val lastOption = targets.filterNot(containsTopic(excludeTopics)).lastOption
-
-      val dependency = factory.newNode() 
-
-      dependency.setLabel(label)
-      dependency.setAttribute("type", "Dependency")
-
-      for(lastTopic <- lastOption) {
-        // TODO: Make the dependency point to the actions of this new topic.
-        factory.newEdge(dependency, lastTopic) 
-      }
-
-      dependency
-
-    }
-
-    private def containsTopic(topics : Stack[Node])(topic : Node) : Boolean = { 
-      topics.find(_.getId == topic.getId) match { 
-        case Some(_) => true
-        case None => false
-      } 
-    }
-
-  } 
-
-  object Action { 
-
-    def apply(label : String, targets : Stack[Node]) : Node = { 
-
-      val action = factory.newNode() 
-      action.setLabel(label) 
-      action.setAttribute("type", "Action") 
-
-      for(node <- targets) { 
-        factory.newEdge(action, node) 
-      }
-
-      action
-
-    } 
-
-  }
-
-  object Condition { 
-
-    def apply(label : String, targets : Stack[Node]) : Node = { 
-
-      val condition = factory.newNode()
-      condition.setLabel(label) 
-      condition.setAttribute("type", "Condition") 
-
-      for(node <- targets) { 
-        factory.newEdge(condition, node) 
-      } 
-
-      condition 
-
-    }
-
-  } 
+  private implicit val factory : GraphFactory = model.factory
 
   private var topicStack : Stack[Node] = Stack.empty[Node]
   private var verbStack : Stack[Node] = Stack.empty[Node] 
@@ -204,7 +123,7 @@ class Compiler(factory : GraphFactory) {
         stack.push(Action(tree.terminalValue, targets)) 
 
       }
-      case "NP" if stack.size > 0  => { 
+      case "NP" if stack.size > 0 => { 
 
         val action = stack.head
 
@@ -317,3 +236,88 @@ class Compiler(factory : GraphFactory) {
 
   } 
 }
+
+
+object Topic { 
+
+  def apply(label : String, targets : Stack[Node])(implicit factory : GraphFactory) : Node = {
+
+    val topic = factory.newNode(label)
+    topic.setLabel(label) 
+    topic.setAttribute("type", "Topic") 
+
+    for(node <- targets) { 
+      factory.newEdge(topic, node) 
+    } 
+
+    topic 
+
+  } 
+
+} 
+
+object Dependency { 
+
+  def apply(label : String, targets : Stack[Node], excludeTopics : Stack[Node])(implicit factory : GraphFactory) : Node = {
+
+    val lastOption = targets.filterNot(containsTopic(excludeTopics)).lastOption
+
+    val dependency = factory.newNode() 
+
+    dependency.setLabel(label)
+    dependency.setAttribute("type", "Dependency")
+
+    for(lastTopic <- lastOption) {
+      // TODO: Make the dependency point to the actions of this new topic.
+      factory.newEdge(dependency, lastTopic) 
+    }
+
+    dependency
+
+  }
+
+  private def containsTopic(topics : Stack[Node])(topic : Node) : Boolean = { 
+    topics.find(_.getId == topic.getId) match { 
+      case Some(_) => true
+      case None => false
+    } 
+  }
+
+} 
+
+object Action { 
+
+  def apply(label : String, targets : Stack[Node])(implicit factory : GraphFactory) : Node = { 
+
+    val action = factory.newNode() 
+    action.setLabel(label) 
+    action.setAttribute("type", "Action") 
+
+    for(node <- targets) { 
+      factory.newEdge(action, node) 
+    }
+
+    action
+
+  } 
+
+}
+
+object Condition { 
+
+  def apply(label : String, targets : Stack[Node])(implicit factory : GraphFactory) : Node = { 
+
+    val condition = factory.newNode()
+    condition.setLabel(label) 
+    condition.setAttribute("type", "Condition") 
+
+    for(node <- targets) { 
+      factory.newEdge(condition, node) 
+    } 
+
+    condition 
+
+  }
+
+} 
+

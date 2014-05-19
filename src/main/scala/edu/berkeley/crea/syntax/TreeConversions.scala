@@ -61,14 +61,17 @@ package object TreeConversions {
         _.isPreTerminal
       } filter { 
         _.getLabel match { 
-          case "PDT" | "DT" | "PRP$" => false
+          case "PDT" | "DT" | "PRP$" | "," => false
           case _ => true
         } 
       } map {  
         t => Lemmatizer.lemmatize(terminalLabels(t)) 
       } mkString(" ")
 
-      str.toLowerCase.replaceAll("[.!?]", "")
+      str.toLowerCase
+        .replaceAll("[.!?]", "")
+        .replaceAll("-lrb-", "(")
+        .replaceAll("-rrb-", ")")
 
     } 
 
