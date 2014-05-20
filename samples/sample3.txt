@@ -1,1 +1,0 @@
-The first step in isolating cells of a uniform type from a tissue that contains a mixture of cell types is to disrupt the extracellular matrix that holds the cells together.

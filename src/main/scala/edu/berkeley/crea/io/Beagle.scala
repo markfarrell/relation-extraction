@@ -120,20 +120,20 @@ object Beagle {
    **/
   private def connect(cfg : Config) : Connection = {
 
-       Class.forName("org.postgresql.Driver")
+    Class.forName("org.postgresql.Driver")
 
-        val url : String = "jdbc:postgresql://"+cfg.host+":"+cfg.port+"/"+cfg.database
-        val props : Properties = new Properties()
+    val url : String = "jdbc:postgresql://"+cfg.host+":"+cfg.port+"/"+cfg.database
+    val props : Properties = new Properties()
 
-        if(cfg.user.length > 0) { 
-          props.setProperty("user", cfg.user)
-        }
+    if(cfg.user.length > 0) { 
+      props.setProperty("user", cfg.user)
+    }
 
-        if(cfg.password.length > 0) { 
-          props.setProperty("password", cfg.password)
-        } 
+    if(cfg.password.length > 0) { 
+      props.setProperty("password", cfg.password)
+    } 
 
-        DriverManager.getConnection(url, props)
+    DriverManager.getConnection(url, props)
 
   }
 
@@ -239,15 +239,36 @@ object Beagle {
         // Maybe produce a GEXF file
         if(cfg.file != null) {
 
-          val conn : Connection = connect(cfg) 
+          //val conn : Connection = connect(cfg) 
+
+          import org.gephi.graph.store.GraphModelImpl
+          import edu.berkeley.crea.syntax.{ Compiler, ToGexf } 
+
+          val parser : DefaultParser = new DefaultParser(cfg.grammar)
+
+          def parse(str : String) : Tree[String]  = {
+            val ret : Tree[String] = parser.parse(str) 
+            println(str + " -> " + ret.toString) 
+            ret
+          }
+
+          implicit val model = new GraphModelImpl
+
+          for(sentence <- Blurb.tokens(System.in) map parse) {
+            (new Compiler()(model)).parse(sentence) 
+          } 
 
           val fs : FileOutputStream = new FileOutputStream(cfg.file) 
 
-          val env : Environment = new PostgresImporter(conn).load()
 
-          (new StaxGraphWriter).writeToStream(Environment.toGexf(env.selectTopics()), fs, "UTF-8")
+          //val env : Environment = new PostgresImporter(conn).load()
+          //val env : Environment = createEnv(cfg) 
 
-          conn.close() 
+          //(new StaxGraphWriter).writeToStream(Environment.toGexf(env.selectTopics()), fs, "UTF-8")
+
+          (new StaxGraphWriter).writeToStream(ToGexf(model), fs, "UTF-8")
+
+          //conn.close() 
 
         }
 

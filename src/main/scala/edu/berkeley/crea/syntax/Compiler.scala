@@ -15,20 +15,18 @@ import TreeConversions._
  * whose contents can then be written to a GEXF file or database back-end. 
  * TODO: Make factory an implicit parameter. 
  **/ 
-class Compiler(model : GraphModel) {
+class Compiler(implicit model : GraphModel) {
 
-  private implicit val factory : GraphFactory = model.factory
-
-  private var topicStack : Stack[Node] = Stack.empty[Node]
-  private var verbStack : Stack[Node] = Stack.empty[Node] 
-  private var dependencyStack : Stack[Node] = Stack.empty[Node]
+  private[this] var topicStack : Stack[Node] = Stack.empty[Node]
+  private[this] var verbStack : Stack[Node] = Stack.empty[Node] 
+  private[this] var dependencyStack : Stack[Node] = Stack.empty[Node]
 
   /**
     * @method parseDependencies
     * @param tree {LinguisticTree} 
     * @return {Stack[Node]}
    **/
-  private def parseDependencies(tree : LinguisticTree, 
+  private[this] def parseDependencies(tree : LinguisticTree, 
     stack : Stack[Node] = Stack.empty[Node]) : Stack[Node] = {
   
     val excludeTopics : Stack[Node] = topicStack
@@ -57,7 +55,7 @@ class Compiler(model : GraphModel) {
     * @param tree {LinguisticTree}
     * @return {Stack[Node]}
    **/
-  private def parseVerb(tree : LinguisticTree,  
+  private[this] def parseVerb(tree : LinguisticTree,  
     stack : Stack[Node] = Stack.empty[Node]) : Stack[Node] = {
 
     def doubleRules : Set[(String, String)] = { 
@@ -131,7 +129,9 @@ class Compiler(model : GraphModel) {
         dependencyStack = Stack.empty[Node]
 
         for(node <- targets) { 
-          factory.newEdge(action, node) 
+          model.getGraph.addEdge { 
+            model.factory.newEdge(action, node) 
+          } 
         } 
 
         stack
@@ -168,10 +168,11 @@ class Compiler(model : GraphModel) {
     tree.getLabel match {
       case "NP" | "@NP" if !tree.existsBinaryRules(thatRules) => {
 
-        val targets = verbStack 
+        val targets = verbStack
         verbStack = Stack.empty[Node] 
 
         topicStack = topicStack.push(Topic(tree.terminalValue, targets))
+
         topicStack
 
       }
@@ -183,18 +184,21 @@ class Compiler(model : GraphModel) {
         verbStack = Stack.empty[Node]
 
         topicStack = topicStack.push(Topic(right.terminalValue, targets))
+
         topicStack 
 
       } 
       case "VP" if topicStack.size > 0 => { 
 
         val targets = parseVerb(tree) ++ verbStack 
-        verbStack = Stack.empty[Node] 
 
         val topic = topicStack.head
+        verbStack = Stack.empty[Node] 
 
         for(node <- targets) { 
-          factory.newEdge(topic, node) 
+          model.getGraph.addEdge { 
+            model.factory.newEdge(topic, node) 
+          } 
         } 
 
         topicStack
@@ -237,20 +241,32 @@ class Compiler(model : GraphModel) {
   } 
 }
 
-
 object Topic { 
 
-  def apply(label : String, targets : Stack[Node])(implicit factory : GraphFactory) : Node = {
+  def apply(label : String, targets : Stack[Node])(implicit model : GraphModel) : Node = {
 
-    val topic = factory.newNode(label)
-    topic.setLabel(label) 
-    topic.setAttribute("type", "Topic") 
+    val topic = Option(model.getGraph.getNode(label)) match { 
+      case Some(topic) => topic 
+      case None => { 
+
+        val topic = model.factory.newNode(label)
+
+        topic.setLabel(label) 
+        //topic.setAttribute("type", "Topic") 
+
+        model.getGraph.addNode(topic) 
+
+        topic 
+      }
+    }
 
     for(node <- targets) { 
-      factory.newEdge(topic, node) 
+      model.getGraph.addEdge { 
+        model.factory.newEdge(topic, node) 
+      } 
     } 
 
-    topic 
+    topic
 
   } 
 
@@ -258,18 +274,22 @@ object Topic {
 
 object Dependency { 
 
-  def apply(label : String, targets : Stack[Node], excludeTopics : Stack[Node])(implicit factory : GraphFactory) : Node = {
+  def apply(label : String, targets : Stack[Node], excludeTopics : Stack[Node])(implicit model : GraphModel) : Node = {
 
     val lastOption = targets.filterNot(containsTopic(excludeTopics)).lastOption
 
-    val dependency = factory.newNode() 
+    val dependency = model.factory.newNode() 
 
     dependency.setLabel(label)
-    dependency.setAttribute("type", "Dependency")
+    //dependency.setAttribute("type", "Dependency")
+
+    model.getGraph.addNode(dependency)
 
     for(lastTopic <- lastOption) {
       // TODO: Make the dependency point to the actions of this new topic.
-      factory.newEdge(dependency, lastTopic) 
+      model.getGraph.addEdge { 
+        model.factory.newEdge(dependency, lastTopic) 
+      } 
     }
 
     dependency
@@ -277,7 +297,7 @@ object Dependency {
   }
 
   private def containsTopic(topics : Stack[Node])(topic : Node) : Boolean = { 
-    topics.find(_.getId == topic.getId) match { 
+    topics.find(_.getLabel == topic.getLabel) match { 
       case Some(_) => true
       case None => false
     } 
@@ -287,14 +307,18 @@ object Dependency {
 
 object Action { 
 
-  def apply(label : String, targets : Stack[Node])(implicit factory : GraphFactory) : Node = { 
+  def apply(label : String, targets : Stack[Node])(implicit model : GraphModel) : Node = { 
 
-    val action = factory.newNode() 
+    val action = model.factory.newNode() 
     action.setLabel(label) 
-    action.setAttribute("type", "Action") 
+    //action.setAttribute("type", "Action") 
+
+    model.getGraph.addNode(action) 
 
     for(node <- targets) { 
-      factory.newEdge(action, node) 
+      model.getGraph.addEdge { 
+        model.factory.newEdge(action, node) 
+      } 
     }
 
     action
@@ -305,19 +329,100 @@ object Action {
 
 object Condition { 
 
-  def apply(label : String, targets : Stack[Node])(implicit factory : GraphFactory) : Node = { 
+  def apply(label : String, targets : Stack[Node])(implicit model : GraphModel) : Node = { 
 
-    val condition = factory.newNode()
+    val condition = model.factory.newNode()
     condition.setLabel(label) 
-    condition.setAttribute("type", "Condition") 
+    //condition.setAttribute("type", "Condition") 
+
+    model.getGraph.addNode(condition)
 
     for(node <- targets) { 
-      factory.newEdge(condition, node) 
+      model.getGraph.addEdge { 
+        model.factory.newEdge(condition, node)
+      } 
     } 
 
     condition 
 
   }
+
+}
+
+object ToGexf {
+
+  import it.uniroma1.dis.wsngroup.gexf4j.core.{ 
+    EdgeType, Gexf, Graph, Mode, Node, Edge
+  }
+
+  import it.uniroma1.dis.wsngroup.gexf4j.core.data.{ 
+    Attribute, AttributeClass, AttributeList, AttributeType
+  }
+
+  import it.uniroma1.dis.wsngroup.gexf4j.core.impl.{ 
+    GexfImpl, StaxGraphWriter
+  }
+
+  import it.uniroma1.dis.wsngroup.gexf4j.core.viz.{
+    NodeShape, EdgeShape, Color
+  }
+
+  import it.uniroma1.dis.wsngroup.gexf4j.core.impl.data.AttributeListImpl
+  import it.uniroma1.dis.wsngroup.gexf4j.core.impl.viz.ColorImpl
+
+  def apply(model : GraphModel) : Gexf = {
+
+    val gexf : Gexf = new GexfImpl()
+
+    gexf.setVisualization(true)
+
+    val graph : Graph = gexf.getGraph()
+    graph.setDefaultEdgeType(EdgeType.DIRECTED).setMode(Mode.STATIC)
+
+    val attrList : AttributeList = new AttributeListImpl(AttributeClass.NODE)
+    graph.getAttributeLists().add(attrList)
+
+    //val attType : Attribute = attrList.createAttribute("type", AttributeType.STRING, "type")
+
+    import scala.collection.mutable.HashMap 
+    val nodeTable = HashMap.empty[Object, Node] 
+
+    val nodes = model.getGraph.getNodes.asScala 
+    val edges = model.getGraph.getEdges.asScala
+
+    for(node <- nodes) {
+
+      val gexfNode = graph.createNode(node.getId.toString).setLabel(node.getLabel)
+      //val valueOfType = node.getAttribute("type").toString
+
+      //assert(valueOfType != null) 
+
+      //gexfNode.getAttributeValues.addValue(attType, valueOfType)
+
+      nodeTable += node.getId -> gexfNode
+
+    }
+
+    for(edge <- edges) {
+
+      val sourceGexfNode = nodeTable.get(edge.getSource.getId) 
+      val targetGexfNode = nodeTable.get(edge.getTarget.getId)
+
+      (sourceGexfNode, targetGexfNode) match { 
+        case (Some(source), Some(target)) => { 
+
+          val gexfEdge = source.connectTo(target) 
+          gexfEdge.setEdgeType(EdgeType.DIRECTED) 
+
+        } 
+        case _ => Unit 
+      } 
+
+    } 
+
+    gexf 
+
+  } 
 
 } 
 
