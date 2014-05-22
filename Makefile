@@ -8,7 +8,7 @@ bin:
 	mkdir -p bin
 
 %.gexf: %.txt
-	./Beagle --clear -f bin/$(notdir $@) < $<
+	./Beagle -f bin/$(notdir $@) < $<
 
 samples: bin $(patsubst %.txt, %.gexf, $(wildcard samples/*.txt))
 

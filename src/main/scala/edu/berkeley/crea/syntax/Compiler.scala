@@ -11,9 +11,8 @@ import org.gephi.graph.api.{ Graph, Node, Edge, GraphFactory, GraphModel }
 import TreeConversions._
 
 /** 
- * @class Compiler - A Compiler front-end that writes to an intermediate in-memory graphstore, 
+ * A Compiler front-end that writes to an intermediate in-memory graphstore, 
  * whose contents can then be written to a GEXF file or database back-end. 
- * TODO: Make factory an implicit parameter. 
  **/ 
 class Compiler(implicit model : GraphModel) {
 
@@ -36,14 +35,14 @@ class Compiler(implicit model : GraphModel) {
     tree.getLabel match { 
       case "NP" | "@NP" | "S" => {
 
-        stack.push(Dependency("", parse(tree), excludeTopics))
+        stack.push(Dependency("", topicStack, parse(tree)))
 
       }
       case "PP" | "SBAR" if children.size == 2 => { 
 
         val (left, right) = (children.head, children.last)
 
-        stack.push(Dependency(left.terminalValue, parse(right), excludeTopics))
+        stack.push(Dependency(left.terminalValue, topicStack, parse(right)))
 
       }
     } 
@@ -58,32 +57,24 @@ class Compiler(implicit model : GraphModel) {
   private[this] def parseVerb(tree : LinguisticTree,  
     stack : Stack[Node] = Stack.empty[Node]) : Stack[Node] = {
 
-    def doubleRules : Set[(String, String)] = { 
-      Set[(String, String)](
-        ("VBZ", "VP"), ("VB", "VP"), 
+    def doubleRules = { 
+      Set(("VBZ", "VP"), ("VB", "VP"), 
         ("VBD", "VP"), ("VBP", "VP"),
         ("VBG", "VP"), ("VBN", "VP"),
         ("TO", "VP"))
     } 
 
-    def conditionRules : Set[(String, String)] = { 
-      Set[(String, String)](("MD", "VP"))
+    def conditionRules  = { 
+      Set(("MD", "VP"))
     }
 
-    def dependencyRules : Set[(String, String)] = { 
-      Set[(String, String)](
-       // Base form rules 
-       ("VB", "PP"), ("VB", "S"), ("VB", "SBAR"), ("VB", "NP"), 
-       // Past tense rules 
-       ("VBD", "PP"), ("VBD", "S"), ("VBD", "SBAR"), ("VBD", "NP"), 
-       // 3rd person singular present rules, e.g. walks  
-       ("VBZ", "PP"), ("VBZ", "S"), ("VBZ", "SBAR"), ("VBZ", "NP"), 
-       // 3rd person non-singular present rules 
-       ("VBP", "PP"), ("VBP", "S"), ("VBP", "SBAR"), ("VBP", "NP"),
-       // Gerund verbs, e.g. living 
-       ("VBG", "PP"), ("VBG", "S"), ("VBG", "SBAR"), ("VBG", "NP"),
-       // Past participle verbs, e.g. lived 
-       ("VBN", "PP"), ("VBN", "S"), ("VBN", "SBAR"), ("VBN", "NP"))
+    def dependencyRules = { 
+      Set(("VB", "PP"), ("VB", "S"), ("VB", "SBAR"), ("VB", "NP"),
+        ("VBD", "PP"), ("VBD", "S"), ("VBD", "SBAR"), ("VBD", "NP"), 
+        ("VBZ", "PP"), ("VBZ", "S"), ("VBZ", "SBAR"), ("VBZ", "NP"), 
+        ("VBP", "PP"), ("VBP", "S"), ("VBP", "SBAR"), ("VBP", "NP"), 
+        ("VBG", "PP"), ("VBG", "S"), ("VBG", "SBAR"), ("VBG", "NP"), 
+        ("VBN", "PP"), ("VBN", "S"), ("VBN", "SBAR"), ("VBN", "NP")) 
     }
     
     tree.getLabel match { 
@@ -150,25 +141,26 @@ class Compiler(implicit model : GraphModel) {
     
   } 
 
-  /** 
-    * @method parse 
-    * @param tree {LinguisticTree} 
-    * @return {Stack[Node]} 
-   **/
+
   def parse(tree : LinguisticTree) : Stack[Node] = {
 
-    def thatRules : Set[(String, String)] = { 
-      Set[(String, String)](("NP", "SBAR"), ("NP", "PP"), ("@NP", "SBAR"), ("@NP", "PP"))
+    def thatRules  = { 
+      Set(("NP", "SBAR"), ("NP", "PP"), ("@NP", "SBAR"), ("@NP", "PP"))
     }
 
-    def gerundRules : Set[(String, String)] = { 
-      Set[(String, String)](("VBG", "NP"))
+    def propRules = { 
+      Set(("IN", "NP"), ("IN", "@NP"), ("IN", "VP"), ("IN", "S"))
+    } 
+
+    def gerundRules = { 
+      Set(("VBG", "NP"))
     } 
 
     tree.getLabel match {
       case "NP" | "@NP" if !tree.existsBinaryRules(thatRules) => {
 
         val targets = verbStack
+
         verbStack = Stack.empty[Node] 
 
         topicStack = topicStack.push(Topic(tree.terminalValue, targets))
@@ -180,7 +172,7 @@ class Compiler(implicit model : GraphModel) {
         
         val (left, right) = tree.findBinaryRules(gerundRules).get
 
-        val targets = parseVerb(left) ++ verbStack  
+        val targets = verbStack ++ parseVerb(left)
         verbStack = Stack.empty[Node]
 
         topicStack = topicStack.push(Topic(right.terminalValue, targets))
@@ -190,9 +182,10 @@ class Compiler(implicit model : GraphModel) {
       } 
       case "VP" if topicStack.size > 0 => { 
 
-        val targets = parseVerb(tree) ++ verbStack 
-
         val topic = topicStack.head
+        topicStack = topicStack.pop
+
+        val targets = parseVerb(tree) ++ verbStack 
         verbStack = Stack.empty[Node] 
 
         for(node <- targets) { 
@@ -201,12 +194,12 @@ class Compiler(implicit model : GraphModel) {
           } 
         } 
 
-        topicStack
+        topicStack.push(topic)
 
       }
       case "VP" => { 
 
-        verbStack = parseVerb(tree) ++ verbStack
+        verbStack = verbStack ++ parseVerb(tree)
 
         topicStack
 
@@ -222,7 +215,7 @@ class Compiler(implicit model : GraphModel) {
         topicStack
 
       } 
-      case "SBAR" | "PP" => { 
+      case "SBAR" | "PP" if tree.existsBinaryRules(propRules) => { 
 
         dependencyStack = dependencyStack ++ parseDependencies(tree) 
 
@@ -274,9 +267,7 @@ object Topic {
 
 object Dependency { 
 
-  def apply(label : String, targets : Stack[Node], excludeTopics : Stack[Node])(implicit model : GraphModel) : Node = {
-
-    val lastOption = targets.filterNot(containsTopic(excludeTopics)).lastOption
+  def apply(label : String, targets : Stack[Node], sources : Stack[Node])(implicit model : GraphModel) : Node = {
 
     val dependency = model.factory.newNode() 
 
@@ -285,12 +276,17 @@ object Dependency {
 
     model.getGraph.addNode(dependency)
 
-    for(lastTopic <- lastOption) {
-      // TODO: Make the dependency point to the actions of this new topic.
+    for(source <- sources) { 
       model.getGraph.addEdge { 
-        model.factory.newEdge(dependency, lastTopic) 
+        model.factory.newEdge(source, dependency)
       } 
-    }
+    } 
+
+    for(target <- targets) { 
+      model.getGraph.addEdge { 
+        model.factory.newEdge(dependency, target)
+      } 
+    } 
 
     dependency
 
@@ -393,10 +389,9 @@ object ToGexf {
     for(node <- nodes) {
 
       val gexfNode = graph.createNode(node.getId.toString).setLabel(node.getLabel)
+
       //val valueOfType = node.getAttribute("type").toString
-
       //assert(valueOfType != null) 
-
       //gexfNode.getAttributeValues.addValue(attType, valueOfType)
 
       nodeTable += node.getId -> gexfNode
