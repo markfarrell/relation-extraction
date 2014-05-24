@@ -14,14 +14,14 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 
 
 /**
-  * @object Beagle - A tool for exporting environments to Postgres databases,
+  * A tool for exporting environments to Postgres databases,
   * clearing databases, reloading environments saved in databases and compiling
   * environments to Gephi datasets.
  **/
 object Beagle {
 
    /**
-     * @class Config - command line options for the tool.
+     * Command line options for the tool.
     **/
    case class Config(
     file : File = null,
@@ -35,8 +35,7 @@ object Beagle {
   val parser = new scopt.OptionParser[Config]("Beagle") {
 
     head(
-      """Beagle ---
-      Reads a block of text from STDIN. Compiles text into a topic map, capable of being
+      """Reads a block of text from STDIN. Compiles text into a topic map, capable of being
       viewed in the Gephi graph visualization software."""
     )
 
@@ -54,8 +53,8 @@ object Beagle {
 
 
   /**
-    * @method main - Entry point for the tool.
-    * @param args - {Array[String]}
+    * Entry point for the tool.
+    * @param args
    **/
   def main(args : Array[String]) : Unit = {
 

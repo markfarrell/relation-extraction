@@ -17,14 +17,12 @@ import TreeConversions._
 class Compiler(implicit model : GraphModel) {
 
   private[this] var topicStack : Stack[Node] = Stack.empty[Node]
-  private[this] var gateStack : Stack[Node] = Stack.empty[Node]
+  private[this] var gateStack : Stack[Edge] = Stack.empty[Edge]
 
   def apply(tree : LinguisticTree) = compileTopics(tree)
 
   private[this] def compileGates(tree : LinguisticTree,
-    stack : Stack[Node] = Stack.empty[Node]) : Stack[Node] = {
-
-    val excludeTopics : Stack[Node] = topicStack
+    sourceOption : Option[Node], stack : Stack[Edge] = Stack.empty[Edge]) : Stack[Edge] = {
 
     val children = tree.getChildren.asScala
 
@@ -33,7 +31,25 @@ class Compiler(implicit model : GraphModel) {
 
         val (left, right) = (children.head, children.last)
 
-        stack.push(Gate(left.terminalValue, compileTopics(right)))
+        val label = left.terminalValue
+        val targets = compileTopics(right)
+
+        var newStack = Stack.empty[Edge]
+
+        for(target <- targets) {
+
+          val source = sourceOption.getOrElse(target)
+
+          val edge = model.factory.newEdge(source, target)
+          edge.setLabel(label)
+
+          model.getGraph.addEdge(edge)
+
+          newStack = newStack.push(edge)
+        }
+
+        newStack ++ stack
+
 
       }
     }
@@ -104,10 +120,11 @@ class Compiler(implicit model : GraphModel) {
 
         val label = left.terminalValue
 
-        var targets = gateStack
+        var targetGates = gateStack
 
-        gateStack = compileGates(right)
-        targets ++= gateStack
+        gateStack = compileGates(right, headOption)
+
+        targetGates ++= gateStack
 
         for(source <- headOption) {
           model.getGraph.addEdge {
@@ -123,10 +140,17 @@ class Compiler(implicit model : GraphModel) {
 
         for {
           source <- headOption
-          target <- targets
+          targetGate <- targetGates
         } model.getGraph.addEdge {
 
+          val target = targetGate.getSource
+
           val newEdge = model.factory.newEdge(source, target)
+
+          Option(targetGate.getLabel) match {
+            case Some(label) => newEdge.setLabel(label)
+            case None => Unit
+          }
 
           newStack = newStack.push(newEdge)
 
@@ -205,9 +229,17 @@ class Compiler(implicit model : GraphModel) {
 
         val topic = Topic(tree.terminalValue)
 
-        for(source <- gateStack.headOption) {
+        for(gate <- gateStack.headOption) {
           model.getGraph.addEdge {
-            model.factory.newEdge(source, topic)
+
+            val edge = model.factory.newEdge(gate.getSource, topic)
+
+            Option(edge.getLabel) match {
+              case Some(label) => edge.setLabel(label)
+              case None => Unit
+            }
+
+            edge
           }
         }
 
@@ -238,16 +270,19 @@ class Compiler(implicit model : GraphModel) {
 
         val (left, right) = tree.findBinaryRules(thatRules).get
 
+        val headOption = topicStack.headOption
         val newTopics = compileTopics(left)
 
-        gateStack = gateStack ++ compileGates(right)
+        gateStack = gateStack ++ compileGates(right, headOption)
 
         newTopics ++ topicStack
 
       }
       case "SBAR" | "PP" if tree.existsBinaryRules(propRules) => {
 
-        gateStack = gateStack ++ compileGates(tree)
+        val headOption = topicStack.headOption
+
+        gateStack = gateStack ++ compileGates(tree, headOption)
 
         topicStack
 
@@ -288,28 +323,6 @@ object Topic {
 
 }
 
-object Gate {
-
-  def apply(label : String, targets : Stack[Node])(implicit model : GraphModel) : Node = {
-
-    val gate = model.factory.newNode()
-
-    gate.setLabel(label)
-
-    model.getGraph.addNode(gate)
-
-    for(target <- targets) {
-      model.getGraph.addEdge {
-        model.factory.newEdge(gate, target)
-      }
-    }
-
-    gate
-
-  }
-
-}
-
 
 object ToGexf {
 
@@ -332,6 +345,9 @@ object ToGexf {
   import it.uniroma1.dis.wsngroup.gexf4j.core.impl.data.AttributeListImpl
   import it.uniroma1.dis.wsngroup.gexf4j.core.impl.viz.ColorImpl
 
+  import scala.collection.mutable.HashMap
+
+
   def apply(model : GraphModel) : Gexf = {
 
     val gexf : Gexf = new GexfImpl()
@@ -341,7 +357,6 @@ object ToGexf {
     val graph : Graph = gexf.getGraph()
     graph.setDefaultEdgeType(EdgeType.DIRECTED).setMode(Mode.STATIC)
 
-    import scala.collection.mutable.HashMap
     val nodeTable = HashMap.empty[Object, Node]
 
     val nodes = model.getGraph.getNodes.asScala
