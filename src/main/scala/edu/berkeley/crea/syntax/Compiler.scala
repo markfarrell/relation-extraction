@@ -2,360 +2,326 @@ package edu.berkeley.crea.syntax
 
 import scala.collection.JavaConverters._
 import scala.collection.Iterator
-import scala.collection.immutable.{ 
+import scala.collection.immutable.{
   List, Set, Stack
 }
 
-import org.gephi.graph.api.{ Graph, Node, Edge, GraphFactory, GraphModel } 
+import org.gephi.graph.api.{ Graph, Node, Edge, GraphFactory, GraphModel }
 
 import TreeConversions._
 
-/** 
- * A Compiler front-end that writes to an intermediate in-memory graphstore, 
- * whose contents can then be written to a GEXF file or database back-end. 
- **/ 
+/**
+ * A Compiler front-end that writes to an intermediate in-memory graphstore,
+ * whose contents can then be written to a GEXF file or database back-end.
+ **/
 class Compiler(implicit model : GraphModel) {
 
   private[this] var topicStack : Stack[Node] = Stack.empty[Node]
-  private[this] var verbStack : Stack[Node] = Stack.empty[Node] 
-  private[this] var dependencyStack : Stack[Node] = Stack.empty[Node]
+  private[this] var gateStack : Stack[Node] = Stack.empty[Node]
 
-  /**
-    * @method parseDependencies
-    * @param tree {LinguisticTree} 
-    * @return {Stack[Node]}
-   **/
-  private[this] def parseDependencies(tree : LinguisticTree, 
+  def apply(tree : LinguisticTree) = compileTopics(tree)
+
+  private[this] def compileGates(tree : LinguisticTree,
     stack : Stack[Node] = Stack.empty[Node]) : Stack[Node] = {
-  
+
     val excludeTopics : Stack[Node] = topicStack
 
     val children = tree.getChildren.asScala
 
-    tree.getLabel match { 
-      case "NP" | "@NP" | "S" => {
-
-        stack.push(Dependency("", topicStack, parse(tree)))
-
-      }
-      case "PP" | "SBAR" if children.size == 2 => { 
+    tree.getLabel match {
+      case "PP" | "SBAR" if children.size == 2 => {
 
         val (left, right) = (children.head, children.last)
 
-        stack.push(Dependency(left.terminalValue, topicStack, parse(right)))
+        stack.push(Gate(left.terminalValue, compileTopics(right)))
 
       }
-    } 
+    }
 
-  } 
+  }
 
-  /** 
-    * @method parseVerb
-    * @param tree {LinguisticTree}
-    * @return {Stack[Node]}
-   **/
-  private[this] def parseVerb(tree : LinguisticTree,  
-    stack : Stack[Node] = Stack.empty[Node]) : Stack[Node] = {
+  private[this] def compileArrows(tree : LinguisticTree,
+    stack : Stack[Edge] = Stack.empty[Edge]) : Stack[Edge] = {
 
-    def doubleRules = { 
-      Set(("VBZ", "VP"), ("VB", "VP"), 
+    def doubleRules = {
+      Set(("VBZ", "VP"), ("VB", "VP"),
         ("VBD", "VP"), ("VBP", "VP"),
         ("VBG", "VP"), ("VBN", "VP"),
-        ("TO", "VP"))
-    } 
-
-    def conditionRules  = { 
-      Set(("MD", "VP"))
+        ("TO", "VP"), ("MD", "VP"))
     }
 
-    def dependencyRules = { 
-      Set(("VB", "PP"), ("VB", "S"), ("VB", "SBAR"), ("VB", "NP"),
-        ("VBD", "PP"), ("VBD", "S"), ("VBD", "SBAR"), ("VBD", "NP"), 
-        ("VBZ", "PP"), ("VBZ", "S"), ("VBZ", "SBAR"), ("VBZ", "NP"), 
-        ("VBP", "PP"), ("VBP", "S"), ("VBP", "SBAR"), ("VBP", "NP"), 
-        ("VBG", "PP"), ("VBG", "S"), ("VBG", "SBAR"), ("VBG", "NP"), 
-        ("VBN", "PP"), ("VBN", "S"), ("VBN", "SBAR"), ("VBN", "NP")) 
+    def predicateRules = {
+      Set(("VB", "S"), ("VB", "NP"), ("VB", "@NP"),
+        ("VBD", "S"), ("VBD", "NP"), ("VBD", "@NP"),
+        ("VBZ", "S"), ("VBZ", "NP"), ("VBZ", "@NP"),
+        ("VBP", "S"), ("VBP", "NP"), ("VBP", "@NP"),
+        ("VBG", "S"), ("VBG", "NP"), ("VBG", "@NP"),
+        ("VBN", "S"), ("VBN", "NP"), ("VBN", "@NP"))
     }
-    
-    tree.getLabel match { 
-      case "VP" if tree.existsBinaryRules(conditionRules) => { 
 
-        val (left, right) = tree.findBinaryRules(conditionRules).get
+    def gateRules = {
+      Set(("VB", "PP"), ("VB", "SBAR"),
+        ("VBD", "PP"), ("VBD", "SBAR"),
+        ("VBZ", "PP"), ("VBZ", "SBAR"),
+        ("VBP", "PP"), ("VBP", "SBAR"),
+        ("VBG", "PP"), ("VBG", "SBAR"),
+        ("VBN", "PP"), ("VBN", "SBAR"))
+    }
 
-        stack.push(Condition(left.terminalValue, parseVerb(right)))
+    tree.getLabel match {
+      case "VP" | "PP" if tree.existsBinaryRules(predicateRules) => {
 
-      } 
-      case "VP" | "PP" if tree.existsBinaryRules(dependencyRules) => {
+        val (left, right) = tree.findBinaryRules(predicateRules).get
 
-        val (left, right) = tree.findBinaryRules(dependencyRules).get
+        var newStack = Stack.empty[Edge]
+        val lastOption = topicStack.lastOption
+        val targets = compileTopics(right)
 
-        val targets = parseDependencies(right) ++ dependencyStack
+        for {
+          source <- lastOption
+          target <- targets.headOption
+        } model.getGraph.addEdge {
 
-        dependencyStack = Stack.empty[Node]
+          val edge = model.factory.newEdge(source, target)
+          edge.setLabel(left.terminalValue)
 
-        stack.push(Action(left.terminalValue, targets)) 
+          newStack.push(edge)
+
+          edge
+
+        }
+
+        newStack ++ stack
+
+      }
+      case "VP" | "PP" if tree.existsBinaryRules(gateRules) => {
+
+        val (left, right) = tree.findBinaryRules(gateRules).get
+
+        var newStack = Stack.empty[Edge]
+
+        val headOption = topicStack.headOption
+
+        val label = left.terminalValue
+
+        var targets = gateStack
+
+        gateStack = compileGates(right)
+        targets ++= gateStack
+
+        for(source <- headOption) {
+          model.getGraph.addEdge {
+
+            val newEdge = model.factory.newEdge(source, source)
+            newEdge.setLabel(label)
+
+            newStack = newStack.push(newEdge)
+
+            newEdge
+          }
+        }
+
+        for {
+          source <- headOption
+          target <- targets
+        } model.getGraph.addEdge {
+
+          val newEdge = model.factory.newEdge(source, target)
+
+          newStack = newStack.push(newEdge)
+
+          newEdge
+
+        }
+
+        newStack ++ stack
 
       }
       case "VP" if tree.existsBinaryRules(doubleRules) => {
 
         val (_, right) = tree.findBinaryRules(doubleRules).get
 
-        stack ++ parseVerb(right) 
-
-      } 
-      case "VB" | "VBD" | "VBZ" | "VBP" | "VBG" | "VBN" => { 
-
-        val targets = dependencyStack
-
-        dependencyStack = Stack.empty[Node] 
-
-        stack.push(Action(tree.terminalValue, targets)) 
+        stack ++ compileArrows(right)
 
       }
-      case "NP" if stack.size > 0 => { 
+      case "VB" | "VBD" | "VBZ" | "VBP" | "VBG" | "VBN" => {
 
-        val action = stack.head
+        var newStack = Stack.empty[Edge]
 
-        val targets = parseDependencies(tree) ++ dependencyStack
-        dependencyStack = Stack.empty[Node]
+        val label = tree.terminalValue
 
-        for(node <- targets) { 
-          model.getGraph.addEdge { 
-            model.factory.newEdge(action, node) 
-          } 
-        } 
+        for {
+          source <- topicStack.headOption
+        } model.getGraph.addEdge {
+
+          val newEdge = model.factory.newEdge(source, source)
+          newEdge.setLabel(label)
+
+          newStack = newStack.push(newEdge)
+
+          newEdge
+
+        }
+
+        newStack ++ stack
+
+      }
+      case "NP" | "@NP" => {
+
+        compileTopics(tree)
 
         stack
 
       }
-      case _ => { 
+      case _ => {
 
-       tree.getChildren.asScala.foldLeft(stack) { 
-          (s : Stack[Node], c : LinguisticTree) => { 
-            parseVerb(c,s)
-          } 
-        } 
+       tree.getChildren.asScala.foldLeft(stack) {
+          (s : Stack[Edge], c : LinguisticTree) => {
+            compileArrows(c,s)
+          }
+        }
 
-      } 
-    } 
-    
-  } 
+      }
+    }
 
+  }
 
-  def parse(tree : LinguisticTree) : Stack[Node] = {
+  private[this] def compileTopics(tree : LinguisticTree) : Stack[Node] = {
 
-    def thatRules  = { 
+    def thatRules  = {
       Set(("NP", "SBAR"), ("NP", "PP"), ("@NP", "SBAR"), ("@NP", "PP"))
     }
 
-    def propRules = { 
+    def propRules = {
       Set(("IN", "NP"), ("IN", "@NP"), ("IN", "VP"), ("IN", "S"))
-    } 
+    }
 
-    def gerundRules = { 
-      Set(("VBG", "NP"))
-    } 
+    def gerundRules = {
+      Set(("VBG", "NP"), ("VBG", "@NP"))
+    }
 
     tree.getLabel match {
       case "NP" | "@NP" if !tree.existsBinaryRules(thatRules) => {
 
-        val targets = verbStack
+        val topic = Topic(tree.terminalValue)
 
-        verbStack = Stack.empty[Node] 
+        for(source <- gateStack.headOption) {
+          model.getGraph.addEdge {
+            model.factory.newEdge(source, topic)
+          }
+        }
 
-        topicStack = topicStack.push(Topic(tree.terminalValue, targets))
+        topicStack = topicStack.push(topic)
 
         topicStack
 
       }
-      case "VP" if tree.existsBinaryRules(gerundRules) => { 
-        
+      case "VP" if tree.existsBinaryRules(gerundRules) => {
+
         val (left, right) = tree.findBinaryRules(gerundRules).get
 
-        val targets = verbStack ++ parseVerb(left)
-        verbStack = Stack.empty[Node]
+        topicStack = topicStack.push(Topic(right.terminalValue))
 
-        topicStack = topicStack.push(Topic(right.terminalValue, targets))
-
-        topicStack 
-
-      } 
-      case "VP" if topicStack.size > 0 => { 
-
-        val topic = topicStack.head
-        topicStack = topicStack.pop
-
-        val targets = parseVerb(tree) ++ verbStack 
-        verbStack = Stack.empty[Node] 
-
-        for(node <- targets) { 
-          model.getGraph.addEdge { 
-            model.factory.newEdge(topic, node) 
-          } 
-        } 
-
-        topicStack.push(topic)
-
-      }
-      case "VP" => { 
-
-        verbStack = verbStack ++ parseVerb(tree)
+        compileArrows(left) // Makes topic connect to itself
 
         topicStack
 
-      } 
-      case "NP" | "@NP" if tree.existsBinaryRules(thatRules) => { 
+      }
+      case "VP" => {
+
+        compileArrows(tree)
+
+        topicStack
+
+      }
+      case "NP" | "@NP" if tree.existsBinaryRules(thatRules) => {
 
         val (left, right) = tree.findBinaryRules(thatRules).get
 
-        dependencyStack = { 
-          dependencyStack ++ parseDependencies(left) ++ parseDependencies(right)
-        }
+        val newTopics = compileTopics(left)
+
+        gateStack = gateStack ++ compileGates(right)
+
+        newTopics ++ topicStack
+
+      }
+      case "SBAR" | "PP" if tree.existsBinaryRules(propRules) => {
+
+        gateStack = gateStack ++ compileGates(tree)
 
         topicStack
 
-      } 
-      case "SBAR" | "PP" if tree.existsBinaryRules(propRules) => { 
-
-        dependencyStack = dependencyStack ++ parseDependencies(tree) 
-
-        topicStack 
-
-      } 
+      }
       case _ => {
 
-        tree.getChildren.asScala.foldLeft(topicStack) { 
-          (s : Stack[Node], c : LinguisticTree) => parse(c)
-        } 
+        tree.getChildren.asScala.foldLeft(topicStack) {
+          (s : Stack[Node], c : LinguisticTree) => compileTopics(c)
+        }
 
-      } 
-    } 
-
-  } 
-}
-
-object Topic { 
-
-  def apply(label : String, targets : Stack[Node])(implicit model : GraphModel) : Node = {
-
-    val topic = Option(model.getGraph.getNode(label)) match { 
-      case Some(topic) => topic 
-      case None => { 
-
-        val topic = model.factory.newNode(label)
-
-        topic.setLabel(label) 
-        //topic.setAttribute("type", "Topic") 
-
-        model.getGraph.addNode(topic) 
-
-        topic 
       }
     }
 
-    for(node <- targets) { 
-      model.getGraph.addEdge { 
-        model.factory.newEdge(topic, node) 
-      } 
-    } 
+  }
+}
+
+object Topic {
+
+  def apply(label : String)(implicit model : GraphModel) : Node = {
+
+    val topic = Option(model.getGraph.getNode(label)) match {
+      case Some(topic) => topic
+      case None => {
+
+        val topic = model.factory.newNode(label)
+
+        topic.setLabel(label)
+
+        model.getGraph.addNode(topic)
+
+        topic
+      }
+    }
 
     topic
 
-  } 
-
-} 
-
-object Dependency { 
-
-  def apply(label : String, targets : Stack[Node], sources : Stack[Node])(implicit model : GraphModel) : Node = {
-
-    val dependency = model.factory.newNode() 
-
-    dependency.setLabel(label)
-    //dependency.setAttribute("type", "Dependency")
-
-    model.getGraph.addNode(dependency)
-
-    for(source <- sources) { 
-      model.getGraph.addEdge { 
-        model.factory.newEdge(source, dependency)
-      } 
-    } 
-
-    for(target <- targets) { 
-      model.getGraph.addEdge { 
-        model.factory.newEdge(dependency, target)
-      } 
-    } 
-
-    dependency
-
   }
 
-  private def containsTopic(topics : Stack[Node])(topic : Node) : Boolean = { 
-    topics.find(_.getLabel == topic.getLabel) match { 
-      case Some(_) => true
-      case None => false
-    } 
-  }
+}
 
-} 
+object Gate {
 
-object Action { 
+  def apply(label : String, targets : Stack[Node])(implicit model : GraphModel) : Node = {
 
-  def apply(label : String, targets : Stack[Node])(implicit model : GraphModel) : Node = { 
+    val gate = model.factory.newNode()
 
-    val action = model.factory.newNode() 
-    action.setLabel(label) 
-    //action.setAttribute("type", "Action") 
+    gate.setLabel(label)
 
-    model.getGraph.addNode(action) 
+    model.getGraph.addNode(gate)
 
-    for(node <- targets) { 
-      model.getGraph.addEdge { 
-        model.factory.newEdge(action, node) 
-      } 
+    for(target <- targets) {
+      model.getGraph.addEdge {
+        model.factory.newEdge(gate, target)
+      }
     }
 
-    action
-
-  } 
-
-}
-
-object Condition { 
-
-  def apply(label : String, targets : Stack[Node])(implicit model : GraphModel) : Node = { 
-
-    val condition = model.factory.newNode()
-    condition.setLabel(label) 
-    //condition.setAttribute("type", "Condition") 
-
-    model.getGraph.addNode(condition)
-
-    for(node <- targets) { 
-      model.getGraph.addEdge { 
-        model.factory.newEdge(condition, node)
-      } 
-    } 
-
-    condition 
+    gate
 
   }
 
 }
+
 
 object ToGexf {
 
-  import it.uniroma1.dis.wsngroup.gexf4j.core.{ 
+  import it.uniroma1.dis.wsngroup.gexf4j.core.{
     EdgeType, Gexf, Graph, Mode, Node, Edge
   }
 
-  import it.uniroma1.dis.wsngroup.gexf4j.core.data.{ 
+  import it.uniroma1.dis.wsngroup.gexf4j.core.data.{
     Attribute, AttributeClass, AttributeList, AttributeType
   }
 
-  import it.uniroma1.dis.wsngroup.gexf4j.core.impl.{ 
+  import it.uniroma1.dis.wsngroup.gexf4j.core.impl.{
     GexfImpl, StaxGraphWriter
   }
 
@@ -375,24 +341,15 @@ object ToGexf {
     val graph : Graph = gexf.getGraph()
     graph.setDefaultEdgeType(EdgeType.DIRECTED).setMode(Mode.STATIC)
 
-    val attrList : AttributeList = new AttributeListImpl(AttributeClass.NODE)
-    graph.getAttributeLists().add(attrList)
+    import scala.collection.mutable.HashMap
+    val nodeTable = HashMap.empty[Object, Node]
 
-    //val attType : Attribute = attrList.createAttribute("type", AttributeType.STRING, "type")
-
-    import scala.collection.mutable.HashMap 
-    val nodeTable = HashMap.empty[Object, Node] 
-
-    val nodes = model.getGraph.getNodes.asScala 
+    val nodes = model.getGraph.getNodes.asScala
     val edges = model.getGraph.getEdges.asScala
 
     for(node <- nodes) {
 
       val gexfNode = graph.createNode(node.getId.toString).setLabel(node.getLabel)
-
-      //val valueOfType = node.getAttribute("type").toString
-      //assert(valueOfType != null) 
-      //gexfNode.getAttributeValues.addValue(attType, valueOfType)
 
       nodeTable += node.getId -> gexfNode
 
@@ -400,24 +357,29 @@ object ToGexf {
 
     for(edge <- edges) {
 
-      val sourceGexfNode = nodeTable.get(edge.getSource.getId) 
+      val sourceGexfNode = nodeTable.get(edge.getSource.getId)
       val targetGexfNode = nodeTable.get(edge.getTarget.getId)
 
-      (sourceGexfNode, targetGexfNode) match { 
-        case (Some(source), Some(target)) => { 
+      (sourceGexfNode, targetGexfNode) match {
+        case (Some(source), Some(target)) => {
 
-          val gexfEdge = source.connectTo(target) 
-          gexfEdge.setEdgeType(EdgeType.DIRECTED) 
+          val gexfEdge = source.connectTo(target)
+          gexfEdge.setEdgeType(EdgeType.DIRECTED)
 
-        } 
-        case _ => Unit 
-      } 
+          Option(edge.getLabel) match {
+            case Some(label) => gexfEdge.setLabel(label)
+            case None => Unit
+          }
 
-    } 
+        }
+        case _ => Unit
+      }
 
-    gexf 
+    }
 
-  } 
+    gexf
 
-} 
+  }
+
+}
 
