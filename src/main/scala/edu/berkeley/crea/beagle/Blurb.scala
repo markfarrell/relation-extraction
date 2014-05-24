@@ -1,4 +1,4 @@
-package edu.berkeley.crea.io
+package edu.berkeley.crea.beagle
 
 import java.util.Scanner
 import java.io.InputStream

@@ -1,4 +1,4 @@
-package edu.berkeley.crea.syntax
+package edu.berkeley.crea.beagle
 
 import scala.collection.JavaConverters._
 import scala.collection.Iterator
@@ -13,13 +13,35 @@ import TreeConversions._
 /**
  * A Compiler front-end that writes to an intermediate in-memory graphstore,
  * whose contents can then be written to a GEXF file or database back-end.
+ * @author Mark Farrell
  **/
-class Compiler(implicit model : GraphModel) {
+class Compiler(model : GraphModel) {
 
   private[this] var topicStack : Stack[Node] = Stack.empty[Node]
   private[this] var gateStack : Stack[Edge] = Stack.empty[Edge]
 
-  def apply(tree : LinguisticTree) = compileTopics(tree)
+  /**
+    * Returns the GraphModel passed as an argument to the Compiler's
+    * constructor, after it has been mutated with new nodes and edges added.
+    * @return - The GraphModel used by the compiler.
+   **/
+  def apply(tree : LinguisticTree) : GraphModel = {
+    compileTopics(tree)
+    clear()
+    model
+  }
+
+  /**
+    * Clears all collections stored as fields in the compiler.
+    * Used internally to reset the state of compiler after each
+    * sentence is parsed and compiled.
+   **/
+  private[this] def clear() : Unit = {
+
+    topicStack = Stack.empty[Node]
+    gateStack = Stack.empty[Edge]
+
+  }
 
   private[this] def compileGates(tree : LinguisticTree,
     sourceOption : Option[Node], stack : Stack[Edge] = Stack.empty[Edge]) : Stack[Edge] = {
@@ -227,7 +249,7 @@ class Compiler(implicit model : GraphModel) {
     tree.getLabel match {
       case "NP" | "@NP" if !tree.existsBinaryRules(thatRules) => {
 
-        val topic = Topic(tree.terminalValue)
+        val topic = Topic(tree.terminalValue, model)
 
         for(gate <- gateStack.headOption) {
           model.getGraph.addEdge {
@@ -252,7 +274,7 @@ class Compiler(implicit model : GraphModel) {
 
         val (left, right) = tree.findBinaryRules(gerundRules).get
 
-        topicStack = topicStack.push(Topic(right.terminalValue))
+        topicStack = topicStack.push(Topic(right.terminalValue, model))
 
         compileArrows(left) // Makes topic connect to itself
 
@@ -301,7 +323,7 @@ class Compiler(implicit model : GraphModel) {
 
 object Topic {
 
-  def apply(label : String)(implicit model : GraphModel) : Node = {
+  def apply(label : String, model : GraphModel) : Node = {
 
     val topic = Option(model.getGraph.getNode(label)) match {
       case Some(topic) => topic

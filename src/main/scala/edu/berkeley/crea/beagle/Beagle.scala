@@ -1,4 +1,4 @@
-package edu.berkeley.crea.io
+package edu.berkeley.crea.beagle
 
 import java.io.File
 import java.io.FileOutputStream
@@ -7,11 +7,7 @@ import scala.collection.mutable.{HashMap, MultiMap, Set}
 
 import edu.berkeley.nlp.syntax.Tree
 
-import edu.berkeley.crea.syntax.TreeConversions._
-
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
-
-
 
 /**
   * A tool for exporting environments to Postgres databases,
@@ -64,20 +60,20 @@ object Beagle {
         if(cfg.file != null) {
 
           import org.gephi.graph.store.GraphModelImpl
-          import edu.berkeley.crea.syntax.{ Compiler, ToGexf }
 
-          val parser : DefaultParser = new DefaultParser(cfg.grammar)
+          val parser = new Parser(cfg.grammar)
 
           def parse(str : String) : Tree[String]  = {
-            val ret : Tree[String] = parser.parse(str)
+            val ret : Tree[String] = parser(str)
             println(str + " -> " + ret.toString)
             ret
           }
 
           val model = new GraphModelImpl
+          val compile = new Compiler(model)
           val sentenceTrees = Blurb.tokens(System.in).map(parse)
 
-          sentenceTrees.foreach { tree => (new Compiler()(model))(tree) }
+          sentenceTrees.foreach { tree => compile(tree) }
 
           val fs : FileOutputStream = new FileOutputStream(cfg.file)
 
