@@ -1,5 +1,0 @@
-#!/bin/sh
-
-export JAVA_OPTS="-Xmx2048m -Xss256m"
-
-target/start $@ 

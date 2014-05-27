@@ -6,14 +6,26 @@ import scala.collection.immutable.{
   List, Set, Stack
 }
 
+import edu.berkeley.nlp.syntax.Tree
+
+import java.io.File
+import java.io.FileOutputStream
+
+import org.gephi.streaming.server.StreamingServer
+import org.gephi.streaming.server.impl.ServerControllerImpl
+import org.gephi.streaming.server.impl.jetty.StreamingServerImpl
+
 import org.gephi.graph.api.{ Graph, Node, Edge, GraphFactory, GraphModel }
+import org.gephi.graph.store.GraphModelImpl
+
+import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 
 import TreeConversions._
 
 /**
- * A Compiler front-end that writes to an intermediate in-memory graphstore,
- * whose contents can then be written to a GEXF file or database back-end.
- * @author Mark Farrell
+  * A Compiler front-end that writes to an intermediate in-memory graphstore,
+  * whose contents can then be written to a GEXF file or database back-end.
+  * @author Mark Farrell
  **/
 class Compiler(model : GraphModel) {
 
@@ -23,7 +35,8 @@ class Compiler(model : GraphModel) {
   /**
     * Returns the GraphModel passed as an argument to the Compiler's
     * constructor, after it has been mutated with new nodes and edges added.
-    * @return - The GraphModel used by the compiler.
+    * @param tree - The parts-of-speech tagged tree to compile into a graph.
+    * @return The GraphModel used by the compiler.
    **/
   def apply(tree : LinguisticTree) : GraphModel = {
     compileTopics(tree)
@@ -43,8 +56,51 @@ class Compiler(model : GraphModel) {
 
   }
 
-  private[this] def compileGates(tree : LinguisticTree,
-    sourceOption : Option[Node], stack : Stack[Edge] = Stack.empty[Edge]) : Stack[Edge] = {
+  /**
+    * Used for building topic nodes and adding them to the graph
+    * passed to the contructor of this compiler.
+   **/
+  private[this] object Topic {
+
+    /**
+      * Either builds a new node and adds it to the graph
+      * or returns an existing topic node, since they are unique.
+      * @param label - The unique label to give to the topic node.
+      * @return The topic node, whether it has been created or fetched
+      * as an existing node in the graph.
+     **/
+    def apply(label : String) : Node = {
+
+      val topic = Option(model.getGraph.getNode(label)) match {
+        case Some(topic) => topic
+        case None => {
+
+          val topic = model.factory.newNode(label)
+
+          topic.setLabel(label)
+
+          model.getGraph.addNode(topic)
+
+          topic
+        }
+      }
+
+      topic
+
+    }
+
+  }
+
+  /**
+    * Mutates gateStack, pushing onto it new edges that were created on the graph in this method
+    * call. Forms relations between topic nodes with labels it extracts from prepositional phrases
+    * and subordinate conjunctions found in the <code>tree</code> parameter.
+    * @param tree - A parts-of-speech tagged tree, labelled as <code>PP</code> or <code>SBAR</code>.
+    * @param sourceOption - Either specify some source topic node for all edges created in this method
+    * call or specify none, in which case looping edges will be formed for all target topic nodes found
+    * in <code>tree</code>'s children.
+   **/
+  private[this] def compileGates(tree : LinguisticTree, sourceOption : Option[Node]) : Unit = {
 
     val children = tree.getChildren.asScala
 
@@ -54,32 +110,35 @@ class Compiler(model : GraphModel) {
         val (left, right) = (children.head, children.last)
 
         val label = left.terminalValue
-        val targets = compileTopics(right)
 
-        var newStack = Stack.empty[Edge]
+        compileTopics(right)
 
-        for(target <- targets) {
+        for(target <- topicStack) {
 
           val source = sourceOption.getOrElse(target)
 
           val edge = model.factory.newEdge(source, target)
+
           edge.setLabel(label)
 
           model.getGraph.addEdge(edge)
 
-          newStack = newStack.push(edge)
+          gateStack = gateStack.push(edge)
+
         }
-
-        newStack ++ stack
-
 
       }
     }
 
   }
 
-  private[this] def compileArrows(tree : LinguisticTree,
-    stack : Stack[Edge] = Stack.empty[Edge]) : Stack[Edge] = {
+  /**
+    * Creates edges between topic nodes that have already been added to the graph.
+    * Also allows more topic nodes to be added to the graph. Mutates gateStack and
+    * topicStack.
+    * @param tree - A parts-of-speech annotated tree to match on.
+   **/
+  private[this] def compileArrows(tree : LinguisticTree) : Unit = {
 
     def doubleRules = {
       Set(("VBZ", "VP"), ("VB", "VP"),
@@ -111,9 +170,11 @@ class Compiler(model : GraphModel) {
 
         val (left, right) = tree.findBinaryRules(predicateRules).get
 
-        var newStack = Stack.empty[Edge]
         val lastOption = topicStack.lastOption
-        val targets = compileTopics(right)
+
+        compileTopics(right)
+
+        val targets = topicStack
 
         for {
           source <- lastOption
@@ -122,29 +183,21 @@ class Compiler(model : GraphModel) {
 
           val edge = model.factory.newEdge(source, target)
           edge.setLabel(left.terminalValue)
-
-          newStack.push(edge)
-
           edge
 
         }
-
-        newStack ++ stack
 
       }
       case "VP" | "PP" if tree.existsBinaryRules(gateRules) => {
 
         val (left, right) = tree.findBinaryRules(gateRules).get
 
-        var newStack = Stack.empty[Edge]
-
         val headOption = topicStack.headOption
-
         val label = left.terminalValue
-
         var targetGates = gateStack
 
-        gateStack = compileGates(right, headOption)
+        gateStack = Stack.empty[Edge]
+        compileGates(right, headOption)
 
         targetGates ++= gateStack
 
@@ -153,10 +206,8 @@ class Compiler(model : GraphModel) {
 
             val newEdge = model.factory.newEdge(source, source)
             newEdge.setLabel(label)
-
-            newStack = newStack.push(newEdge)
-
             newEdge
+
           }
         }
 
@@ -174,25 +225,19 @@ class Compiler(model : GraphModel) {
             case None => Unit
           }
 
-          newStack = newStack.push(newEdge)
-
           newEdge
 
         }
-
-        newStack ++ stack
 
       }
       case "VP" if tree.existsBinaryRules(doubleRules) => {
 
         val (_, right) = tree.findBinaryRules(doubleRules).get
 
-        stack ++ compileArrows(right)
+        compileArrows(right)
 
       }
       case "VB" | "VBD" | "VBZ" | "VBP" | "VBG" | "VBN" => {
-
-        var newStack = Stack.empty[Edge]
 
         val label = tree.terminalValue
 
@@ -202,37 +247,25 @@ class Compiler(model : GraphModel) {
 
           val newEdge = model.factory.newEdge(source, source)
           newEdge.setLabel(label)
-
-          newStack = newStack.push(newEdge)
-
           newEdge
 
         }
 
-        newStack ++ stack
-
       }
-      case "NP" | "@NP" => {
-
-        compileTopics(tree)
-
-        stack
-
-      }
-      case _ => {
-
-       tree.getChildren.asScala.foldLeft(stack) {
-          (s : Stack[Edge], c : LinguisticTree) => {
-            compileArrows(c,s)
-          }
-        }
-
+      case "NP" | "@NP" => compileTopics(tree)
+      case _ => for(c <- tree.getChildren.asScala) {
+        compileArrows(c)
       }
     }
 
   }
 
-  private[this] def compileTopics(tree : LinguisticTree) : Stack[Node] = {
+  /**
+    * Mutates topicStack, pushing onto it new topic nodes that were adding
+    * to the graph during this method call.
+    * @param tree - The parts-of-speech annotated tree to match on.
+   **/
+  private[this] def compileTopics(tree : LinguisticTree) : Unit = {
 
     def thatRules  = {
       Set(("NP", "SBAR"), ("NP", "PP"), ("@NP", "SBAR"), ("@NP", "PP"))
@@ -249,7 +282,7 @@ class Compiler(model : GraphModel) {
     tree.getLabel match {
       case "NP" | "@NP" if !tree.existsBinaryRules(thatRules) => {
 
-        val topic = Topic(tree.terminalValue, model)
+        val topic = Topic(tree.terminalValue)
 
         for(gate <- gateStack.headOption) {
           model.getGraph.addEdge {
@@ -267,25 +300,19 @@ class Compiler(model : GraphModel) {
 
         topicStack = topicStack.push(topic)
 
-        topicStack
-
       }
       case "VP" if tree.existsBinaryRules(gerundRules) => {
 
         val (left, right) = tree.findBinaryRules(gerundRules).get
 
-        topicStack = topicStack.push(Topic(right.terminalValue, model))
+        topicStack = topicStack.push(Topic(right.terminalValue))
 
         compileArrows(left) // Makes topic connect to itself
-
-        topicStack
 
       }
       case "VP" => {
 
         compileArrows(tree)
-
-        topicStack
 
       }
       case "NP" | "@NP" if tree.existsBinaryRules(thatRules) => {
@@ -293,128 +320,103 @@ class Compiler(model : GraphModel) {
         val (left, right) = tree.findBinaryRules(thatRules).get
 
         val headOption = topicStack.headOption
-        val newTopics = compileTopics(left)
+        compileTopics(left)
 
-        gateStack = gateStack ++ compileGates(right, headOption)
-
-        newTopics ++ topicStack
+        compileGates(right, headOption)
 
       }
       case "SBAR" | "PP" if tree.existsBinaryRules(propRules) => {
 
         val headOption = topicStack.headOption
 
-        gateStack = gateStack ++ compileGates(tree, headOption)
-
-        topicStack
+        compileGates(tree, headOption)
 
       }
-      case _ => {
-
-        tree.getChildren.asScala.foldLeft(topicStack) {
-          (s : Stack[Node], c : LinguisticTree) => compileTopics(c)
-        }
-
+      case _ => for(c <- tree.getChildren.asScala) {
+        compileTopics(c)
       }
     }
 
   }
 }
 
-object Topic {
+/**
+  * Compiles a graph from the text provided to STDIN, saving it to a GEXF file.
+ **/
+object Compiler {
 
-  def apply(label : String, model : GraphModel) : Node = {
+   /**
+     * Command line options for the tool.
+    **/
+   case class Config(
+    file : File = null,
+    grammar : String = "./lib/eng_sm6.gr"
+  )
 
-    val topic = Option(model.getGraph.getNode(label)) match {
-      case Some(topic) => topic
-      case None => {
+  /**
+    * Set values for command line options. Specify
+    * usage of the tool.
+   **/
+  val parser = new scopt.OptionParser[Config]("Beagle") {
 
-        val topic = model.factory.newNode(label)
+    head("""Reads a block of text from STDIN. Compiles text into a topic map, capable of being
+      viewed in the Gephi graph visualization software.""")
 
-        topic.setLabel(label)
+    opt[File]('f', "file").action {
+      (x, c) => c.copy(file = x)
+    }.text("file is a (GEXF) file property")
 
-        model.getGraph.addNode(topic)
+    opt[String]('g', "grammar").action {
+      (x, c) => c.copy(grammar = x)
+    }.text("grammar is a string (path) property")
 
-        topic
-      }
-    }
-
-    topic
+    help("help").text("Prints this help message.")
 
   }
 
-}
+  def startServer(graph : Graph) : StreamingServer = {
 
+    val server = new StreamingServerImpl
+    val controller = new ServerControllerImpl(graph)
 
-object ToGexf {
+    server.register(controller, "streaming")
+    server.start()
 
-  import it.uniroma1.dis.wsngroup.gexf4j.core.{
-    EdgeType, Gexf, Graph, Mode, Node, Edge
+    server
+
   }
 
-  import it.uniroma1.dis.wsngroup.gexf4j.core.data.{
-    Attribute, AttributeClass, AttributeList, AttributeType
-  }
+  def main(args : Array[String]) : Unit = {
 
-  import it.uniroma1.dis.wsngroup.gexf4j.core.impl.{
-    GexfImpl, StaxGraphWriter
-  }
+    parser.parse(args, Config()) map {
+      cfg => {
 
-  import it.uniroma1.dis.wsngroup.gexf4j.core.viz.{
-    NodeShape, EdgeShape, Color
-  }
+        if(cfg.file != null) {
 
-  import it.uniroma1.dis.wsngroup.gexf4j.core.impl.data.AttributeListImpl
-  import it.uniroma1.dis.wsngroup.gexf4j.core.impl.viz.ColorImpl
+          val parser = new Parser(cfg.grammar)
 
-  import scala.collection.mutable.HashMap
-
-
-  def apply(model : GraphModel) : Gexf = {
-
-    val gexf : Gexf = new GexfImpl()
-
-    gexf.setVisualization(true)
-
-    val graph : Graph = gexf.getGraph()
-    graph.setDefaultEdgeType(EdgeType.DIRECTED).setMode(Mode.STATIC)
-
-    val nodeTable = HashMap.empty[Object, Node]
-
-    val nodes = model.getGraph.getNodes.asScala
-    val edges = model.getGraph.getEdges.asScala
-
-    for(node <- nodes) {
-
-      val gexfNode = graph.createNode(node.getId.toString).setLabel(node.getLabel)
-
-      nodeTable += node.getId -> gexfNode
-
-    }
-
-    for(edge <- edges) {
-
-      val sourceGexfNode = nodeTable.get(edge.getSource.getId)
-      val targetGexfNode = nodeTable.get(edge.getTarget.getId)
-
-      (sourceGexfNode, targetGexfNode) match {
-        case (Some(source), Some(target)) => {
-
-          val gexfEdge = source.connectTo(target)
-          gexfEdge.setEdgeType(EdgeType.DIRECTED)
-
-          Option(edge.getLabel) match {
-            case Some(label) => gexfEdge.setLabel(label)
-            case None => Unit
+          def parse(str : String) : Tree[String]  = {
+            val ret : Tree[String] = parser(str)
+            println(str + " -> " + ret.toString)
+            ret
           }
 
+          val model = new GraphModelImpl
+          val compile = new Compiler(model)
+          val sentenceTrees = Blurb.tokens(System.in).map(parse)
+
+          sentenceTrees.foreach { tree => compile(tree) }
+
+          val fs : FileOutputStream = new FileOutputStream(cfg.file)
+
+          (new StaxGraphWriter).writeToStream(ToGexf(model), fs, "UTF-8")
+
         }
-        case _ => Unit
+
+
       }
 
     }
-
-    gexf
 
   }
 

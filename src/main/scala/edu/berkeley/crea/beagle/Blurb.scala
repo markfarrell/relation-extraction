@@ -12,8 +12,8 @@ object Blurb {
 
  /**
    * @method tokens
-   * @param str {String} - the string to tokenize.
-   * @return {List[String]} - a list of sentences.
+   * @param str - the string to tokenize.
+   * @return A list of sentences.
   **/
   def tokens(str : String) : List[String] = {
 
@@ -22,8 +22,8 @@ object Blurb {
 
  /**
    * @method tokens
-   * @param in {InputStream} - Tokenize a blurb contained as bytes in an input stream.
-   * @return {List{String}} - a list of sentences.
+   * @param in - The inputstream whose contents should be tokenized.
+   * @return A list of sentences.
   **/
   def tokens(in : InputStream) : List[String] = {
 

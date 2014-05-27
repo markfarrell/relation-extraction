@@ -9,6 +9,8 @@ import edu.berkeley.nlp.PCFGLA.CoarseToFineMaxRuleParser
 
 import edu.berkeley.nlp.io.PTBLineLexer
 
+import TreeConversions._
+
 /**
   * Enables the use of the BerkeleyParser for parsing sentences
   * by providing a default configuration.
@@ -44,12 +46,11 @@ class Parser(grammarFile : String) {
   }
 
  /**
-   * Parse an English sentence and return a parts-of-speech-annotated tree.
+   * Parse an English sentence and returns a parts-of-speech-annotated tree.
    * @param sentence The sentence to be parsed.
-   * @return {Tree[String]}
   **/
-  def apply(sentence : String) : Tree[String] = {
-    parser.getBestConstrainedParse(tokenizer.tokenizeLine(sentence) , null, null)
+  def apply(sentence : String) : LinguisticTree = {
+    parser.getBestConstrainedParse(tokenizer.tokenizeLine(sentence), null, null)
   }
 
 }
