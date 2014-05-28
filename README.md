@@ -1,6 +1,6 @@
 # Beagle
 
-Software that can extract information from the textbook "Molecular Biology of the Cell, 4th Edition" and produce a biological network viewable in the graph visualization software, Gephi. Part of a research initiative at [CREA](http://crea.berkeley.edu/), a UC Berkeley research lab. Type <code>./Beagle --help</code> for more information once built. 
+Software that can extract information from the textbook "Molecular Biology of the Cell, 4th Edition" and produce a topic map viewable in the graph visualization software, Gephi. Part of a research initiative at [CREA](http://crea.berkeley.edu/), a UC Berkeley research lab. Type <code>./Beagle --help</code> for more information once built. 
 
 ## Dependencies 
 
