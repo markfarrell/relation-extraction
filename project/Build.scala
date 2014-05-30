@@ -11,7 +11,10 @@ object ProjectBuild extends Build {
     scalaVersion := "2.10.3",
     resolvers ++= Seq(
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
-      "gephi-nexus" at "http://nexus.gephi.org/nexus/content/repositories/snapshots"
+      "netbeans" at "http://bits.netbeans.org/nexus/content/groups/netbeans/",
+      "gephi-thirdparty" at "http://nexus.gephi.org/nexus/content/repositories/thirdparty",
+      "gephi-snapshots" at "http://nexus.gephi.org/nexus/content/repositories/snapshots",
+      "gephi-releases" at "http://nexus.gephi.org/nexus/content/repositories/releases"
     ),
     libraryDependencies ++= Seq(
       "javax.servlet" % "javax.servlet-api" % "3.1.0",
@@ -29,8 +32,7 @@ object ProjectBuild extends Build {
       "postgresql" % "postgresql" % "8.4-701.jdbc4",
       "com.github.scopt" %% "scopt" % "3.2.0",
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1",
-      "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models",
-      "org.gephi" % "graphstore" % "0.1-SNAPSHOT"
+      "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models"
     )
   )
 

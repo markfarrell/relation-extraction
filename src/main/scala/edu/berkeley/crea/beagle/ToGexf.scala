@@ -35,14 +35,14 @@ object ToGexf {
     val graph : Graph = gexf.getGraph()
     graph.setDefaultEdgeType(EdgeType.DIRECTED).setMode(Mode.STATIC)
 
-    val nodeTable = HashMap.empty[Object, Node]
+    val nodeTable = HashMap.empty[Int, Node]
 
     val nodes = model.getGraph.getNodes.asScala
     val edges = model.getGraph.getEdges.asScala
 
     for(node <- nodes) {
 
-      val gexfNode = graph.createNode(node.getId.toString).setLabel(node.getLabel)
+      val gexfNode = graph.createNode(node.getId.toString).setLabel(node.getNodeData.getLabel)
 
       nodeTable += node.getId -> gexfNode
 
@@ -59,7 +59,7 @@ object ToGexf {
           val gexfEdge = source.connectTo(target)
           gexfEdge.setEdgeType(EdgeType.DIRECTED)
 
-          Option(edge.getLabel) match {
+          Option(edge.getEdgeData.getLabel) match {
             case Some(label) => gexfEdge.setLabel(label)
             case None => Unit
           }

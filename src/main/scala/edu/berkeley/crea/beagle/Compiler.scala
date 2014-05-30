@@ -16,7 +16,6 @@ import org.gephi.streaming.server.impl.ServerControllerImpl
 import org.gephi.streaming.server.impl.jetty.StreamingServerImpl
 
 import org.gephi.graph.api.{ Graph, Node, Edge, GraphFactory, GraphModel }
-import org.gephi.graph.store.GraphModelImpl
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 
@@ -77,7 +76,7 @@ class Compiler(model : GraphModel) {
 
           val topic = model.factory.newNode(label)
 
-          topic.setLabel(label)
+          topic.getNodeData.setLabel(label)
 
           model.getGraph.addNode(topic)
 
@@ -119,7 +118,7 @@ class Compiler(model : GraphModel) {
 
           val edge = model.factory.newEdge(source, target)
 
-          edge.setLabel(label)
+          edge.getEdgeData.setLabel(label)
 
           model.getGraph.addEdge(edge)
 
@@ -182,7 +181,7 @@ class Compiler(model : GraphModel) {
         } model.getGraph.addEdge {
 
           val edge = model.factory.newEdge(source, target)
-          edge.setLabel(left.terminalValue)
+          edge.getEdgeData.setLabel(left.terminalValue)
           edge
 
         }
@@ -205,7 +204,7 @@ class Compiler(model : GraphModel) {
           model.getGraph.addEdge {
 
             val newEdge = model.factory.newEdge(source, source)
-            newEdge.setLabel(label)
+            newEdge.getEdgeData.setLabel(label)
             newEdge
 
           }
@@ -220,8 +219,8 @@ class Compiler(model : GraphModel) {
 
           val newEdge = model.factory.newEdge(source, target)
 
-          Option(targetGate.getLabel) match {
-            case Some(label) => newEdge.setLabel(label)
+          Option(targetGate.getEdgeData.getLabel) match {
+            case Some(label) => newEdge.getEdgeData.setLabel(label)
             case None => Unit
           }
 
@@ -246,7 +245,7 @@ class Compiler(model : GraphModel) {
         } model.getGraph.addEdge {
 
           val newEdge = model.factory.newEdge(source, source)
-          newEdge.setLabel(label)
+          newEdge.getEdgeData.setLabel(label)
           newEdge
 
         }
@@ -289,8 +288,8 @@ class Compiler(model : GraphModel) {
 
             val edge = model.factory.newEdge(gate.getSource, topic)
 
-            Option(edge.getLabel) match {
-              case Some(label) => edge.setLabel(label)
+            Option(edge.getEdgeData.getLabel) match {
+              case Some(label) => edge.getEdgeData.setLabel(label)
               case None => Unit
             }
 
@@ -357,7 +356,7 @@ object Compiler {
     * Set values for command line options. Specify
     * usage of the tool.
    **/
-  val parser = new scopt.OptionParser[Config]("Beagle") {
+  val parser = new scopt.OptionParser[Config]("Compiler") {
 
     head("""Reads a block of text from STDIN. Compiles text into a topic map, capable of being
       viewed in the Gephi graph visualization software.""")
@@ -371,18 +370,6 @@ object Compiler {
     }.text("grammar is a string (path) property")
 
     help("help").text("Prints this help message.")
-
-  }
-
-  def startServer(graph : Graph) : StreamingServer = {
-
-    val server = new StreamingServerImpl
-    val controller = new ServerControllerImpl(graph)
-
-    server.register(controller, "streaming")
-    server.start()
-
-    server
 
   }
 
@@ -401,7 +388,8 @@ object Compiler {
             ret
           }
 
-          val model = new GraphModelImpl
+          val model = CreateGraphModel()
+
           val compile = new Compiler(model)
           val sentenceTrees = Blurb.tokens(System.in).map(parse)
 
