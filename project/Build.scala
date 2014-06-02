@@ -11,10 +11,8 @@ object ProjectBuild extends Build {
     scalaVersion := "2.10.3",
     resolvers ++= Seq(
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
-      "netbeans" at "http://bits.netbeans.org/nexus/content/groups/netbeans/",
-      "gephi-thirdparty" at "http://nexus.gephi.org/nexus/content/repositories/thirdparty",
-      "gephi-snapshots" at "http://nexus.gephi.org/nexus/content/repositories/snapshots",
-      "gephi-releases" at "http://nexus.gephi.org/nexus/content/repositories/releases"
+      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+      "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
     ),
     libraryDependencies ++= Seq(
       "javax.servlet" % "javax.servlet-api" % "3.1.0",
@@ -29,10 +27,11 @@ object ProjectBuild extends Build {
       "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
       "org.slf4j" % "slf4j-simple" % "1.7.5",
       "it.uniroma1.dis.wsngroup.gexf4j" % "gexf4j" % "0.4.4-BETA",
-      "postgresql" % "postgresql" % "8.4-701.jdbc4",
       "com.github.scopt" %% "scopt" % "3.2.0",
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1",
-      "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models"
+      "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models",
+      "org.mapdb" % "mapdb" % "1.1.0-SNAPSHOT",
+      "com.typesafe.akka" %% "akka-actor" % "2.3.3"
     )
   )
 

@@ -56,8 +56,7 @@ class Compiler(model : GraphModel) {
   }
 
   /**
-    * Used for building topic nodes and adding them to the graph
-    * passed to the contructor of this compiler.
+    * Used for building topic nodes and adding them to the graph.
    **/
   private[this] object Topic {
 
@@ -77,6 +76,7 @@ class Compiler(model : GraphModel) {
           val topic = model.factory.newNode(label)
 
           topic.getNodeData.setLabel(label)
+          topic.getNodeData.setColor(0.5f, 0.5f, 0.5f)
 
           model.getGraph.addNode(topic)
 
@@ -88,6 +88,25 @@ class Compiler(model : GraphModel) {
 
     }
 
+  }
+
+  /**
+    * Used for building edges and adding them to the graph.
+   **/
+  private[this] object Predicate {
+
+    def apply(source : Node, target : Node, label : String) : Edge = {
+
+      val edge = model.factory.newEdge(source, target)
+
+      edge.getEdgeData.setColor(0.5f, 0.5f, 0.5f)
+      edge.getEdgeData.setLabel(label)
+
+      model.getGraph.addEdge(edge)
+
+      edge
+
+    }
   }
 
   /**
@@ -116,13 +135,7 @@ class Compiler(model : GraphModel) {
 
           val source = sourceOption.getOrElse(target)
 
-          val edge = model.factory.newEdge(source, target)
-
-          edge.getEdgeData.setLabel(label)
-
-          model.getGraph.addEdge(edge)
-
-          gateStack = gateStack.push(edge)
+          gateStack = gateStack.push(Predicate(source, target, label))
 
         }
 
@@ -173,18 +186,13 @@ class Compiler(model : GraphModel) {
 
         compileTopics(right)
 
+        val label = left.terminalValue
         val targets = topicStack
 
         for {
           source <- lastOption
           target <- targets.headOption
-        } model.getGraph.addEdge {
-
-          val edge = model.factory.newEdge(source, target)
-          edge.getEdgeData.setLabel(left.terminalValue)
-          edge
-
-        }
+        } Predicate(source, target, label)
 
       }
       case "VP" | "PP" if tree.existsBinaryRules(gateRules) => {
@@ -201,13 +209,7 @@ class Compiler(model : GraphModel) {
         targetGates ++= gateStack
 
         for(source <- headOption) {
-          model.getGraph.addEdge {
-
-            val newEdge = model.factory.newEdge(source, source)
-            newEdge.getEdgeData.setLabel(label)
-            newEdge
-
-          }
+          Predicate(source, source, label)
         }
 
         for {
@@ -217,14 +219,11 @@ class Compiler(model : GraphModel) {
 
           val target = targetGate.getSource
 
-          val newEdge = model.factory.newEdge(source, target)
-
-          Option(targetGate.getEdgeData.getLabel) match {
-            case Some(label) => newEdge.getEdgeData.setLabel(label)
-            case None => Unit
+          val label = {
+            Option(targetGate.getEdgeData.getLabel).getOrElse("")
           }
 
-          newEdge
+          Predicate(source, target, label)
 
         }
 
@@ -242,13 +241,7 @@ class Compiler(model : GraphModel) {
 
         for {
           source <- topicStack.headOption
-        } model.getGraph.addEdge {
-
-          val newEdge = model.factory.newEdge(source, source)
-          newEdge.getEdgeData.setLabel(label)
-          newEdge
-
-        }
+        } Predicate(source, source, label)
 
       }
       case "NP" | "@NP" => compileTopics(tree)
@@ -284,17 +277,15 @@ class Compiler(model : GraphModel) {
         val topic = Topic(tree.terminalValue)
 
         for(gate <- gateStack.headOption) {
-          model.getGraph.addEdge {
 
-            val edge = model.factory.newEdge(gate.getSource, topic)
+          val source = gate.getSource
 
-            Option(edge.getEdgeData.getLabel) match {
-              case Some(label) => edge.getEdgeData.setLabel(label)
-              case None => Unit
-            }
-
-            edge
+          val label = {
+            Option(gate.getEdgeData.getLabel).getOrElse("")
           }
+
+          Predicate(source, topic, label)
+
         }
 
         topicStack = topicStack.push(topic)
@@ -348,8 +339,7 @@ object Compiler {
      * Command line options for the tool.
     **/
    case class Config(
-    file : File = null,
-    grammar : String = "./lib/eng_sm6.gr"
+    file : File = null
   )
 
   /**
@@ -365,10 +355,6 @@ object Compiler {
       (x, c) => c.copy(file = x)
     }.text("file is a (GEXF) file property")
 
-    opt[String]('g', "grammar").action {
-      (x, c) => c.copy(grammar = x)
-    }.text("grammar is a string (path) property")
-
     help("help").text("Prints this help message.")
 
   }
@@ -380,18 +366,12 @@ object Compiler {
 
         if(cfg.file != null) {
 
-          val parser = new Parser(cfg.grammar)
-
-          def parse(str : String) : Tree[String]  = {
-            val ret : Tree[String] = parser(str)
-            println(str + " -> " + ret.toString)
-            ret
-          }
+          val parser = new Parser
 
           val model = CreateGraphModel()
 
           val compile = new Compiler(model)
-          val sentenceTrees = Blurb.tokens(System.in).map(parse)
+          val sentenceTrees = Blurb.tokens(System.in).map(parser.apply)
 
           sentenceTrees.foreach { tree => compile(tree) }
 

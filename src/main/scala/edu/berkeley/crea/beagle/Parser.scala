@@ -16,7 +16,7 @@ import TreeConversions._
   * by providing a default configuration.
   * @param grammarFile {String} - Path to load serialized grammar file from.
  **/
-class Parser(grammarFile : String) {
+class Parser(grammarFile : String = "lib/eng_sm6.gr") {
 
   private[this] val threshold : Double = 1.0
 
@@ -50,7 +50,11 @@ class Parser(grammarFile : String) {
    * @param sentence The sentence to be parsed.
   **/
   def apply(sentence : String) : LinguisticTree = {
-    parser.getBestConstrainedParse(tokenizer.tokenizeLine(sentence), null, null)
+
+    val tree = parser.getBestConstrainedParse(tokenizer.tokenizeLine(sentence), null, null)
+    println(s"${sentence}  -> ${tree.toString}")
+    tree
+
   }
 
 }
