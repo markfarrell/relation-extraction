@@ -9,6 +9,8 @@ import edu.berkeley.nlp.PCFGLA.CoarseToFineMaxRuleParser
 
 import edu.berkeley.nlp.io.PTBLineLexer
 
+import org.slf4j.{ Logger, LoggerFactory }
+
 import TreeConversions._
 
 /**
@@ -17,6 +19,8 @@ import TreeConversions._
   * @param grammarFile {String} - Path to load serialized grammar file from.
  **/
 class Parser(grammarFile : String = "lib/eng_sm6.gr") {
+
+  private[this] val logger = LoggerFactory.getLogger(classOf[Parser])
 
   private[this] val threshold : Double = 1.0
 
@@ -51,8 +55,14 @@ class Parser(grammarFile : String = "lib/eng_sm6.gr") {
   **/
   def apply(sentence : String) : LinguisticTree = {
 
+    import edu.berkeley.nlp.syntax.Trees.PennTreeRenderer
+
     val tree = parser.getBestConstrainedParse(tokenizer.tokenizeLine(sentence), null, null)
-    println(s"${sentence}  -> ${tree.toString}")
+
+    val rendered = PennTreeRenderer.render(tree)
+
+    logger.debug(s"${sentence}\n${rendered}")
+
     tree
 
   }

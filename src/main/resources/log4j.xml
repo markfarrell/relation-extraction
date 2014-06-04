@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+
+  <appender name="default.console" class="org.apache.log4j.ConsoleAppender">
+    <param name="Target" value="System.out"/>
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{ISO8601} %-5p [%c{1}] - %m%n"/>
+    </layout>
+  </appender>
+
+  <appender name="debug.file" class="org.apache.log4j.FileAppender">
+    <param name="file" value="./log/debug.log" />
+    <param name="append" value="false" />
+    <param name="threshold" value="debug" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{ISO8601} %-5p [%c{1}] - %m%n" />
+    </layout>
+    <filter class="org.apache.log4j.varia.LevelRangeFilter">
+      <param name="LevelMin" value="DEBUG" />
+      <param name="LevelMax" value="DEBUG" />
+    </filter>
+  </appender>
+
+  <appender name="warn.file" class="org.apache.log4j.FileAppender">
+    <param name="file" value="./log/warn.log" />
+    <param name="append" value="false" />
+    <param name="threshold" value="debug" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{ISO8601} %-5p [%c{1}] - %m%n" />
+    </layout>
+    <filter class="org.apache.log4j.varia.LevelRangeFilter">
+      <param name="LevelMin" value="WARN" />
+      <param name="LevelMax" value="WARN" />
+    </filter>
+  </appender>
+
+  <root>
+    <priority value = "debug" />
+    <appender-ref ref="default.console" />
+    <appender-ref ref="debug.file" />
+  </root>
+
+</log4j:configuration>

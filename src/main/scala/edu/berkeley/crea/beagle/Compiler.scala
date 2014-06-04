@@ -38,7 +38,13 @@ class Compiler(model : GraphModel) {
     * @return The GraphModel used by the compiler.
    **/
   def apply(tree : LinguisticTree) : GraphModel = {
+
+    model.getGraph.writeLock()
+
     compileTopics(tree)
+
+    model.getGraph.writeUnlock()
+
     clear()
     model
   }
@@ -140,6 +146,17 @@ class Compiler(model : GraphModel) {
         }
 
       }
+      case _ => {
+
+        import org.slf4j.{Logger, LoggerFactory}
+        import edu.berkeley.nlp.syntax.Trees.PennTreeRenderer
+
+        val logger = LoggerFactory.getLogger(classOf[Compiler])
+        val rendered = PennTreeRenderer.render(tree)
+
+        logger.warn(s"Could not parse tree! \n ${rendered}")
+
+      }
     }
 
   }
@@ -174,7 +191,8 @@ class Compiler(model : GraphModel) {
         ("VBZ", "PP"), ("VBZ", "SBAR"),
         ("VBP", "PP"), ("VBP", "SBAR"),
         ("VBG", "PP"), ("VBG", "SBAR"),
-        ("VBN", "PP"), ("VBN", "SBAR"))
+        ("VBN", "PP"), ("VBN", "SBAR"),
+        ("@VP", "PP"), ("@VP", "SBAR"))
     }
 
     tree.getLabel match {

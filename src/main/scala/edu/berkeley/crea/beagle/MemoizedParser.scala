@@ -27,6 +27,11 @@ class MemoizedParser(file : File = new File("database")) {
     }
   }
 
+
+}
+
+object MemoizedParser {
+
   def main(args : Array[String]) : Unit = {
 
     val memoizedParser = {
@@ -36,5 +41,4 @@ class MemoizedParser(file : File = new File("database")) {
     memoizedParser.read(System.in)
 
   }
-
 }
