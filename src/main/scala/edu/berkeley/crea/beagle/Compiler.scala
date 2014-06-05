@@ -146,6 +146,22 @@ class Compiler(model : GraphModel) {
         }
 
       }
+      case "SBAR" if children.size == 1 => {
+
+        val child = children.head
+        val label = ""
+
+        compileTopics(child)
+
+        for(target <- topicStack) {
+
+          val source = sourceOption.getOrElse(target)
+
+          gateStack = gateStack.push(Predicate(source, target, label))
+
+        }
+
+      }
       case _ => {
 
         import org.slf4j.{Logger, LoggerFactory}

@@ -27,7 +27,6 @@ class MemoizedParser(file : File = new File("database")) {
     }
   }
 
-
 }
 
 object MemoizedParser {
