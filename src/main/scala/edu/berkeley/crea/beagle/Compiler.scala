@@ -400,7 +400,7 @@ object Compiler {
 
         if(cfg.file != null) {
 
-          val parser = new Parser
+          val parser = new MemoizedParser
 
           val model = CreateGraphModel()
 
