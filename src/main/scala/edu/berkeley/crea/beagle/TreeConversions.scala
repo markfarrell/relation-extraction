@@ -35,6 +35,11 @@ package object TreeConversions {
 
   implicit class TreeEnhancer(tree : LinguisticTree) {
 
+    /**
+      * Collects the labels of the terminal nodes in the tree. Lowercases each label.
+      * Ignores possessive pronouns, personal pronouns, punctuation, determiners,
+      * comparative adjectives  and superlative adjectives.
+     **/
     def terminalValue : String = {
 
       def terminalLabels(tree : LinguisticTree) : String = {
@@ -47,7 +52,7 @@ package object TreeConversions {
         _.isPreTerminal
       } filter {
         _.getLabel match {
-          case "PDT" | "DT" | "PRP$" | "," => false
+          case "PDT" | "DT" | "PRP$" | "," | "JJS" | "JJR" => false
           case _ => true
         }
       } map {

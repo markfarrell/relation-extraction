@@ -73,24 +73,28 @@ class Compiler(model : GraphModel) {
       * @return The topic node, whether it has been created or fetched
       * as an existing node in the graph.
      **/
-    def apply(label : String) : Node = {
+    def apply(label : String) : Option[Node] = label match {
+      case "" => None
+      case _ => {
 
-      val topic = Option(model.getGraph.getNode(label)) match {
-        case Some(topic) => topic
-        case None => {
+        val topic = Option(model.getGraph.getNode(label)) match {
+          case Some(topic) => topic
+          case None => {
 
-          val topic = model.factory.newNode(label)
+            val topic = model.factory.newNode(label)
 
-          topic.getNodeData.setLabel(label)
-          topic.getNodeData.setColor(0.5f, 0.5f, 0.5f)
+            topic.getNodeData.setLabel(label)
+            topic.getNodeData.setColor(0.5f, 0.5f, 0.5f)
 
-          model.getGraph.addNode(topic)
+            model.getGraph.addNode(topic)
 
-          topic
+            topic
+          }
         }
-      }
 
-      topic
+        Some(topic)
+
+      }
 
     }
 
@@ -126,6 +130,12 @@ class Compiler(model : GraphModel) {
    **/
   private[this] def compileGates(tree : LinguisticTree, sourceOption : Option[Node]) : Unit = {
 
+    // Filters the source node: edge loops are not wanted here.
+    def ok(target : Node) : Boolean = sourceOption match {
+      case Some(source) => source.getNodeData.getLabel != source.getNodeData.getLabel
+      case None => false
+    }
+
     val children = tree.getChildren.asScala
 
     tree.getLabel match {
@@ -137,9 +147,10 @@ class Compiler(model : GraphModel) {
 
         compileTopics(right)
 
-        for(target <- topicStack) {
-
-          val source = sourceOption.getOrElse(target)
+        for {
+          target <- topicStack if ok(target)
+          source <- sourceOption
+        } {
 
           gateStack = gateStack.push(Predicate(source, target, label))
 
@@ -153,9 +164,10 @@ class Compiler(model : GraphModel) {
 
         compileTopics(child)
 
-        for(target <- topicStack) {
-
-          val source = sourceOption.getOrElse(target)
+        for {
+          target <- topicStack
+          source <- sourceOption
+        } {
 
           gateStack = gateStack.push(Predicate(source, target, label))
 
@@ -308,28 +320,32 @@ class Compiler(model : GraphModel) {
     tree.getLabel match {
       case "NP" | "@NP" if !tree.existsBinaryRules(thatRules) => {
 
-        val topic = Topic(tree.terminalValue)
+        for (topic <- Topic(tree.terminalValue)) {
 
-        for(gate <- gateStack.headOption) {
+          topicStack = topicStack.push(topic)
 
-          val source = gate.getSource
+          for(gate <- gateStack.headOption) {
 
-          val label = {
-            Option(gate.getEdgeData.getLabel).getOrElse("")
+            val source = gate.getSource
+
+            val label = {
+              Option(gate.getEdgeData.getLabel).getOrElse("")
+            }
+
+            Predicate(source, topic, label)
+
           }
 
-          Predicate(source, topic, label)
-
         }
-
-        topicStack = topicStack.push(topic)
 
       }
       case "VP" if tree.existsBinaryRules(gerundRules) => {
 
         val (left, right) = tree.findBinaryRules(gerundRules).get
 
-        topicStack = topicStack.push(Topic(right.terminalValue))
+        for (topic <- Topic(right.terminalValue)) {
+          topicStack = topicStack.push(topic)
+        }
 
         compileArrows(left) // Makes topic connect to itself
 
@@ -346,6 +362,7 @@ class Compiler(model : GraphModel) {
         val headOption = topicStack.headOption
         compileTopics(left)
 
+        // Connects to previously added topics
         compileGates(right, headOption)
 
       }
