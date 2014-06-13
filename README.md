@@ -2,7 +2,7 @@
 
 Produces text-networks from the contents of textbooks.
 
-![mbc](mbc.png)
+View an online text-network demo: [Molecular Biology of the Cell](http://markfarrell.github.io/text-network-compiler).
 
 ## Usage
 
