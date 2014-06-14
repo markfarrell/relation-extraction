@@ -132,45 +132,38 @@ class Compiler(model : GraphModel) {
 
     // Filters the source node: edge loops are not wanted here.
     def ok(target : Node) : Boolean = sourceOption match {
-      case Some(source) => source.getNodeData.getLabel != target.getNodeData.getLabel
+      case Some(source) => source.getNodeData.getId != target.getNodeData.getId
       case None => false
     }
 
     val children = tree.getChildren.asScala
 
+    gateStack = Stack.empty[Edge]
+
     tree.getLabel match {
-      case "PP" | "SBAR" if children.size == 2 => {
+      case "@PP" | "PP" | "SBAR" if children.size <= 2 => {
 
-        val (left, right) = (children.head, children.last)
-
-        val label = left.terminalValue
-
-        compileTopics(right)
-
-        for {
-          target <- topicStack if ok(target)
-          source <- sourceOption
-        } {
-
-          gateStack = gateStack.push(Predicate(source, target, label))
-
+        val subtree = if(children.size == 2) {
+          children.last
+        } else {
+          children.head
         }
 
-      }
-      case "SBAR" if children.size == 1 => {
+        val label = if(children.size == 2) {
+          children.head.terminalValue
+        } else {
+          ""
+        }
 
-        val child = children.head
-        val label = ""
+        compileTopics(subtree)
 
-        compileTopics(child)
+        val (targets, _) = topicStack.span(ok)
 
         for {
-          target <- topicStack
+          target <- targets.lastOption
           source <- sourceOption
         } {
-
           gateStack = gateStack.push(Predicate(source, target, label))
-
         }
 
       }
@@ -198,10 +191,10 @@ class Compiler(model : GraphModel) {
   private[this] def compileArrows(tree : LinguisticTree) : Unit = {
 
     // VerbPreterminal ::= VB | VBD | VBZ | VBP | VBG | VBN
-    // PredicateRule ::= VerbPreterminal . S | NP
-    // DoubleRule ::= VerbPreterminal | MD | TO . VP
-    // GateRule ::= VerbPreterminal . PP | SBAR
-    // NestedRule ::=  @VP . PP | SBAR
+    // PredicateRule ::= VerbPreterminal (S | NP)
+    // DoubleRule ::= (VerbPreterminal | MD | TO) VP
+    // GateRule ::= VerbPreterminal (PP | SBAR)
+    // NestedRule ::=  @VP (PP | SBAR)
 
     def doubleRules = {
       Set(("VBZ", "VP"), ("VB", "VP"),
@@ -211,12 +204,12 @@ class Compiler(model : GraphModel) {
     }
 
     def predicateRules = {
-      Set(("VB", "S"), ("VB", "NP"), ("VB", "@NP"),
-        ("VBD", "S"), ("VBD", "NP"), ("VBD", "@NP"),
-        ("VBZ", "S"), ("VBZ", "NP"), ("VBZ", "@NP"),
-        ("VBP", "S"), ("VBP", "NP"), ("VBP", "@NP"),
-        ("VBG", "S"), ("VBG", "NP"), ("VBG", "@NP"),
-        ("VBN", "S"), ("VBN", "NP"), ("VBN", "@NP"))
+      Set(("VB", "S"), ("VB", "NP"),
+        ("VBD", "S"), ("VBD", "NP"),
+        ("VBZ", "S"), ("VBZ", "NP"),
+        ("VBP", "S"), ("VBP", "NP"),
+        ("VBG", "S"), ("VBG", "NP"),
+        ("VBN", "S"), ("VBN", "NP"))
     }
 
     def gateRules = {
@@ -230,31 +223,6 @@ class Compiler(model : GraphModel) {
 
     def nestedRules = {
       Set(("@VP", "PP"), ("@VP", "SBAR"))
-    }
-
-    def updateGates(headOption : Option[Node], right : LinguisticTree) : Unit = {
-
-        var targetGates = gateStack
-
-        gateStack = Stack.empty[Edge]
-        compileGates(right, headOption)
-
-        targetGates ++= gateStack
-
-        for {
-          source <- headOption
-          targetGate <- targetGates
-        } {
-
-          val target = targetGate.getSource
-
-          val label = {
-            Option(targetGate.getEdgeData.getLabel).getOrElse("")
-          }
-
-          Predicate(source, target, label)
-
-        }
     }
 
     tree.getLabel match {
@@ -281,9 +249,10 @@ class Compiler(model : GraphModel) {
 
         val headOption = topicStack.headOption
 
+        compileGates(right, headOption)
+
         compileArrows(left)
 
-        updateGates(headOption, right)
 
       }
       case "@VP" | "VP" | "PP" if tree.existsBinaryRules(gateRules) => {
@@ -297,7 +266,7 @@ class Compiler(model : GraphModel) {
           Predicate(source, source, label)
         }
 
-        updateGates(headOption, right)
+        compileGates(right, headOption)
 
       }
       case "@VP" | "VP" if tree.existsBinaryRules(doubleRules) => {
@@ -385,8 +354,10 @@ class Compiler(model : GraphModel) {
 
         val (left, right) = tree.findBinaryRules(thatRules).get
 
-        val headOption = topicStack.headOption
         compileTopics(left)
+
+        // Newest node should have come from left subtree
+        val headOption = topicStack.headOption
 
         // Connects to previously added topics
         compileGates(right, headOption)
