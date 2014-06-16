@@ -11,10 +11,6 @@ import edu.berkeley.nlp.syntax.Tree
 import java.io.File
 import java.io.FileOutputStream
 
-import org.gephi.streaming.server.StreamingServer
-import org.gephi.streaming.server.impl.ServerControllerImpl
-import org.gephi.streaming.server.impl.jetty.StreamingServerImpl
-
 import org.gephi.graph.api.{ Graph, Node, Edge, GraphFactory, GraphModel }
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
@@ -22,57 +18,175 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 import TreeConversions._
 
 /**
-  * A Compiler front-end that writes to an intermediate in-memory graphstore,
-  * whose contents can then be written to a GEXF file or database back-end.
+  * A one-state pushdown automaton; equivalent to a finite automaton.
+  * Accepts linguistic trees as input. Builds nodes and edges on the graph.
+  * @param model The [GraphModel] containing a graph.
   * @author Mark Farrell
  **/
 class Compiler(model : GraphModel) {
 
-  private[this] var topicStack : Stack[Node] = Stack.empty[Node]
-  private[this] var gateStack : Stack[Edge] = Stack.empty[Edge]
+  private[this] var nodeStack : Stack[Node] = Stack.empty[Node]
 
-  /**
-    * Returns the GraphModel passed as an argument to the Compiler's
-    * constructor, after it has been mutated with new nodes and edges added.
-    * @param tree - The parts-of-speech tagged tree to compile into a graph.
-    * @return The GraphModel used by the compiler.
-   **/
   def apply(tree : LinguisticTree) : GraphModel = {
 
     model.getGraph.writeLock()
-
-    compileTopics(tree)
-
+    compile(tree)
     model.getGraph.writeUnlock()
-
-    clear()
+    reset()
     model
-  }
-
-  /**
-    * Clears all collections stored as fields in the compiler.
-    * Used internally to reset the state of compiler after each
-    * sentence is parsed and compiled.
-   **/
-  private[this] def clear() : Unit = {
-
-    topicStack = Stack.empty[Node]
-    gateStack = Stack.empty[Edge]
 
   }
 
+  private[this] def compile(tree : LinguisticTree) : Unit = {
+
+    val children = tree.getChildren.asScala
+
+    tree.getLabel match {
+      case "@S" | "S" if tree.existsBinaryRules(propRules) => {
+
+        val (left, right) = tree.findBinaryRules(propRules).get
+
+        compile(right) // Topic
+        compile(left) //  If ... then ...
+
+      }
+      case "@NP" | "NP" if !tree.existsBinaryRules(thatRules) => {
+
+        for (topic <- Topic(tree.terminalValue)) {
+          nodeStack = nodeStack.push(topic)
+        }
+
+      }
+      case "@VP" | "VP" if tree.existsBinaryRules(gerundRules) => {
+
+        val (left, right) = tree.findBinaryRules(gerundRules).get
+
+        compile(left) // Verb
+        compile(right) // Topic
+
+      }
+      case "@VP" | "VP" | "PP" if tree.existsBinaryRules(predicateRules) => {
+
+        val (left, right) = tree.findBinaryRules(predicateRules).get
+
+        val sourceOption = nodeStack.headOption
+
+        compile(right) // Verb
+
+        val targetOption = nodeStack.headOption
+        val label = left.terminalValue
+
+        for {
+          source <- sourceOption
+          target <- targetOption
+        } Predicate(source, target, label)
+
+      }
+      case "@VP" | "VP" | "PP" if tree.existsBinaryRules(nestedRules) => {
+
+        val (left, right) = tree.findBinaryRules(nestedRules).get
+
+        compile(right)
+        compile(left)
+
+      }
+      case "@VP" | "VP" | "PP" if tree.existsBinaryRules(gateRules) => {
+
+        val (left, right) = tree.findBinaryRules(gateRules).get
+
+        val headOption = nodeStack.headOption
+        val label = left.terminalValue
+
+        for(source <- headOption) {
+          Predicate(source, source, label)
+        }
+
+        compile(right)
+
+      }
+      case "@VP" | "VP" if tree.existsBinaryRules(doubleRules) => {
+
+        val (_, right) = tree.findBinaryRules(doubleRules).get
+
+        compile(right)
+
+      }
+      case "VB" | "VBD" | "VBZ" | "VBP" | "VBG" | "VBN" => {
+
+        val label = tree.terminalValue
+
+        for {
+          source <- nodeStack.headOption
+        } Predicate(source, source, label)
+
+      }
+      case "@NP" | "NP" if tree.existsBinaryRules(thatRules) => {
+
+        val (left, right) = tree.findBinaryRules(thatRules).get
+
+        compile(left)
+        compile(right)
+
+      }
+      case "@PP" | "PP" | "SBAR" if children.size <= 2 => {
+
+        val sourceOption = nodeStack.headOption
+
+        // Filters the source node: edge loops are not wanted here.
+        def ok(target : Node) : Boolean = sourceOption match {
+          case Some(source) => source.getNodeData.getId != target.getNodeData.getId
+          case None => false
+        }
+
+        val subtree = if(children.size == 2) {
+          children.last
+        } else {
+          children.head
+        }
+
+        val label = if(children.size == 2) {
+          children.head.terminalValue
+        } else {
+          ""
+        }
+
+        compile(subtree)
+
+        val (targets, _) = nodeStack.span(ok)
+
+        for {
+          target <- targets.lastOption
+          source <- sourceOption
+        } Predicate(source, target, label)
+
+      }
+      case _ => {
+
+        import org.slf4j.{Logger, LoggerFactory}
+        import edu.berkeley.nlp.syntax.Trees.PennTreeRenderer
+
+        val logger = LoggerFactory.getLogger(classOf[Compiler])
+        val rendered = PennTreeRenderer.render(tree)
+
+        logger.warn(s"Could not parse tree! \n ${rendered}")
+
+        children.foreach(compile) // Compile anyways
+      }
+    }
+
+  }
+
   /**
-    * Used for building topic nodes and adding them to the graph.
+    * Puts the automaton in its initial state.
    **/
+  private[this] def reset() : Unit = {
+
+    nodeStack = Stack.empty[Node]
+
+  }
+
   private[this] object Topic {
 
-    /**
-      * Either builds a new node and adds it to the graph
-      * or returns an existing topic node, since they are unique.
-      * @param label - The unique label to give to the topic node.
-      * @return The topic node, whether it has been created or fetched
-      * as an existing node in the graph.
-     **/
     def apply(label : String) : Option[Node] = label match {
       case "" => None
       case _ => {
@@ -100,9 +214,6 @@ class Compiler(model : GraphModel) {
 
   }
 
-  /**
-    * Used for building edges and adding them to the graph.
-   **/
   private[this] object Predicate {
 
     def apply(source : Node, target : Node, label : String) : Edge = {
@@ -119,263 +230,51 @@ class Compiler(model : GraphModel) {
     }
   }
 
-  /**
-    * Mutates gateStack, pushing onto it new edges that were created on the graph in this method
-    * call. Forms relations between topic nodes with labels it extracts from prepositional phrases
-    * and subordinate conjunctions found in the <code>tree</code> parameter.
-    * @param tree - A parts-of-speech tagged tree, labelled as <code>PP</code> or <code>SBAR</code>.
-    * @param sourceOption - Either specify some source topic node for all edges created in this method
-    * call or specify none, in which case looping edges will be formed for all target topic nodes found
-    * in <code>tree</code>'s children.
-   **/
-  private[this] def compileGates(tree : LinguisticTree, sourceOption : Option[Node]) : Unit = {
-
-    // Filters the source node: edge loops are not wanted here.
-    def ok(target : Node) : Boolean = sourceOption match {
-      case Some(source) => source.getNodeData.getId != target.getNodeData.getId
-      case None => false
-    }
-
-    val children = tree.getChildren.asScala
-
-    gateStack = Stack.empty[Edge]
-
-    tree.getLabel match {
-      case "@PP" | "PP" | "SBAR" if children.size <= 2 => {
-
-        val subtree = if(children.size == 2) {
-          children.last
-        } else {
-          children.head
-        }
-
-        val label = if(children.size == 2) {
-          children.head.terminalValue
-        } else {
-          ""
-        }
-
-        compileTopics(subtree)
-
-        val (targets, _) = topicStack.span(ok)
-
-        for {
-          target <- targets.lastOption
-          source <- sourceOption
-        } {
-          gateStack = gateStack.push(Predicate(source, target, label))
-        }
-
-      }
-      case _ => {
-
-        import org.slf4j.{Logger, LoggerFactory}
-        import edu.berkeley.nlp.syntax.Trees.PennTreeRenderer
-
-        val logger = LoggerFactory.getLogger(classOf[Compiler])
-        val rendered = PennTreeRenderer.render(tree)
-
-        logger.warn(s"Could not parse tree! \n ${rendered}")
-
-      }
-    }
-
+  private[this] def propRules = {
+    Set(("@S", "NP"))
   }
 
-  /**
-    * Creates edges between topic nodes that have already been added to the graph.
-    * Also allows more topic nodes to be added to the graph. Mutates gateStack and
-    * topicStack.
-    * @param tree - A parts-of-speech annotated tree to match on.
-   **/
-  private[this] def compileArrows(tree : LinguisticTree) : Unit = {
-
-    // VerbPreterminal ::= VB | VBD | VBZ | VBP | VBG | VBN
-    // PredicateRule ::= VerbPreterminal (S | NP)
-    // DoubleRule ::= (VerbPreterminal | MD | TO) VP
-    // GateRule ::= VerbPreterminal (PP | SBAR)
-    // NestedRule ::=  @VP (PP | SBAR)
-
-    def doubleRules = {
-      Set(("VBZ", "VP"), ("VB", "VP"),
-        ("VBD", "VP"), ("VBP", "VP"),
-        ("VBG", "VP"), ("VBN", "VP"),
-        ("TO", "VP"), ("MD", "VP"))
-    }
-
-    def predicateRules = {
-      Set(("VB", "S"), ("VB", "NP"),
-        ("VBD", "S"), ("VBD", "NP"),
-        ("VBZ", "S"), ("VBZ", "NP"),
-        ("VBP", "S"), ("VBP", "NP"),
-        ("VBG", "S"), ("VBG", "NP"),
-        ("VBN", "S"), ("VBN", "NP"))
-    }
-
-    def gateRules = {
-      Set(("VB", "PP"), ("VB", "SBAR"),
-        ("VBD", "PP"), ("VBD", "SBAR"),
-        ("VBZ", "PP"), ("VBZ", "SBAR"),
-        ("VBP", "PP"), ("VBP", "SBAR"),
-        ("VBG", "PP"), ("VBG", "SBAR"),
-        ("VBN", "PP"), ("VBN", "SBAR"))
-    }
-
-    def nestedRules = {
-      Set(("@VP", "PP"), ("@VP", "SBAR"))
-    }
-
-    tree.getLabel match {
-      case "@VP" | "VP" | "PP" if tree.existsBinaryRules(predicateRules) => {
-
-        val (left, right) = tree.findBinaryRules(predicateRules).get
-
-        val lastOption = topicStack.lastOption
-
-        compileTopics(right)
-
-        val label = left.terminalValue
-        val targets = topicStack
-
-        for {
-          source <- lastOption
-          target <- targets.headOption
-        } Predicate(source, target, label)
-
-      }
-      case "@VP" | "VP" | "PP" if tree.existsBinaryRules(nestedRules) => {
-
-        val (left, right) = tree.findBinaryRules(nestedRules).get
-
-        val headOption = topicStack.headOption
-
-        compileGates(right, headOption)
-
-        compileArrows(left)
-
-
-      }
-      case "@VP" | "VP" | "PP" if tree.existsBinaryRules(gateRules) => {
-
-        val (left, right) = tree.findBinaryRules(gateRules).get
-
-        val headOption = topicStack.headOption
-        val label = left.terminalValue
-
-        for(source <- headOption) {
-          Predicate(source, source, label)
-        }
-
-        compileGates(right, headOption)
-
-      }
-      case "@VP" | "VP" if tree.existsBinaryRules(doubleRules) => {
-
-        val (_, right) = tree.findBinaryRules(doubleRules).get
-
-        compileArrows(right)
-
-      }
-      case "VB" | "VBD" | "VBZ" | "VBP" | "VBG" | "VBN" => {
-
-        val label = tree.terminalValue
-
-        for {
-          source <- topicStack.headOption
-        } Predicate(source, source, label)
-
-      }
-      case "@NP" | "NP" => compileTopics(tree)
-      case _ => for(c <- tree.getChildren.asScala) {
-        compileArrows(c)
-      }
-    }
-
+  private[this] def thatRules = {
+    Set(("NP", "SBAR"), ("NP", "PP"), ("@NP", "SBAR"), ("@NP", "PP"))
   }
 
-  /**
-    * Mutates topicStack, pushing onto it new topic nodes that were adding
-    * to the graph during this method call.
-    * @param tree - The parts-of-speech annotated tree to match on.
-   **/
-  private[this] def compileTopics(tree : LinguisticTree) : Unit = {
-
-    def thatRules  = {
-      Set(("NP", "SBAR"), ("NP", "PP"), ("@NP", "SBAR"), ("@NP", "PP"))
-    }
-
-    def propRules = {
-      Set(("IN", "NP"), ("IN", "@NP"), ("IN", "VP"), ("IN", "S"))
-    }
-
-    def gerundRules = {
-      Set(("VBG", "NP"), ("VBG", "@NP"))
-    }
-
-    tree.getLabel match {
-      case "@NP" | "NP" if !tree.existsBinaryRules(thatRules) => {
-
-        for (topic <- Topic(tree.terminalValue)) {
-
-          topicStack = topicStack.push(topic)
-
-          for(gate <- gateStack.headOption) {
-
-            val source = gate.getSource
-
-            val label = {
-              Option(gate.getEdgeData.getLabel).getOrElse("")
-            }
-
-            Predicate(source, topic, label)
-
-          }
-
-        }
-
-      }
-      case "@VP" | "VP" if tree.existsBinaryRules(gerundRules) => {
-
-        val (left, right) = tree.findBinaryRules(gerundRules).get
-
-        for (topic <- Topic(right.terminalValue)) {
-          topicStack = topicStack.push(topic)
-        }
-
-        compileArrows(left) // Makes topic connect to itself
-
-      }
-      case "@VP" | "VP" => {
-
-        compileArrows(tree)
-
-      }
-      case "@NP" | "NP" if tree.existsBinaryRules(thatRules) => {
-
-        val (left, right) = tree.findBinaryRules(thatRules).get
-
-        compileTopics(left)
-
-        // Newest node should have come from left subtree
-        val headOption = topicStack.headOption
-
-        // Connects to previously added topics
-        compileGates(right, headOption)
-
-      }
-      case "SBAR" | "PP" if tree.existsBinaryRules(propRules) => {
-
-        val headOption = topicStack.headOption
-
-        compileGates(tree, headOption)
-
-      }
-      case _ => for(c <- tree.getChildren.asScala) {
-        compileTopics(c)
-      }
-    }
-
+  private[this] def prepRules = {
+    Set(("IN", "NP"), ("IN", "@NP"), ("IN", "VP"), ("IN", "S"))
   }
+
+  private[this] def gerundRules = {
+    Set(("VBG", "NP"), ("VBG", "@NP"))
+  }
+
+  private[this] def doubleRules = {
+    Set(("VBZ", "VP"), ("VB", "VP"),
+      ("VBD", "VP"), ("VBP", "VP"),
+      ("VBG", "VP"), ("VBN", "VP"),
+      ("TO", "VP"), ("MD", "VP"))
+  }
+
+  private[this] def predicateRules = {
+    Set(("VB", "S"), ("VB", "NP"),
+      ("VBD", "S"), ("VBD", "NP"),
+      ("VBZ", "S"), ("VBZ", "NP"),
+      ("VBP", "S"), ("VBP", "NP"),
+      ("VBG", "S"), ("VBG", "NP"),
+      ("VBN", "S"), ("VBN", "NP"))
+  }
+
+  private[this] def gateRules = {
+    Set(("VB", "PP"), ("VB", "SBAR"),
+      ("VBD", "PP"), ("VBD", "SBAR"),
+      ("VBZ", "PP"), ("VBZ", "SBAR"),
+      ("VBP", "PP"), ("VBP", "SBAR"),
+      ("VBG", "PP"), ("VBG", "SBAR"),
+      ("VBN", "PP"), ("VBN", "SBAR"))
+  }
+
+  private[this] def nestedRules = {
+    Set(("@VP", "PP"), ("@VP", "SBAR"))
+  }
+
 }
 
 /**

@@ -37,7 +37,7 @@ package object TreeConversions {
 
     /**
       * Collects the labels of the terminal nodes in the tree. Lowercases each label.
-      * Ignores possessive pronouns, personal pronouns, punctuation, determiners,
+      * Ignores possessive pronouns, personal pronouns, punctuation, determiners, adverbs,
       * comparative adjectives  and superlative adjectives.
      **/
     def terminalValue : String = {
@@ -52,7 +52,7 @@ package object TreeConversions {
         _.isPreTerminal
       } filter {
         _.getLabel match {
-          case "PDT" | "DT" | "PRP$" | "," | "JJS" | "JJR" | "VBG" => false
+          case "PDT" | "DT" | "PRP$" | "," | "JJS" | "JJR" | "VBG" | "RB" => false
           case _ => true
         }
       } map {
@@ -60,7 +60,7 @@ package object TreeConversions {
       } mkString(" ")
 
       str.toLowerCase
-        .replaceAll("they|it|way|there", "") // Word Blacklist
+        .replaceAll("they|it|way|there|much|other|many", "") // Word Blacklist
         .replaceAll("[.!?]", "")
         .replaceAll("-lrb-", "(")
         .replaceAll("-rrb-", ")")

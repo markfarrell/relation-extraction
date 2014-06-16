@@ -8,6 +8,10 @@
     <layout class="org.apache.log4j.PatternLayout">
       <param name="ConversionPattern" value="%d{ISO8601} %-5p [%c{1}] - %m%n"/>
     </layout>
+    <filter class="org.apache.log4j.varia.LevelRangeFilter">
+      <param name="LevelMin" value="DEBUG" />
+      <param name="LevelMax" value="DEBUG" />
+    </filter>
   </appender>
 
   <appender name="debug.file" class="org.apache.log4j.FileAppender">

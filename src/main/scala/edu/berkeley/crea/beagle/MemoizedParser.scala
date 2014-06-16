@@ -22,22 +22,22 @@ class MemoizedParser(file : File = new File("database")) {
     token => treeFunction(apply(token))
   }
 
-  def apply(token : String) : LinguisticTree = Option(hashMap.get(token)) match {
-    case Some(treeObj) => {
-      val tree = treeObj.asInstanceOf[LinguisticTree]
-
-      val rendered = PennTreeRenderer.render(tree)
-
-      logger.debug(s"${token}\n${rendered}")
-
-      tree
+  def apply(token : String) : LinguisticTree = {
+    val tree = Option(hashMap.get(token)) match {
+      case Some(treeObj) => treeObj.asInstanceOf[LinguisticTree]
+      case None => {
+        val tree = parser(token)
+        hashMap.put(token, tree)
+        db.commit()
+        tree
+      }
     }
-    case None => {
-      val tree = parser(token)
-      hashMap.put(token, tree)
-      db.commit()
-      tree
-    }
+
+    val rendered = PennTreeRenderer.render(tree)
+
+    logger.debug(s"${token}\n${rendered}")
+
+    tree
   }
 
 }
