@@ -52,7 +52,7 @@ package object TreeConversions {
         _.isPreTerminal
       } filter {
         _.getLabel match {
-          case "PDT" | "DT" | "PRP$" | "," | "JJS" | "JJR" | "VBG" | "RB" => false
+          case "PDT" | "DT" | "PRP$" | "," | "JJS" | "JJR" | "VBG" | "RB" | "CC" => false
           case _ => true
         }
       } map {
@@ -62,8 +62,6 @@ package object TreeConversions {
       str.toLowerCase
         .replaceAll("they|it|way|there|much|other|many", "") // Word Blacklist
         .replaceAll("[.!?]", "")
-        .replaceAll("-lrb-", "(")
-        .replaceAll("-rrb-", ")")
 
     }
 

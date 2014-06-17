@@ -29,9 +29,7 @@ class Compiler(model : GraphModel) {
 
   def apply(tree : LinguisticTree) : GraphModel = {
 
-    model.getGraph.writeLock()
     compile(tree)
-    model.getGraph.writeUnlock()
     reset()
     model
 
@@ -50,7 +48,35 @@ class Compiler(model : GraphModel) {
         compile(left) //  If ... then ...
 
       }
-      case "@NP" | "NP" if !tree.existsBinaryRules(thatRules) => {
+      case "@NP" if tree.existsBinaryRules(adjRules) => ()
+      case "@NP" | "NP" if tree.existsBinaryRules(thatRules) => {
+
+        val (left, right) = tree.findBinaryRules(thatRules).get
+
+        compile(left)
+        compile(right)
+
+      }
+      case "@NP" | "NP" if tree.existsBinaryRules(doubleNounRules) => {
+
+        val (left, right) = tree.findBinaryRules(doubleNounRules).get
+
+        compile(right)
+
+        val targetOption = nodeStack.headOption
+
+        compile(left)
+
+        val sourceOption = nodeStack.headOption
+        val label = ""
+
+        for {
+          source <- sourceOption
+          target <- targetOption
+        } Predicate(source, target, label)
+
+      }
+      case "@NP" | "NP" | "NN" | "NNS" | "NNP" | "NNPS" => {
 
         for (topic <- Topic(tree.terminalValue)) {
           nodeStack = nodeStack.push(topic)
@@ -104,9 +130,9 @@ class Compiler(model : GraphModel) {
         compile(right)
 
       }
-      case "@VP" | "VP" if tree.existsBinaryRules(doubleRules) => {
+      case "@VP" | "VP" if tree.existsBinaryRules(doubleVerbRules) => {
 
-        val (_, right) = tree.findBinaryRules(doubleRules).get
+        val (_, right) = tree.findBinaryRules(doubleVerbRules).get
 
         compile(right)
 
@@ -118,14 +144,6 @@ class Compiler(model : GraphModel) {
         for {
           source <- nodeStack.headOption
         } Predicate(source, source, label)
-
-      }
-      case "@NP" | "NP" if tree.existsBinaryRules(thatRules) => {
-
-        val (left, right) = tree.findBinaryRules(thatRules).get
-
-        compile(left)
-        compile(right)
 
       }
       case "@PP" | "PP" | "SBAR" if children.size <= 2 => {
@@ -160,6 +178,8 @@ class Compiler(model : GraphModel) {
         } Predicate(source, target, label)
 
       }
+      case "@PRN" => children.foreach(compile)
+      case "ADVP" | "-LRB-" | "-RRB-" => ()
       case _ => {
 
         import org.slf4j.{Logger, LoggerFactory}
@@ -230,12 +250,17 @@ class Compiler(model : GraphModel) {
     }
   }
 
+  private[this] def adjRules = {
+    Set(("DT", "JJ"), ("DT", "JJR"), ("DT", "JJS"))
+  }
+
   private[this] def propRules = {
     Set(("@S", "NP"))
   }
 
   private[this] def thatRules = {
-    Set(("NP", "SBAR"), ("NP", "PP"), ("@NP", "SBAR"), ("@NP", "PP"))
+    Set(("NP", "SBAR"), ("NP", "PP"), ("NP", "PRN"),
+      ("@NP", "SBAR"), ("@NP", "PP"), ("@NP", "PRN"))
   }
 
   private[this] def prepRules = {
@@ -246,7 +271,12 @@ class Compiler(model : GraphModel) {
     Set(("VBG", "NP"), ("VBG", "@NP"))
   }
 
-  private[this] def doubleRules = {
+  private [this] def doubleNounRules = {
+    Set(("@NP", "NP"), ("@NP", "NN"), ("@NP", "NNS"),
+     ("@NP", "NNP"), ("@NP", "NNPS"))
+  }
+
+  private[this] def doubleVerbRules = {
     Set(("VBZ", "VP"), ("VB", "VP"),
       ("VBD", "VP"), ("VBP", "VP"),
       ("VBG", "VP"), ("VBN", "VP"),
