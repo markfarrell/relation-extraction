@@ -60,7 +60,7 @@ package object TreeConversions {
       } mkString(" ")
 
       str.toLowerCase
-        .replaceAll("they|it|way|there|much|other|many", "") // Word Blacklist
+        .replaceAll("they|it|way|much|other|many|most|only|whereas|such", "") // Word Blacklist
         .replaceAll("[.!?]", "")
 
     }

@@ -260,7 +260,11 @@ class Compiler(model : GraphModel) {
 
   private[this] def thatRules = {
     Set(("NP", "SBAR"), ("NP", "PP"), ("NP", "PRN"),
-      ("@NP", "SBAR"), ("@NP", "PP"), ("@NP", "PRN"))
+      ("NP", "UCP"), ("NP", "VP"), ("NP", ","),
+      ("NP", ":"), ("@NP", "S"), ("@NP", "SBAR"),
+      ("@NP", "PP"), ("@NP", "PRN"), ("@NP", "UCP"),
+      ("@NP", "VP"), ("@NP", ","), ("@NP", ":"),
+      ("@NP", "CC"))
   }
 
   private[this] def prepRules = {
