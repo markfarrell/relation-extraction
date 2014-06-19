@@ -35,6 +35,11 @@ package object TreeConversions {
 
   implicit class TreeEnhancer(tree : LinguisticTree) {
 
+    def blacklist = List("we", "they", "it", "way", "much", "other",
+      "many", "most", "only", "whereas", "such", "more", "few",
+      "less", "one", "different", "various", "several", "than",
+      "certain", "``", "\"", "''")
+
     /**
       * Collects the labels of the terminal nodes in the tree. Lowercases each label.
       * Ignores possessive pronouns, personal pronouns, punctuation, determiners, adverbs,
@@ -43,25 +48,23 @@ package object TreeConversions {
     def terminalValue : String = {
 
       def terminalLabels(tree : LinguisticTree) : String = {
-        tree.getTerminals.asScala map {
-          _.getLabel
-        } mkString("")
+        tree.getTerminals.asScala
+          .map { _.getLabel }
+          .map(Lemmatizer.lemmatize)
+          .filterNot(blacklist.contains)
+          .mkString("")
       }
 
-      val str = tree.iterator.asScala.toList filter {
+      val str = tree.iterator.asScala.toList.filter {
         _.isPreTerminal
-      } filter {
+      }.filter {
         _.getLabel match {
-          case "PDT" | "DT" | "PRP$" | "," | "JJS" | "JJR" | "VBG" | "RB" | "CC" => false
+          case "PDT" | "DT" | "PRP$" | "," | "JJ" | "JJS" | "JJR" | "VBG" | "RB" | "CC" => false
           case _ => true
         }
-      } map {
-        t => Lemmatizer.lemmatize(terminalLabels(t))
-      } mkString(" ")
+      }.map(terminalLabels).filterNot(_ == "").mkString(" ")
 
-      str.toLowerCase
-        .replaceAll("they|it|way|much|other|many|most|only|whereas|such", "") // Word Blacklist
-        .replaceAll("[.!?]", "")
+      str.toLowerCase.replaceAll("[.!?]", "")
 
     }
 
