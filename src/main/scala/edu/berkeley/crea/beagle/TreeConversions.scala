@@ -35,10 +35,17 @@ package object TreeConversions {
 
   implicit class TreeEnhancer(tree : LinguisticTree) {
 
+    // TODO: Load from a file.
     def blacklist = List("we", "they", "it", "way", "much", "other",
       "many", "most", "only", "whereas", "such", "more", "few",
       "less", "one", "different", "various", "several", "than",
-      "certain", "``", "\"", "''")
+      "certain", "``", "\"", "as", "two", "three", "four", "five", "six",
+      "seven", "eight", "nine", "ten", "by", "know", "at", "themselves",
+      "itself", "''", "whose", "about", "i", "ii", "iii", "iv", "v", "vi",
+      "vii", "ix", "x", "xi", "xii", "xiii", "xiv", "xv", "to", "at", "first",
+      "second", "third", "fourth", "fifth", "six", "seventh", "eighth", "ninth",
+      "tenth", "there", "example", "ways", "over", "between", "today", "yesterday",
+      "tomorrow", "'s", "new", "old")
 
     /**
       * Collects the labels of the terminal nodes in the tree. Lowercases each label.
@@ -64,7 +71,10 @@ package object TreeConversions {
         }
       }.map(terminalLabels).filterNot(_ == "").mkString(" ")
 
-      str.toLowerCase.replaceAll("[.!?]", "")
+      str.toLowerCase
+        .replaceAll("[.!?]", "")
+        .replaceAll("-lrb-", "(")
+        .replaceAll("-rrb-", ")")
 
     }
 
