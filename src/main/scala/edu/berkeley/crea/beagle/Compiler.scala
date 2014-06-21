@@ -37,7 +37,7 @@ class Compiler(model : GraphModel) {
 
   private[this] def compile(tree : LinguisticTree) : Unit = {
 
-    val children = tree.getChildren.asScala
+    val children = tree.getChildren.asScala.toList
 
     tree.getLabel match {
       case "@S" | "S" if tree.existsBinaryRules(propRules) => {
@@ -48,7 +48,6 @@ class Compiler(model : GraphModel) {
         compile(left) //  If ... then ...
 
       }
-      case "@NP" if tree.existsBinaryRules(adjRules) => ()
       case "@NP" | "NP" if tree.existsBinaryRules(thatRules) => {
 
         val (left, right) = tree.findBinaryRules(thatRules).get
@@ -178,8 +177,7 @@ class Compiler(model : GraphModel) {
         } Predicate(source, target, label)
 
       }
-      case "@PRN" => children.foreach(compile)
-      case "ADVP" | "-LRB-" | "-RRB-" => ()
+      case "ADVP" | "PRN" | "@PRN" | "X" | "@X" | "NX" | "@NX" => ()
       case _ => {
 
         import org.slf4j.{Logger, LoggerFactory}
@@ -250,24 +248,25 @@ class Compiler(model : GraphModel) {
     }
   }
 
-  private[this] def adjRules = {
-    Set(("DT", "JJ"), ("DT", "JJR"), ("DT", "JJS"))
-  }
-
   private[this] def propRules = {
     Set(("@S", "NP"))
   }
 
   private[this] def thatRules = {
-    Set(("RB", "NP"), ("NN", "SBAR"), ("IN", "S"),
-      ("IN", "NP"), ("IN", "@NP"),
+    Set(("CC", "NP"),
+      ("DT", "NP"), ("RB", "NP"), ("NN", "SBAR"),
+      ("IN", "S"), ("IN", "NP"), ("NP", "RB"),
+      ("NP", "X"), ("NNS", "SBAR"), ("NNP", "SBAR"),
       ("NP", "SBAR"), ("NP", "PP"), ("NP", "PRN"),
       ("NP", "UCP"), ("NP", "VP"), ("NP", ","),
       ("NP", ":"), ("NP", "."), ("NP", "ADJP"),
-      ("NP", "CC"), ("@NP", "S"), ("@NP", "SBAR"),
+      ("NP", "CC"),
+      ("@NP", "X"), ("@NP", "SBAR"), ("@NP", "RRC"),
+      ("@NP", "RB"), ("@NP", "CONJP"),
       ("@NP", "PP"), ("@NP", "PRN"), ("@NP", "UCP"),
       ("@NP", "VP"), ("@NP", ","), ("@NP", ":"),
-      ("@NP", "."), ("@NP", "CC"), ("@NP", "ADJP"))
+      ("@NP", "."), ("@NP", "CC"), ("@NP", "ADJP"),
+      ("@NP", "ADVP"), ("@NP", "NX"))
   }
 
   private[this] def gerundRules = {
@@ -276,7 +275,9 @@ class Compiler(model : GraphModel) {
 
   private [this] def doubleNounRules = {
     Set(("@NP", "NP"), ("@NP", "NN"), ("@NP", "NNS"),
-     ("@NP", "NNP"), ("@NP", "NNPS"))
+     ("@NP", "NNP"), ("@NP", "NNPS"), ("@NP", "S"),
+     ("NP", "NP"), ("NN", "S"), ("NNP", "S"),
+     ("NNS", "S"), ("NNPS", "S"))
   }
 
   private[this] def doubleVerbRules = {

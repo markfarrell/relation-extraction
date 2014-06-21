@@ -45,7 +45,8 @@ package object TreeConversions {
       "vii", "ix", "x", "xi", "xii", "xiii", "xiv", "xv", "to", "at", "first",
       "second", "third", "fourth", "fifth", "six", "seventh", "eighth", "ninth",
       "tenth", "there", "example", "ways", "over", "between", "today", "yesterday",
-      "tomorrow", "'s", "new", "old")
+      "tomorrow", "'s", "new", "old", "among", "fewer", "where", "easily", "outermost",
+      "innermost", "remarkable", "above", "below", "~")
 
     /**
       * Collects the labels of the terminal nodes in the tree. Lowercases each label.
@@ -66,13 +67,12 @@ package object TreeConversions {
         _.isPreTerminal
       }.filter {
         _.getLabel match {
-          case "PDT" | "DT" | "PRP$" | "," | "JJ" | "JJS" | "JJR" | "VBG" | "RB" | "CC" => false
+          case "PDT" | "DT" | "PRP$" | "," | "." | "JJ" | "JJS" | "JJR" | "VBG" | "RB" | "CC" | "-LRB-" | "-RRB-" => false
           case _ => true
         }
       }.map(terminalLabels).filterNot(_ == "").mkString(" ")
 
       str.toLowerCase
-        .replaceAll("[.!?]", "")
         .replaceAll("-lrb-", "(")
         .replaceAll("-rrb-", ")")
 

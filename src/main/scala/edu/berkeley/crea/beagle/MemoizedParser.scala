@@ -10,7 +10,7 @@ import scala.util.Try
 import scala.collection.JavaConverters._
 import TreeConversions._
 
-class MemoizedParser(file : File = new File("database")) {
+class MemoizedParser(file : File = new File("database"), verbose : Boolean = false) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[MemoizedParser])
 
@@ -33,9 +33,12 @@ class MemoizedParser(file : File = new File("database")) {
       }
     }
 
-    val rendered = PennTreeRenderer.render(tree)
+    if(verbose) {
 
-    logger.debug(s"${token}\n${rendered}")
+      val rendered = PennTreeRenderer.render(tree)
+      logger.debug(s"${token}\n${rendered}")
+
+    }
 
     tree
   }

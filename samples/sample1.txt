@@ -1,1 +1,0 @@
-The cell might live if the voltage can stabilize. The membrane must burst if the voltage would spike.  
