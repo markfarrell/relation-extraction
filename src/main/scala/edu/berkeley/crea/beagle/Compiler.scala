@@ -11,6 +11,9 @@ import edu.berkeley.nlp.syntax.Tree
 import java.io.File
 import java.io.FileOutputStream
 
+import org.slf4j.{Logger, LoggerFactory}
+import edu.berkeley.nlp.syntax.Trees.PennTreeRenderer
+
 import org.gephi.graph.api.{ Graph, Node, Edge, GraphFactory, GraphModel }
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
@@ -24,6 +27,8 @@ import TreeConversions._
   * @author Mark Farrell
  **/
 class Compiler(model : GraphModel) {
+
+  private[this] val logger = LoggerFactory.getLogger(classOf[Compiler])
 
   private[this] var nodeStack : Stack[Node] = Stack.empty[Node]
 
@@ -75,7 +80,14 @@ class Compiler(model : GraphModel) {
         } Predicate(source, target, label)
 
       }
-      case "@NP" | "NP" | "NN" | "NNS" | "NNP" | "NNPS" => {
+      case "@NP" | "NP" if tree.existsBinaryRules(createNounRules) => {
+
+        for (topic <- Topic(tree.terminalValue)) {
+          nodeStack = nodeStack.push(topic)
+        }
+
+      }
+      case "NN" | "NNS" | "NNP" | "NNPS" => {
 
         for (topic <- Topic(tree.terminalValue)) {
           nodeStack = nodeStack.push(topic)
@@ -177,13 +189,9 @@ class Compiler(model : GraphModel) {
         } Predicate(source, target, label)
 
       }
-      case "ADVP" | "PRN" | "@PRN" | "X" | "@X" | "NX" | "@NX" => ()
+      case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "-LRB-" | "-RRB-" => ()
       case _ => {
 
-        import org.slf4j.{Logger, LoggerFactory}
-        import edu.berkeley.nlp.syntax.Trees.PennTreeRenderer
-
-        val logger = LoggerFactory.getLogger(classOf[Compiler])
         val rendered = PennTreeRenderer.render(tree)
 
         logger.warn(s"Could not parse tree! \n ${rendered}")
@@ -252,21 +260,26 @@ class Compiler(model : GraphModel) {
     Set(("@S", "NP"))
   }
 
+  private[this] def createNounRules = {
+    Set(("NN", "NNS"), ("NN", "NN"), ("NN", "NNPS"),
+      ("NNP", "NNS"), ("NNP", "NN"), ("NNP", "NNPS"))
+  }
+
   private[this] def thatRules = {
-    Set(("CC", "NP"),
+    Set(("S", ","), ("CC", "NP"),
       ("DT", "NP"), ("RB", "NP"), ("NN", "SBAR"),
       ("IN", "S"), ("IN", "NP"), ("NP", "RB"),
       ("NP", "X"), ("NNS", "SBAR"), ("NNP", "SBAR"),
       ("NP", "SBAR"), ("NP", "PP"), ("NP", "PRN"),
       ("NP", "UCP"), ("NP", "VP"), ("NP", ","),
       ("NP", ":"), ("NP", "."), ("NP", "ADJP"),
-      ("NP", "CC"),
+      ("NP", "CC"), ("NP", "CD"),
       ("@NP", "X"), ("@NP", "SBAR"), ("@NP", "RRC"),
       ("@NP", "RB"), ("@NP", "CONJP"),
       ("@NP", "PP"), ("@NP", "PRN"), ("@NP", "UCP"),
       ("@NP", "VP"), ("@NP", ","), ("@NP", ":"),
       ("@NP", "."), ("@NP", "CC"), ("@NP", "ADJP"),
-      ("@NP", "ADVP"), ("@NP", "NX"))
+      ("@NP", "ADVP"), ("@NP", "NX"), ("@NP", "CD"))
   }
 
   private[this] def gerundRules = {

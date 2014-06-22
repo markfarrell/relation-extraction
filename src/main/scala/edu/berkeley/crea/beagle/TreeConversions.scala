@@ -65,16 +65,9 @@ package object TreeConversions {
 
       val str = tree.iterator.asScala.toList.filter {
         _.isPreTerminal
-      }.filter {
-        _.getLabel match {
-          case "PDT" | "DT" | "PRP$" | "," | "." | "JJ" | "JJS" | "JJR" | "VBG" | "RB" | "CC" | "-LRB-" | "-RRB-" => false
-          case _ => true
-        }
       }.map(terminalLabels).filterNot(_ == "").mkString(" ")
 
       str.toLowerCase
-        .replaceAll("-lrb-", "(")
-        .replaceAll("-rrb-", ")")
 
     }
 
