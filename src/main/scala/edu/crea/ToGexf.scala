@@ -1,4 +1,4 @@
-package edu.berkeley.crea.beagle
+package edu.crea
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.HashMap

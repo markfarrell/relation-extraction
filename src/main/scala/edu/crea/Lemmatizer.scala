@@ -1,4 +1,4 @@
-package edu.berkeley.crea.beagle
+package edu.crea
 
 import java.util.Properties
 import java.io.PrintStream

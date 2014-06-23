@@ -1,4 +1,4 @@
-package edu.berkeley.crea.beagle
+package edu.crea
 
 import org.gephi.graph.api.GraphModel
 

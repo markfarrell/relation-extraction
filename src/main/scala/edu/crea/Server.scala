@@ -1,7 +1,6 @@
-package edu.berkeley.crea.beagle
+package edu.crea
 
 import java.io.File
-
 
 import org.gephi.streaming.server.StreamingServer
 import org.gephi.streaming.server.impl.ServerControllerImpl

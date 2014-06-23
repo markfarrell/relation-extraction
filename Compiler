@@ -2,4 +2,4 @@
 
 export JAVA_OPTS="-Xmx2048m -Xss256m"
 
-target/start edu.berkeley.crea.beagle.Compiler $@
+target/start edu.crea.Compiler $@

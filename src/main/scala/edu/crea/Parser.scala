@@ -1,4 +1,4 @@
-package edu.berkeley.crea.beagle
+package edu.crea
 
 import edu.berkeley.nlp.util.Numberer
 import edu.berkeley.nlp.syntax.Tree

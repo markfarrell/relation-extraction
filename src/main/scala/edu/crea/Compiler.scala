@@ -1,4 +1,4 @@
-package edu.berkeley.crea.beagle
+package edu.crea
 
 import scala.collection.JavaConverters._
 import scala.collection.Iterator
@@ -28,8 +28,6 @@ import TreeConversions._
  **/
 class Compiler(model : GraphModel) {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[Compiler])
-
   private[this] var nodeStack : Stack[Node] = Stack.empty[Node]
 
   def apply(tree : LinguisticTree) : GraphModel = {
@@ -49,16 +47,8 @@ class Compiler(model : GraphModel) {
 
         val (left, right) = tree.findBinaryRules(propRules).get
 
-        compile(right) // Topic
+        compile(right) // CreateNode
         compile(left) //  If ... then ...
-
-      }
-      case "@NP" | "NP" if tree.existsBinaryRules(thatRules) => {
-
-        val (left, right) = tree.findBinaryRules(thatRules).get
-
-        compile(left)
-        compile(right)
 
       }
       case "@NP" | "NP" if tree.existsBinaryRules(doubleNounRules) => {
@@ -77,29 +67,21 @@ class Compiler(model : GraphModel) {
         for {
           source <- sourceOption
           target <- targetOption
-        } Predicate(source, target, label)
+        } CreateEdge(source, target, label)
 
       }
       case "@NP" | "NP" if tree.existsBinaryRules(createNounRules) => {
 
-        for (topic <- Topic(tree.terminalValue)) {
-          nodeStack = nodeStack.push(topic)
+        for (node <- CreateNode(tree.terminalValue)) {
+          nodeStack = nodeStack.push(node)
         }
 
       }
       case "NN" | "NNS" | "NNP" | "NNPS" => {
 
-        for (topic <- Topic(tree.terminalValue)) {
-          nodeStack = nodeStack.push(topic)
+        for (node <- CreateNode(tree.terminalValue)) {
+          nodeStack = nodeStack.push(node)
         }
-
-      }
-      case "@VP" | "VP" if tree.existsBinaryRules(gerundRules) => {
-
-        val (left, right) = tree.findBinaryRules(gerundRules).get
-
-        compile(left) // Verb
-        compile(right) // Topic
 
       }
       case "@VP" | "VP" | "PP" if tree.existsBinaryRules(predicateRules) => {
@@ -116,7 +98,7 @@ class Compiler(model : GraphModel) {
         for {
           source <- sourceOption
           target <- targetOption
-        } Predicate(source, target, label)
+        } CreateEdge(source, target, label)
 
       }
       case "@VP" | "VP" | "PP" if tree.existsBinaryRules(nestedRules) => {
@@ -135,7 +117,7 @@ class Compiler(model : GraphModel) {
         val label = left.terminalValue
 
         for(source <- headOption) {
-          Predicate(source, source, label)
+          CreateEdge(source, source, label)
         }
 
         compile(right)
@@ -154,14 +136,13 @@ class Compiler(model : GraphModel) {
 
         for {
           source <- nodeStack.headOption
-        } Predicate(source, source, label)
+        } CreateEdge(source, source, label)
 
       }
       case "@PP" | "PP" | "SBAR" if children.size <= 2 => {
 
         val sourceOption = nodeStack.headOption
 
-        // Filters the source node: edge loops are not wanted here.
         def ok(target : Node) : Boolean = sourceOption match {
           case Some(source) => source.getNodeData.getId != target.getNodeData.getId
           case None => false
@@ -186,18 +167,11 @@ class Compiler(model : GraphModel) {
         for {
           target <- targets.lastOption
           source <- sourceOption
-        } Predicate(source, target, label)
+        } CreateEdge(source, target, label)
 
       }
       case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "-LRB-" | "-RRB-" => ()
-      case _ => {
-
-        val rendered = PennTreeRenderer.render(tree)
-
-        logger.warn(s"Could not parse tree! \n ${rendered}")
-
-        children.foreach(compile) // Compile anyways
-      }
+      case _ => children.foreach(compile) // compile(left) ... compile(right)
     }
 
   }
@@ -211,7 +185,7 @@ class Compiler(model : GraphModel) {
 
   }
 
-  private[this] object Topic {
+  private[this] object CreateNode {
 
     def apply(label : String) : Option[Node] = label match {
       case "" => None
@@ -240,7 +214,7 @@ class Compiler(model : GraphModel) {
 
   }
 
-  private[this] object Predicate {
+  private[this] object CreateEdge {
 
     def apply(source : Node, target : Node, label : String) : Edge = {
 
@@ -263,27 +237,6 @@ class Compiler(model : GraphModel) {
   private[this] def createNounRules = {
     Set(("NN", "NNS"), ("NN", "NN"), ("NN", "NNPS"),
       ("NNP", "NNS"), ("NNP", "NN"), ("NNP", "NNPS"))
-  }
-
-  private[this] def thatRules = {
-    Set(("S", ","), ("CC", "NP"),
-      ("DT", "NP"), ("RB", "NP"), ("NN", "SBAR"),
-      ("IN", "S"), ("IN", "NP"), ("NP", "RB"),
-      ("NP", "X"), ("NNS", "SBAR"), ("NNP", "SBAR"),
-      ("NP", "SBAR"), ("NP", "PP"), ("NP", "PRN"),
-      ("NP", "UCP"), ("NP", "VP"), ("NP", ","),
-      ("NP", ":"), ("NP", "."), ("NP", "ADJP"),
-      ("NP", "CC"), ("NP", "CD"),
-      ("@NP", "X"), ("@NP", "SBAR"), ("@NP", "RRC"),
-      ("@NP", "RB"), ("@NP", "CONJP"),
-      ("@NP", "PP"), ("@NP", "PRN"), ("@NP", "UCP"),
-      ("@NP", "VP"), ("@NP", ","), ("@NP", ":"),
-      ("@NP", "."), ("@NP", "CC"), ("@NP", "ADJP"),
-      ("@NP", "ADVP"), ("@NP", "NX"), ("@NP", "CD"))
-  }
-
-  private[this] def gerundRules = {
-    Set(("VBG", "NP"), ("VBG", "@NP"))
   }
 
   private [this] def doubleNounRules = {
@@ -329,10 +282,10 @@ class Compiler(model : GraphModel) {
  **/
 object Compiler {
 
-   /**
-     * Command line options for the tool.
+  /**
+    * Command line options for the tool.
     **/
-   case class Config(
+  case class Config(
     file : File = null
   )
 
