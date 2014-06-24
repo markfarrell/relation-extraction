@@ -38,55 +38,149 @@ class Compiler(model : GraphModel) {
 
   }
 
+  object PredicateArgument {
+
+    private [this] def nounAdjunctRules = {
+      Set(("NN", "NNS"), ("NN", "NN"), ("NN", "NNPS"),
+        ("NNP", "NNS"), ("NNP", "NN"), ("NNP", "NNPS"))
+    }
+
+    def unapply(tree : LinguisticTree) : Boolean = {
+
+      tree.getLabel match {
+        case "@NP" | "NP" if tree.existsBinaryRules(nounAdjunctRules) => true
+        case "NN" | "NNS" | "NNP" | "NNPS" => true
+        case _ => false
+      }
+
+    }
+
+  }
+
+  object MonovalentPredicate {
+
+    def unapply(tree : LinguisticTree) : Boolean = {
+
+      tree.getLabel match {
+        case "VB" | "VBD" | "VBZ" | "VBP" | "VBG" | "VBN" => true
+        case _ => false
+      }
+
+    }
+
+  }
+
+  object DivalentPredicate {
+
+    private[this] def divalentRules = {
+      Set(("VB", "S"), ("VB", "NP"), ("VB", "PP"), ("VB", "SBAR"),
+        ("VBD", "S"), ("VBD", "NP"), ("VBD", "PP"), ("VBD", "SBAR"),
+        ("VBP", "S"), ("VBP", "NP"), ("VBP", "PP"), ("VBP", "SBAR"),
+        ("VBG", "S"), ("VBG", "NP"), ("VBG", "PP"), ("VBG", "SBAR"),
+        ("VBN", "S"), ("VBN", "NP"), ("VBN", "PP"), ("VBN", "SBAR"))
+    }
+
+    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = {
+
+      tree.getLabel match {
+        case "@VP" | "VP" | "PP" => tree.findBinaryRules(divalentRules)
+        case _ => None
+      }
+
+    }
+
+  }
+
+  object TrivalentPredicate {
+
+    private[this] def trivalentRules = Set(("@VP", "NP"))
+
+    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = {
+      tree.getLabel match {
+        case "@VP" | "VP" => tree.findBinaryRules(trivalentRules)
+        case _ => None
+      }
+    }
+
+  }
+
+  object NonfiniteVerbPhrase {
+
+    private [this] def nonfiniteVerbRules = {
+      Set(("VBZ", "VP"), ("VB", "VP"),
+        ("VBD", "VP"), ("VBP", "VP"),
+        ("VBG", "VP"), ("VBN", "VP"),
+        ("TO", "VP"), ("MD", "VP"))
+    }
+
+    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = {
+
+      tree.getLabel match {
+        case "@VP" | "VP" => tree.findBinaryRules(nonfiniteVerbRules)
+        case _ => None
+      }
+
+    }
+
+  }
+
+  object NounWithPreposition {
+
+    private [this] def nounWithPrepositionRules = {
+      Set(("NP", "PP"))
+    }
+
+    // TODO: Discard left tree, compile right
+    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
+      case "@NP" | "NP" => {
+        tree.findBinaryRules(nounWithPrepositionRules)
+      }
+      case _ => None
+    }
+
+  }
+
+  object IgnoredConstituent {
+
+    def unapply(tree : LinguisticTree) : Boolean = {
+
+      tree.getLabel match {
+        case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "-LRB-" | "-RRB-" => true
+        case _ => false
+      }
+
+    }
+
+  }
+
+  object IfThenClause {
+
+    private[this] def ifThenRules = Set(("@S", "NP"))
+
+    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = {
+
+      tree.getLabel match {
+        case "@S" | "S" => {
+          tree.findBinaryRules(ifThenRules)
+        }
+        case _ => None
+      }
+
+    }
+
+  }
+
   private[this] def compile(tree : LinguisticTree) : Unit = {
 
     val children = tree.getChildren.asScala.toList
 
-    tree.getLabel match {
-      case "@S" | "S" if tree.existsBinaryRules(propRules) => {
-
-        val (left, right) = tree.findBinaryRules(propRules).get
-
-        compile(right) // CreateNode
-        compile(left) //  If ... then ...
-
+    tree match {
+      case TrivalentPredicate(left, right) => {
+        compile(left) // John gave Jill
+        compile(right) // His dog
+        compile(left) // His dog gave (was given to) Jill
       }
-      case "@NP" | "NP" if tree.existsBinaryRules(doubleNounRules) => {
-
-        val (left, right) = tree.findBinaryRules(doubleNounRules).get
-
-        compile(right)
-
-        val targetOption = nodeStack.headOption
-
-        compile(left)
-
-        val sourceOption = nodeStack.headOption
-        val label = ""
-
-        for {
-          source <- sourceOption
-          target <- targetOption
-        } CreateEdge(source, target, label)
-
-      }
-      case "@NP" | "NP" if tree.existsBinaryRules(createNounRules) => {
-
-        for (node <- CreateNode(tree.terminalValue)) {
-          nodeStack = nodeStack.push(node)
-        }
-
-      }
-      case "NN" | "NNS" | "NNP" | "NNPS" => {
-
-        for (node <- CreateNode(tree.terminalValue)) {
-          nodeStack = nodeStack.push(node)
-        }
-
-      }
-      case "@VP" | "VP" | "PP" if tree.existsBinaryRules(predicateRules) => {
-
-        val (left, right) = tree.findBinaryRules(predicateRules).get
+      case DivalentPredicate(left, right) => {
 
         val sourceOption = nodeStack.headOption
 
@@ -101,36 +195,7 @@ class Compiler(model : GraphModel) {
         } CreateEdge(source, target, label)
 
       }
-      case "@VP" | "VP" | "PP" if tree.existsBinaryRules(nestedRules) => {
-
-        val (left, right) = tree.findBinaryRules(nestedRules).get
-
-        compile(right)
-        compile(left)
-
-      }
-      case "@VP" | "VP" | "PP" if tree.existsBinaryRules(gateRules) => {
-
-        val (left, right) = tree.findBinaryRules(gateRules).get
-
-        val headOption = nodeStack.headOption
-        val label = left.terminalValue
-
-        for(source <- headOption) {
-          CreateEdge(source, source, label)
-        }
-
-        compile(right)
-
-      }
-      case "@VP" | "VP" if tree.existsBinaryRules(doubleVerbRules) => {
-
-        val (_, right) = tree.findBinaryRules(doubleVerbRules).get
-
-        compile(right)
-
-      }
-      case "VB" | "VBD" | "VBZ" | "VBP" | "VBG" | "VBN" => {
+      case MonovalentPredicate() => {
 
         val label = tree.terminalValue
 
@@ -139,38 +204,16 @@ class Compiler(model : GraphModel) {
         } CreateEdge(source, source, label)
 
       }
-      case "@PP" | "PP" | "SBAR" if children.size <= 2 => {
+      case PredicateArgument() => {
 
-        val sourceOption = nodeStack.headOption
-
-        def ok(target : Node) : Boolean = sourceOption match {
-          case Some(source) => source.getNodeData.getId != target.getNodeData.getId
-          case None => false
+        for (node <- CreateNode(tree.terminalValue)) {
+          nodeStack = nodeStack.push(node)
         }
-
-        val subtree = if(children.size == 2) {
-          children.last
-        } else {
-          children.head
-        }
-
-        val label = if(children.size == 2) {
-          children.head.terminalValue
-        } else {
-          ""
-        }
-
-        compile(subtree)
-
-        val (targets, _) = nodeStack.span(ok)
-
-        for {
-          target <- targets.lastOption
-          source <- sourceOption
-        } CreateEdge(source, target, label)
 
       }
-      case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "-LRB-" | "-RRB-" => ()
+      case NounWithPreposition(_, right) => compile(right)
+      case NonfiniteVerbPhrase(_, right) => compile(right)
+      case IgnoredConstituent()  => ()
       case _ => children.foreach(compile) // compile(left) ... compile(right)
     }
 
@@ -271,6 +314,7 @@ class Compiler(model : GraphModel) {
       ("VBN", "PP"), ("VBN", "SBAR"))
   }
 
+  // E.g. the man might hunt the dog if the cat could eat.
   private[this] def nestedRules = {
     Set(("@VP", "PP"), ("@VP", "SBAR"))
   }
