@@ -1,5 +1,5 @@
 #!/bin/sh
 
-export JAVA_OPTS="-Xmx2048m -Xss256m"
+export JAVA_OPTS="-Xmx4096m -Xss256m"
 
 target/start edu.crea.Compiler $@

@@ -26,7 +26,9 @@ import TreeConversions._
   * @param model The [GraphModel] containing a graph.
   * @author Mark Farrell
  **/
-class Compiler(model : GraphModel) {
+class Compiler(model : GraphModel, verbose : Boolean = false) {
+
+  private[this] var logger : Logger = LoggerFactory.getLogger(classOf[Compiler])
 
   private[this] var nodeStack : Stack[Node] = Stack.empty[Node]
 
@@ -42,7 +44,8 @@ class Compiler(model : GraphModel) {
 
     private [this] def nounAdjunctRules = {
       Set(("NN", "NNS"), ("NN", "NN"), ("NN", "NNPS"),
-        ("NNP", "NNS"), ("NNP", "NN"), ("NNP", "NNPS"))
+        ("NNP", "NNS"), ("NNP", "NN"), ("NNP", "NNPS"),
+        ("@NP", "NNS"), ("@NP", "NN"), ("@NP", "NNPS"))
     }
 
     def unapply(tree : LinguisticTree) : Boolean = {
@@ -77,7 +80,8 @@ class Compiler(model : GraphModel) {
         ("VBD", "S"), ("VBD", "NP"), ("VBD", "PP"), ("VBD", "SBAR"),
         ("VBP", "S"), ("VBP", "NP"), ("VBP", "PP"), ("VBP", "SBAR"),
         ("VBG", "S"), ("VBG", "NP"), ("VBG", "PP"), ("VBG", "SBAR"),
-        ("VBN", "S"), ("VBN", "NP"), ("VBN", "PP"), ("VBN", "SBAR"))
+        ("VBN", "S"), ("VBN", "NP"), ("VBN", "PP"), ("VBN", "SBAR"),
+        ("@VP", "PP"))
     }
 
     def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = {
@@ -124,16 +128,15 @@ class Compiler(model : GraphModel) {
 
   }
 
-  object NounWithPreposition {
+  object NounPhraseWithAdjunction {
 
-    private [this] def nounWithPrepositionRules = {
-      Set(("NP", "PP"))
+    private [this] def nounPhraseWithAdjunctionRules = {
+      Set(("NP", "PP"), ("NP", "SBAR"), ("@NP", "PP"), ("@NP", "SBAR"))
     }
 
-    // TODO: Discard left tree, compile right
     def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
       case "@NP" | "NP" => {
-        tree.findBinaryRules(nounWithPrepositionRules)
+        tree.findBinaryRules(nounPhraseWithAdjunctionRules)
       }
       case _ => None
     }
@@ -145,10 +148,21 @@ class Compiler(model : GraphModel) {
     def unapply(tree : LinguisticTree) : Boolean = {
 
       tree.getLabel match {
-        case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "-LRB-" | "-RRB-" => true
+        case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "-LRB-" | "-RRB-" | "PRN" => true
         case _ => false
       }
 
+    }
+
+  }
+
+  object NounVerbDeclarativeClause {
+
+    private[this] def nounVerbRules = Set(("NP", "VP"), ("@S", "VP"))
+
+    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
+      case "@S" | "S" | "NP" => tree.findBinaryRules(nounVerbRules)
+      case _ => None
     }
 
   }
@@ -170,29 +184,30 @@ class Compiler(model : GraphModel) {
 
   }
 
-  private[this] def compile(tree : LinguisticTree) : Unit = {
+  private[this] def compile(tree : LinguisticTree, lsts : (List[Node], List[Edge]) = (Nil, Nil)) : (List[Node], List[Edge]) = {
+
+    val (nodes, edges) = lsts
 
     val children = tree.getChildren.asScala.toList
 
     tree match {
       case TrivalentPredicate(left, right) => {
-        compile(left) // John gave Jill
-        compile(right) // His dog
-        compile(left) // His dog gave (was given to) Jill
+        compile(left, compile(right, compile(left, lsts)))
       }
       case DivalentPredicate(left, right) => {
 
-        val sourceOption = nodeStack.headOption
+        val sourceOption = nodes.headOption
 
-        compile(right) // Verb
+        val (newNodes, newEdges) = compile(right, lsts)
 
-        val targetOption = nodeStack.headOption
         val label = left.terminalValue
 
         for {
           source <- sourceOption
-          target <- targetOption
+          target <- newNodes
         } CreateEdge(source, target, label)
+
+        (newNodes, newEdges)
 
       }
       case MonovalentPredicate() => {
@@ -200,21 +215,52 @@ class Compiler(model : GraphModel) {
         val label = tree.terminalValue
 
         for {
-          source <- nodeStack.headOption
+          source <- nodes
         } CreateEdge(source, source, label)
+
+        (Nil, Nil)
 
       }
       case PredicateArgument() => {
 
-        for (node <- CreateNode(tree.terminalValue)) {
-          nodeStack = nodeStack.push(node)
+        CreateNode(tree.terminalValue) match {
+          case Some(node) => (node :: Nil, Nil)
+          case None => (Nil, Nil)
         }
 
       }
-      case NounWithPreposition(_, right) => compile(right)
-      case NonfiniteVerbPhrase(_, right) => compile(right)
-      case IgnoredConstituent()  => ()
-      case _ => children.foreach(compile) // compile(left) ... compile(right)
+      case NounVerbDeclarativeClause(left, right) => {
+
+        val (leftNodes, leftEdges) = compile(left)
+
+        val(addedNodes, addedEdges) = {
+          val (a, b) = leftNodes.map(node => compile(right, (node :: Nil, edges))).reverse.unzip
+          (a.flatten, b.flatten)
+        }
+
+        (addedNodes ++ leftNodes, addedEdges ++ leftEdges)
+
+      }
+      case NounPhraseWithAdjunction(left, right) => {
+        val leftLsts = compile(left, lsts)
+        compile(right, leftLsts)
+        leftLsts
+      }
+      case NonfiniteVerbPhrase(_, right) => compile(right, lsts)
+      case IgnoredConstituent() => (Nil, Nil)
+      case _ => {
+
+        var newNodes = List.empty[Node]
+        var newEdges = List.empty[Edge]
+
+        for((nodeLst, edgeLst) <- children.view.map(child => compile(child, lsts))) {
+          newNodes ++= nodeLst
+          newEdges ++= edgeLst
+        }
+
+        (newNodes, newEdges)
+
+      }
     }
 
   }
@@ -267,6 +313,12 @@ class Compiler(model : GraphModel) {
       edge.getEdgeData.setLabel(label)
 
       model.getGraph.addEdge(edge)
+
+      if(verbose) {
+
+        logger.debug(s"${label}(${source.getNodeData.getLabel}, ${target.getNodeData.getLabel})")
+
+      }
 
       edge
 
@@ -330,7 +382,8 @@ object Compiler {
     * Command line options for the tool.
     **/
   case class Config(
-    file : File = null
+    file : File = null,
+    verbose : Boolean = false
   )
 
   /**
@@ -346,6 +399,10 @@ object Compiler {
       (x, c) => c.copy(file = x)
     }.text("file is a (GEXF) file property")
 
+    opt[Unit]('v', "verbose").action {
+      (_, c) => c.copy(verbose = true)
+    }.text("flag for printing debug messages")
+
     help("help").text("Prints this help message.")
 
   }
@@ -357,14 +414,14 @@ object Compiler {
 
         if(cfg.file != null) {
 
-          val parser = new MemoizedParser
+          val parser = new MemoizedParser(verbose=cfg.verbose)
 
           val model = CreateGraphModel()
 
-          val compile = new Compiler(model)
+          val compile = new Compiler(model, cfg.verbose)
           val sentenceTrees = Blurb.tokens(System.in).map(parser.apply)
 
-          sentenceTrees.foreach { tree => compile(tree) }
+          sentenceTrees.foreach(tree => compile(tree))
 
           val fs : FileOutputStream = new FileOutputStream(cfg.file)
 

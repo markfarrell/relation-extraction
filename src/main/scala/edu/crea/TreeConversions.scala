@@ -48,6 +48,9 @@ package object TreeConversions {
       "tomorrow", "'s", "new", "old", "among", "fewer", "where", "easily", "outermost",
       "innermost", "remarkable", "above", "below", "~")
 
+    def labels = Set("NNS", "NN", "NNPS", "VB", "VBD", "VBZ", "VBP",
+      "VBG", "VBN")
+
     /**
       * Collects the labels of the terminal nodes in the tree. Lowercases each label.
       * Ignores possessive pronouns, personal pronouns, punctuation, determiners, adverbs,
@@ -64,7 +67,7 @@ package object TreeConversions {
       }
 
       val str = tree.iterator.asScala.toList.filter {
-        _.isPreTerminal
+        c => labels.contains(c.getLabel)
       }.map(terminalLabels).filterNot(_ == "").mkString(" ")
 
       str.toLowerCase
