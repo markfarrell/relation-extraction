@@ -5,8 +5,9 @@ import Keys._
 object ProjectBuild extends Build {
 
   def standardSettings = Defaults.defaultSettings ++ Seq(
+    initialCommands in console := "import edu.crea._",
     exportJars := true,
-    name := "beagle",
+    name := "text-network compiler",
     version := "0.1",
     scalaVersion := "2.10.3",
     resolvers ++= Seq(

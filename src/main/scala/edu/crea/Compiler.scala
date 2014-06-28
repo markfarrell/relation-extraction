@@ -34,7 +34,19 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   def apply(tree : LinguisticTree) : GraphModel = {
 
-    compile(tree)
+    val (_, edges) = compile(tree)
+
+    def edgeToString(edge : Edge) : String = {
+      val label = edge.getEdgeData.getLabel
+      val sourceLabel = edge.getSource.getNodeData.getLabel
+      val targetLabel = edge.getTarget.getNodeData.getLabel
+      s"${label}(${sourceLabel}, ${targetLabel})"
+    }
+
+    if(verbose) {
+      logger.debug(s"""Propositions:\n\t${edges.map(edgeToString).mkString("\n\t")}""")
+    }
+
     reset()
     model
 
@@ -128,15 +140,15 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   }
 
-  object NounPhraseWithAdjunction {
+  object NounPhraseWithPreposition {
 
-    private [this] def nounPhraseWithAdjunctionRules = {
-      Set(("NP", "PP"), ("NP", "SBAR"), ("@NP", "PP"), ("@NP", "SBAR"))
+    private [this] def nounPhraseWithPrepositionRules = {
+      Set(("NP", "PP"), ("@NP", "PP"))
     }
 
     def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
       case "@NP" | "NP" => {
-        tree.findBinaryRules(nounPhraseWithAdjunctionRules)
+        tree.findBinaryRules(nounPhraseWithPrepositionRules)
       }
       case _ => None
     }
@@ -167,23 +179,6 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   }
 
-  object IfThenClause {
-
-    private[this] def ifThenRules = Set(("@S", "NP"))
-
-    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = {
-
-      tree.getLabel match {
-        case "@S" | "S" => {
-          tree.findBinaryRules(ifThenRules)
-        }
-        case _ => None
-      }
-
-    }
-
-  }
-
   private[this] def compile(tree : LinguisticTree, lsts : (List[Node], List[Edge]) = (Nil, Nil)) : (List[Node], List[Edge]) = {
 
     val (nodes, edges) = lsts
@@ -198,27 +193,35 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
         val sourceOption = nodes.headOption
 
-        val (newNodes, newEdges) = compile(right, lsts)
+        val (targets, rightEdges) = compile(right, lsts)
 
         val label = left.terminalValue
 
+        var newEdges : List[Edge] = Nil
+
         for {
           source <- sourceOption
-          target <- newNodes
-        } CreateEdge(source, target, label)
+          target <- targets
+        } {
+          newEdges ::= CreateEdge(source, target, label)
+        }
 
-        (newNodes, newEdges)
+        (targets, newEdges ++ rightEdges)
 
       }
       case MonovalentPredicate() => {
 
         val label = tree.terminalValue
 
+        var newEdges : List[Edge] = Nil
+
         for {
           source <- nodes
-        } CreateEdge(source, source, label)
+        } {
+          newEdges ::= CreateEdge(source, source, label)
+        }
 
-        (Nil, Nil)
+        (Nil, newEdges)
 
       }
       case PredicateArgument() => {
@@ -241,10 +244,26 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
         (addedNodes ++ leftNodes, addedEdges ++ leftEdges)
 
       }
-      case NounPhraseWithAdjunction(left, right) => {
+      case NounPhraseWithPreposition(left, right) => {
+
         val leftLsts = compile(left, lsts)
-        compile(right, leftLsts)
-        leftLsts
+        val rightLsts = compile(right, lsts)
+
+        val (targets, leftEdges) = leftLsts
+        val (sources, rightEdges) = rightLsts
+        val label = "has"
+
+        var newEdges : List[Edge] = Nil
+
+        for {
+          source <- sources
+          target <- targets
+        } {
+          newEdges ::= CreateEdge(source, target, label)
+        }
+
+        (sources, newEdges ++ rightEdges ++ leftEdges)
+
       }
       case NonfiniteVerbPhrase(_, right) => compile(right, lsts)
       case IgnoredConstituent() => (Nil, Nil)
@@ -314,61 +333,9 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
       model.getGraph.addEdge(edge)
 
-      if(verbose) {
-
-        logger.debug(s"${label}(${source.getNodeData.getLabel}, ${target.getNodeData.getLabel})")
-
-      }
-
       edge
 
     }
-  }
-
-  private[this] def propRules = {
-    Set(("@S", "NP"))
-  }
-
-  private[this] def createNounRules = {
-    Set(("NN", "NNS"), ("NN", "NN"), ("NN", "NNPS"),
-      ("NNP", "NNS"), ("NNP", "NN"), ("NNP", "NNPS"))
-  }
-
-  private [this] def doubleNounRules = {
-    Set(("@NP", "NP"), ("@NP", "NN"), ("@NP", "NNS"),
-     ("@NP", "NNP"), ("@NP", "NNPS"), ("@NP", "S"),
-     ("NP", "NP"), ("NN", "S"), ("NNP", "S"),
-     ("NNS", "S"), ("NNPS", "S"))
-  }
-
-  private[this] def doubleVerbRules = {
-    Set(("VBZ", "VP"), ("VB", "VP"),
-      ("VBD", "VP"), ("VBP", "VP"),
-      ("VBG", "VP"), ("VBN", "VP"),
-      ("TO", "VP"), ("MD", "VP"))
-  }
-
-  private[this] def predicateRules = {
-    Set(("VB", "S"), ("VB", "NP"),
-      ("VBD", "S"), ("VBD", "NP"),
-      ("VBZ", "S"), ("VBZ", "NP"),
-      ("VBP", "S"), ("VBP", "NP"),
-      ("VBG", "S"), ("VBG", "NP"),
-      ("VBN", "S"), ("VBN", "NP"))
-  }
-
-  private[this] def gateRules = {
-    Set(("VB", "PP"), ("VB", "SBAR"),
-      ("VBD", "PP"), ("VBD", "SBAR"),
-      ("VBZ", "PP"), ("VBZ", "SBAR"),
-      ("VBP", "PP"), ("VBP", "SBAR"),
-      ("VBG", "PP"), ("VBG", "SBAR"),
-      ("VBN", "PP"), ("VBN", "SBAR"))
-  }
-
-  // E.g. the man might hunt the dog if the cat could eat.
-  private[this] def nestedRules = {
-    Set(("@VP", "PP"), ("@VP", "SBAR"))
   }
 
 }
@@ -377,6 +344,9 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
   * Compiles a graph from the text provided to STDIN, saving it to a GEXF file.
  **/
 object Compiler {
+
+  import java.io.ByteArrayInputStream
+  import java.io.InputStream
 
   /**
     * Command line options for the tool.
@@ -392,8 +362,7 @@ object Compiler {
    **/
   val parser = new scopt.OptionParser[Config]("Compiler") {
 
-    head("""Reads a block of text from STDIN. Compiles text into a topic map, capable of being
-      viewed in the Gephi graph visualization software.""")
+    head("""Reads a block of text from STDIN. Compiles text into a text-network.""")
 
     opt[File]('f', "file").action {
       (x, c) => c.copy(file = x)
@@ -407,6 +376,22 @@ object Compiler {
 
   }
 
+  def apply(sentence : String, verbose : Boolean = true) : GraphModel = Compiler(new ByteArrayInputStream(sentence.getBytes), verbose)
+
+  def apply(inputStream : InputStream, verbose : Boolean) : GraphModel = {
+
+    val parser = new MemoizedParser(verbose = verbose)
+
+    val model = CreateGraphModel()
+
+    val compiler = new Compiler(model, verbose)
+    val sentenceTrees = Blurb.tokens(inputStream).map(parser.apply)
+
+    sentenceTrees.foreach(compiler.apply)
+
+    model
+  }
+
   def main(args : Array[String]) : Unit = {
 
     parser.parse(args, Config()) map {
@@ -414,18 +399,11 @@ object Compiler {
 
         if(cfg.file != null) {
 
-          val parser = new MemoizedParser(verbose=cfg.verbose)
-
-          val model = CreateGraphModel()
-
-          val compile = new Compiler(model, cfg.verbose)
-          val sentenceTrees = Blurb.tokens(System.in).map(parser.apply)
-
-          sentenceTrees.foreach(tree => compile(tree))
-
           val fs : FileOutputStream = new FileOutputStream(cfg.file)
 
-          (new StaxGraphWriter).writeToStream(ToGexf(model), fs, "UTF-8")
+          (new StaxGraphWriter).writeToStream(ToGexf(Compiler(System.in, cfg.verbose)), fs, "UTF-8")
+
+          fs.close()
 
         }
 
