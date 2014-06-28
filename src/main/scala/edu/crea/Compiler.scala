@@ -21,16 +21,11 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 import TreeConversions._
 
 /**
-  * A one-state pushdown automaton; equivalent to a finite automaton.
-  * Accepts linguistic trees as input. Builds nodes and edges on the graph.
-  * @param model The [GraphModel] containing a graph.
   * @author Mark Farrell
  **/
 class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   private[this] var logger : Logger = LoggerFactory.getLogger(classOf[Compiler])
-
-  private[this] var nodeStack : Stack[Node] = Stack.empty[Node]
 
   def apply(tree : LinguisticTree) : GraphModel = {
 
@@ -44,10 +39,9 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
     }
 
     if(verbose) {
-      logger.debug(s"""Propositions:\n\t${edges.map(edgeToString).mkString("\n\t")}""")
+      logger.debug(s"""Predicate Expressions:\n\t${edges.map(edgeToString).mkString("\n\t")}""")
     }
 
-    reset()
     model
 
   }
@@ -57,7 +51,8 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
     private [this] def nounAdjunctRules = {
       Set(("NN", "NNS"), ("NN", "NN"), ("NN", "NNPS"),
         ("NNP", "NNS"), ("NNP", "NN"), ("NNP", "NNPS"),
-        ("@NP", "NNS"), ("@NP", "NN"), ("@NP", "NNPS"))
+        ("NNP", "NNP"), ("@NP", "NNS"), ("@NP", "NN"),
+        ("@NP", "NNPS"))
     }
 
     def unapply(tree : LinguisticTree) : Boolean = {
@@ -93,7 +88,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
         ("VBP", "S"), ("VBP", "NP"), ("VBP", "PP"), ("VBP", "SBAR"),
         ("VBG", "S"), ("VBG", "NP"), ("VBG", "PP"), ("VBG", "SBAR"),
         ("VBN", "S"), ("VBN", "NP"), ("VBN", "PP"), ("VBN", "SBAR"),
-        ("@VP", "PP"))
+        ("VBZ", "S"), ("VBZ", "NP"), ("VBZ", "PP"), ("VBZ", "SBAR"))
     }
 
     def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = {
@@ -142,14 +137,24 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   object NounPhraseWithPreposition {
 
-    private [this] def nounPhraseWithPrepositionRules = {
+    private[this] def nounPhraseWithPrepositionRules = {
       Set(("NP", "PP"), ("@NP", "PP"))
     }
 
     def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
-      case "@NP" | "NP" => {
-        tree.findBinaryRules(nounPhraseWithPrepositionRules)
-      }
+      case "@NP" | "NP" => tree.findBinaryRules(nounPhraseWithPrepositionRules)
+      case "VP" => tree.findBinaryRules(Set(("@VP", "PP")))
+      case _ => None
+    }
+
+  }
+
+  object TranslocatedNounPhrase {
+
+    private[this] def translocatedNounPhraseRules = Set(("@S", "NP"))
+
+    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
+      case "@S" => tree.findBinaryRules(translocatedNounPhraseRules)
       case _ => None
     }
 
@@ -160,7 +165,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
     def unapply(tree : LinguisticTree) : Boolean = {
 
       tree.getLabel match {
-        case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "-LRB-" | "-RRB-" | "PRN" => true
+        case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "-LRB-" | "-RRB-" | "PRN" | "QP" => true
         case _ => false
       }
 
@@ -174,6 +179,17 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
     def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
       case "@S" | "S" | "NP" => tree.findBinaryRules(nounVerbRules)
+      case _ => None
+    }
+
+  }
+
+  object NounPhraseSubordinateClause {
+
+    private[this] def nounPhraseSubordinateClause = Set(("NP", "SBAR"))
+
+    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
+      case "NP" => tree.findBinaryRules(nounPhraseSubordinateClause)
       case _ => None
     }
 
@@ -265,6 +281,14 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
         (sources, newEdges ++ rightEdges ++ leftEdges)
 
       }
+      case NounPhraseSubordinateClause(left, right) => {
+
+        val (leftNodes, leftEdges) = compile(left, lsts)
+        val (_, rightEdges) = compile(right, lsts)
+
+        (leftNodes, leftEdges ++ rightEdges)
+
+      }
       case NonfiniteVerbPhrase(_, right) => compile(right, lsts)
       case IgnoredConstituent() => (Nil, Nil)
       case _ => {
@@ -281,15 +305,6 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
       }
     }
-
-  }
-
-  /**
-    * Puts the automaton in its initial state.
-   **/
-  private[this] def reset() : Unit = {
-
-    nodeStack = Stack.empty[Node]
 
   }
 
