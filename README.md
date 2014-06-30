@@ -1,49 +1,74 @@
-# Text-network Compiler
+# A Text-network Compiler
 
-#### Towards Simulating Biological Systems from Descriptions in Raw Text
+This document is a work-in-progress.
 
-Software for compiling textbooks into text-networks.
-To build the software, install SBT 0.13.0+ and then run <code>sbt compile start-script</code>.
-
-**General Terms**: Knowledge Representation, Bioinformatics
-
-__Keywords__: Natural Language Processing
+**Motivation**: Simulating Biological Systems from Descriptions in Raw Text
 
 **Author**: Mark Farrell, [CSC](http://csclub.uwaterloo.ca).
 
 **Research Director**: Steven A. Garan, [CREA](http://crea.berkeley.edu).
 
-This document is a work-in-progress.
+## Abstract
 
-## Usage
+**General Terms**: Knowledge Representation, Bioinformatics
+
+__Keywords__: Natural Language Processing
+
+## 1 Introduction
+
+### 1.1 Description
+
+Software for compiling textbooks into text-networks.
+
+### 1.2 Build
+
+To build the software, install SBT 0.13.0+ and then run <code>sbt compile start-script</code>.
+
+### 1.3 Usage
 
 Compile the contents of a textbook into a [GEXF 1.2](http://gexf.net/format/index.html) file, a graph file format.
 
     ./Compiler -f an_output_file.gexf < an_input_file.txt
 
-## How It Works
+## 2 The Software Design
 
 ### 2.1 Tokenization
-##### For finding individual sentences in a text
+##### To find sentences in a text
 
 The software first tokenizes the text that it reads into individual sentences; a sentence will
 contain at least one independent clause, asserting a truth value from a composition of
 predicate expressions.
 
 ### 2.2 Parsing
-##### To describe the grammatical structure of each sentence
+##### To describe the grammatical phrase-structure of each sentence
 
 Each sentence is piped through the [The Berkeley Parser](http://nlp.cs.berkeley), to generate
 an abstract syntax tree that describes its phrase-structure. See [Penn Treebank II Constituent Tags](http://www.surdeanu.info/mihai/teaching/ista555-fall13/readings/PennTreebankConstituents.html).
 
 ### 2.3 Compilation
-##### To find and represent predicate functions and their arguments
+##### To find simple predicate expressions in sentences
 
-This section is under construction.
+#### 2.3.1 Definitions
+
+##### 2.3.1.1 Constituents
+##### 2.3.1.2 Phrases
+##### 2.3.1.3 Clauses
+##### 2.3.1.4 Simple Predicate Expressions
+
+#### 2.3.2 Phrase-Structure Patterns
+
+##### 2.3.2.1 Predicate Arguments
+##### 2.3.2.2 Monovalent Predicate Expressions
+##### 2.3.2.3 Divalent Predicate Expressions
+##### 2.3.2.4 Trivalent Predicate Expressions
+##### 2.3.2.5 Ignored Constituents
+##### 2.3.2.5 Nonfinite Verb Phrases
+##### 2.3.2.6 Declarative Clauses Containing a Noun Phrase and Verb Phrase
+##### 2.3.2.7 Noun Phrases Followed by a Subordinate Clause
 
 ### 2.4 Examples
 
-#### Example 1
+#### 2.4.1 Example
 
 ##### Input
 
@@ -111,7 +136,7 @@ Predicate Expressions:
     encode(1 0, information)
     has(1 0, sequence)
 
-#### Example 2
+#### 2.4.2 Example
 
 ##### Input
 
@@ -173,13 +198,11 @@ Predicate Expressions:
     has(pathogenicity island, group)
     call(chromosome, pathogenicity island)
 
-## Recommendations
+## 3 Conclusions
+
+## 4 Recommendations
 
  * Use a hypergraph structure (edges between edges) to compose predicate expressions.
  * Write software that uses these text-networks to generate [CREAL]((http://www.fasebj.org/cgi/content/meeting_abstract/26/1_MeetingAbstracts/717.3?sid=d7799d6d-aa85-4442-9055-3e2d97332c94):
 a language for describing biological systems from a macro to a molecular scale.
-
-
-
-
 

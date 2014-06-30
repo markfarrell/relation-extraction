@@ -48,7 +48,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   object PredicateArgument {
 
-    private [this] def nounAdjunctRules = {
+    private [this] val nounAdjunctRules = {
       Set(("NN", "NNS"), ("NN", "NN"), ("NN", "NNPS"),
         ("NNP", "NNS"), ("NNP", "NN"), ("NNP", "NNPS"),
         ("NNP", "NNP"), ("@NP", "NNS"), ("@NP", "NN"),
@@ -82,7 +82,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   object DivalentPredicate {
 
-    private[this] def divalentRules = {
+    private[this] val divalentRules = {
       Set(("VB", "S"), ("VB", "NP"), ("VB", "PP"), ("VB", "SBAR"),
         ("VBD", "S"), ("VBD", "NP"), ("VBD", "PP"), ("VBD", "SBAR"),
         ("VBP", "S"), ("VBP", "NP"), ("VBP", "PP"), ("VBP", "SBAR"),
@@ -104,7 +104,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   object TrivalentPredicate {
 
-    private[this] def trivalentRules = Set(("@VP", "NP"))
+    private[this] val trivalentRules = Set(("@VP", "NP"))
 
     def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = {
       tree.getLabel match {
@@ -117,7 +117,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   object NonfiniteVerbPhrase {
 
-    private [this] def nonfiniteVerbRules = {
+    private [this] val nonfiniteVerbRules = {
       Set(("VBZ", "VP"), ("VB", "VP"),
         ("VBD", "VP"), ("VBP", "VP"),
         ("VBG", "VP"), ("VBN", "VP"),
@@ -143,18 +143,17 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
     def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
       case "@NP" | "NP" => tree.findBinaryRules(nounPhraseWithPrepositionRules)
-      case "VP" => tree.findBinaryRules(Set(("@VP", "PP")))
       case _ => None
     }
 
   }
 
-  object TranslocatedNounPhrase {
+  object PrepositionWithNounPhrase {
 
-    private[this] def translocatedNounPhraseRules = Set(("@S", "NP"))
+    private[this] val prepositionWithNounPhraseRules = Set(("IN", "NP"))
 
     def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
-      case "@S" => tree.findBinaryRules(translocatedNounPhraseRules)
+      case "PP" => tree.findBinaryRules(prepositionWithNounPhraseRules)
       case _ => None
     }
 
@@ -262,12 +261,10 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
       }
       case NounPhraseWithPreposition(left, right) => {
 
-        val leftLsts = compile(left, lsts)
-        val rightLsts = compile(right, lsts)
+        val (targets, leftEdges) = compile(left, lsts)
+        val (sources, rightEdges) = compile(right, (targets, leftEdges))
 
-        val (targets, leftEdges) = leftLsts
-        val (sources, rightEdges) = rightLsts
-        val label = "has"
+        /**val label = "has"
 
         var newEdges : List[Edge] = Nil
 
@@ -276,17 +273,34 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
           target <- targets
         } {
           newEdges ::= CreateEdge(source, target, label)
+        }**/
+
+        (sources, rightEdges ++ leftEdges)
+
+      }
+      case PrepositionWithNounPhrase(_, right) => {
+
+        val (sources, rightEdges) = compile(right, lsts)
+
+        val label = "has"
+
+        var newEdges : List[Edge] = Nil
+
+        for {
+          source <- sources
+          target <- nodes
+        } {
+          newEdges ::= CreateEdge(source, target, label)
         }
 
-        (sources, newEdges ++ rightEdges ++ leftEdges)
-
+        (sources, newEdges ++ rightEdges)
       }
       case NounPhraseSubordinateClause(left, right) => {
 
         val (leftNodes, leftEdges) = compile(left, lsts)
-        val (_, rightEdges) = compile(right, lsts)
+        val (_, rightEdges) = compile(right, (leftNodes, leftEdges))
 
-        (leftNodes, leftEdges ++ rightEdges)
+        (leftNodes, rightEdges ++ leftEdges)
 
       }
       case NonfiniteVerbPhrase(_, right) => compile(right, lsts)
