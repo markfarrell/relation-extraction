@@ -264,17 +264,6 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
         val (targets, leftEdges) = compile(left, lsts)
         val (sources, rightEdges) = compile(right, (targets, leftEdges))
 
-        /**val label = "has"
-
-        var newEdges : List[Edge] = Nil
-
-        for {
-          source <- sources
-          target <- targets
-        } {
-          newEdges ::= CreateEdge(source, target, label)
-        }**/
-
         (sources, rightEdges ++ leftEdges)
 
       }

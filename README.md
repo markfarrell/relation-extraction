@@ -203,6 +203,6 @@ Predicate Expressions:
 ## 4 Recommendations
 
  * Use a hypergraph structure (edges between edges) to compose predicate expressions.
- * Write software that uses these text-networks to generate [CREAL]((http://www.fasebj.org/cgi/content/meeting_abstract/26/1_MeetingAbstracts/717.3?sid=d7799d6d-aa85-4442-9055-3e2d97332c94):
+ * Write software that uses these text-networks to generate [CREAL](http://www.fasebj.org/cgi/content/meeting_abstract/26/1_MeetingAbstracts/717.3?sid=d7799d6d-aa85-4442-9055-3e2d97332c94):
 a language for describing biological systems from a macro to a molecular scale.
 
