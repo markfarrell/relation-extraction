@@ -35,8 +35,9 @@ package object TreeConversions {
 
   implicit class TreeEnhancer(tree : LinguisticTree) {
 
+    def blacklist : List[String] = Nil
     // TODO: Load from a file.
-    def blacklist = List("we", "they", "it", "way", "much", "other",
+    /**def blacklist = List("we", "they", "it", "way", "much", "other",
       "many", "most", "only", "whereas", "such", "more", "few",
       "less", "one", "different", "various", "several", "than",
       "certain", "``", "\"", "as", "two", "three", "four", "five", "six",
@@ -46,9 +47,9 @@ package object TreeConversions {
       "second", "third", "fourth", "fifth", "six", "seventh", "eighth", "ninth",
       "tenth", "there", "example", "ways", "over", "between", "today", "yesterday",
       "tomorrow", "'s", "new", "old", "among", "fewer", "where", "easily", "outermost",
-      "innermost", "remarkable", "above", "below", "~")
+      "innermost", "remarkable", "above", "below", "~")**/
 
-    def labels = Set("NNS", "NN", "NNPS", "VB", "VBD", "VBZ", "VBP",
+    def labels = Set("NNS", "NN", "NNPS", "NNP", "VB", "VBD", "VBZ", "VBP",
       "VBG", "VBN")
 
     /**

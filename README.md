@@ -2,17 +2,20 @@
 
 This document is a work-in-progress.
 
-**Motivation**: Simulating Biological Systems from Descriptions in Raw Text
-
-**Author**: Mark Farrell, [CSC](http://csclub.uwaterloo.ca).
-
-**Research Director**: Steven A. Garan, [CREA](http://crea.berkeley.edu).
-
 ## Abstract
+
+The printed volume of scentific journal articles published each month could likely fill the room you are sitting in right now. It is diffcult to account for all of the findings
+presented in these articles. Our goal is to aggregate all of this textual data, to find ways to efficiently analyze its contents and to further research in scientific computing
+related to simulating biological processes. The textbook to text-network compiler software should help relieve this issue present in scientific
+research.
 
 **General Terms**: Knowledge Representation, Bioinformatics
 
 __Keywords__: Natural Language Processing
+
+**Author**: Mark Farrell, [CSC](http://csclub.uwaterloo.ca).
+
+**Research Director**: Steven A. Garan, [CREA](http://crea.berkeley.edu).
 
 ## 1 Introduction
 
@@ -60,8 +63,80 @@ an abstract syntax tree that describes its phrase-structure. See [Penn Treebank 
 ##### 2.3.2.1 Predicate Arguments
 ##### 2.3.2.2 Monovalent Predicate Expressions
 ##### 2.3.2.3 Divalent Predicate Expressions
+
+
+Mammals make five classes of antibodies, each of which mediates a characteristic biological response following antigen binding.
+
+    (ROOT
+      (S
+        (@S
+          (NP (NNS Mammals))
+          (VP (VBP make)
+            (NP
+              (@NP
+                (@NP
+                  (NP (CD five) (NNS classes))
+                  (PP (IN of)
+                    (NP (NNS antibodies))))
+                (, ,))
+              (SBAR
+                (WHNP (DT each)
+                  (WHPP (IN of)
+                    (WHNP (WDT which))))
+                (S
+                  (VP
+                    (@VP (VBZ mediates)
+                      (NP
+                        (@NP
+                          (@NP (DT a) (JJ characteristic))
+                          (JJ biological))
+                        (NN response)))
+                    (PP (VBG following)
+                      (NP (NN antigen) (JJ binding)))))))))
+        (. .)))
+
+Predicate Expressions:
+
+    make(mammal, class)
+    make(mammal, antibody)
+    follow(response, antigen)
+    mediate(class, response)
+    mediate(antibody, response)
+    has(antibody, class)
+
 ##### 2.3.2.4 Trivalent Predicate Expressions
+
+The man gave the dog his food.
+
+     (ROOT
+        (S
+          (@S
+            (NP (DT The) (NN man))
+            (VP
+              (@VP (VBD gave)
+                (NP (DT the) (NN dog)))
+                (NP (PRP$ his) (NN food))))
+          (. .)))
+
 ##### 2.3.2.5 Ignored Constituents
+
+###### 2.3.2.5.1 Adjective Phrases (ADJP)
+
+
+The efficiency of antigen binding and cross-linking is greatly increased by a flexible hinge region in most antibodies, which allows the distance between the two antigen-binding sites to vary ( Figure 24-20 ).
+
+    (...
+      (NP
+        (NP (DT The) (NN efficiency))
+        (PP (IN of)
+          (NP
+            (NP (NN antigen))
+            (ADJP
+              (@ADJP (JJ binding)
+                (CC and))
+              (JJ cross-linking)))))
+      ...)
+
 ##### 2.3.2.5 Nonfinite Verb Phrases
 ##### 2.3.2.6 Declarative Clauses Containing a Noun Phrase and Verb Phrase
 ##### 2.3.2.7 Noun Phrases Followed by a Subordinate Clause

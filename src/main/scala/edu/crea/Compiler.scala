@@ -164,7 +164,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
     def unapply(tree : LinguisticTree) : Boolean = {
 
       tree.getLabel match {
-        case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "-LRB-" | "-RRB-" | "PRN" | "QP" => true
+        case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "-LRB-" | "-RRB-" | "PRN" | "QP" | "SINV" | "SBARQ" | "SQ" => true
         case _ => false
       }
 
@@ -185,7 +185,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   object NounPhraseSubordinateClause {
 
-    private[this] def nounPhraseSubordinateClause = Set(("NP", "SBAR"))
+    private[this] def nounPhraseSubordinateClause = Set(("NP", "SBAR"), ("@NP", "SBAR"))
 
     def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
       case "NP" => tree.findBinaryRules(nounPhraseSubordinateClause)
@@ -202,11 +202,16 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
     tree match {
       case TrivalentPredicate(left, right) => {
-        compile(left, compile(right, compile(left, lsts)))
+
+        val (rightNodes, rightEdges) = compile(right, (Nil, Nil))
+        val (leftNodes, leftEdges) = compile(left, (rightNodes ++ nodes, rightEdges ++ edges))
+
+        (leftNodes, rightEdges ++ leftEdges)
+
       }
       case DivalentPredicate(left, right) => {
 
-        val sourceOption = nodes.headOption
+        val sources = nodes
 
         val (targets, rightEdges) = compile(right, lsts)
 
@@ -215,7 +220,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
         var newEdges : List[Edge] = Nil
 
         for {
-          source <- sourceOption
+          source <- sources
           target <- targets
         } {
           newEdges ::= CreateEdge(source, target, label)
@@ -249,14 +254,11 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
       }
       case NounVerbDeclarativeClause(left, right) => {
 
-        val (leftNodes, leftEdges) = compile(left)
+        val (leftNodes, leftEdges) = compile(left, lsts)
+        val includeNodes = if(!leftNodes.isEmpty) leftNodes else nodes
+        val (rightNodes, rightEdges) = compile(right, (includeNodes, leftEdges))
 
-        val(addedNodes, addedEdges) = {
-          val (a, b) = leftNodes.map(node => compile(right, (node :: Nil, edges))).reverse.unzip
-          (a.flatten, b.flatten)
-        }
-
-        (addedNodes ++ leftNodes, addedEdges ++ leftEdges)
+        (rightNodes ++ leftNodes, rightEdges ++ leftEdges)
 
       }
       case NounPhraseWithPreposition(left, right) => {
@@ -264,12 +266,13 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
         val (targets, leftEdges) = compile(left, lsts)
         val (sources, rightEdges) = compile(right, (targets, leftEdges))
 
-        (sources, rightEdges ++ leftEdges)
+        (sources ++ targets, rightEdges ++ leftEdges)
 
       }
-      case PrepositionWithNounPhrase(_, right) => {
+      case PrepositionWithNounPhrase(_, right) => { // Problems with (VP (@VP ...) (PP ...))
 
         val (sources, rightEdges) = compile(right, lsts)
+        val targets = nodes
 
         val label = "has"
 
@@ -277,7 +280,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
         for {
           source <- sources
-          target <- nodes
+          target <- targets
         } {
           newEdges ::= CreateEdge(source, target, label)
         }
@@ -294,18 +297,19 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
       }
       case NonfiniteVerbPhrase(_, right) => compile(right, lsts)
       case IgnoredConstituent() => (Nil, Nil)
-      case _ => {
-
-        var newNodes = List.empty[Node]
-        var newEdges = List.empty[Edge]
-
-        for((nodeLst, edgeLst) <- children.view.map(child => compile(child, lsts))) {
-          newNodes ++= nodeLst
-          newEdges ++= edgeLst
+      case _ => children.size match {
+        case 2 => {
+          val (left, right) = (children.head, children.last)
+          val (leftNodes, leftEdges) = compile(left, lsts)
+          val includeNodes = if(!leftNodes.isEmpty) leftNodes else nodes
+          val (rightNodes, rightEdges) = compile(right, (includeNodes, leftEdges))
+          (rightNodes ++ leftNodes, rightEdges ++ leftEdges)
         }
-
-        (newNodes, newEdges)
-
+        case 1 => {
+          val child = children.head
+          compile(child, lsts)
+        }
+        case 0 => (Nil, Nil)
       }
     }
 
