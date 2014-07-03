@@ -25,13 +25,13 @@ Software for compiling textbooks into text-networks.
 
 ### 1.2 Build
 
-To build the software, install SBT 0.13.0+ and then run <code>sbt compile start-script</code>.
+To build the software, install SBT 0.13.0+ and then run <code>sbt stage</code>.
 
 ### 1.3 Usage
 
 Compile the contents of a textbook into a [GEXF 1.2](http://gexf.net/format/index.html) file, a graph file format.
 
-    ./Compiler -f an_output_file.gexf < an_input_file.txt
+    ./text-network-compiler -f an_output_file.gexf < an_input_file.txt
 
 ## 2 The Software Design
 

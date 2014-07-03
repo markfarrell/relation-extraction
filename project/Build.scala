@@ -1,4 +1,5 @@
-import com.typesafe.sbt.SbtStartScript
+import com.typesafe.sbt.SbtNativePackager._
+import NativePackagerKeys._
 import sbt._
 import Keys._
 
@@ -6,10 +7,12 @@ object ProjectBuild extends Build {
 
   def standardSettings = Defaults.defaultSettings ++ Seq(
     initialCommands in console := "import edu.crea._",
-    exportJars := true,
     name := "text-network compiler",
     version := "0.1",
-    scalaVersion := "2.10.3",
+    scalaVersion := "2.11.0",
+    maintainer in Debian := "Mark Farrell",
+    mainClass in (Compile) := Some("edu.crea.CompilerApp"),
+    packageDescription in Debian := "Compiles textbooks into text-networks.",
     resolvers ++= Seq(
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
       "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
@@ -41,7 +44,7 @@ object ProjectBuild extends Build {
   lazy val root = Project(
     id = "root",
     base = file("."),
-    settings = standardSettings ++ SbtStartScript.startScriptForClassesSettings
+    settings = packageArchetype.java_application ++ standardSettings
   )
 
 }

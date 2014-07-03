@@ -29,13 +29,12 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.viz.NodeShape
 
 package object TreeConversions {
 
-  type LinguisticTree = Tree[String]
+  implicit def StringToTree(str : String) : Tree[String] = Trees.PennTreeReader.parseEasy(str, false)
 
-  implicit def StringToTree(str : String) : LinguisticTree = Trees.PennTreeReader.parseEasy(str, false)
-
-  implicit class TreeEnhancer(tree : LinguisticTree) {
+  implicit class TreeEnhancer(tree : Tree[String]) {
 
     def blacklist : List[String] = Nil
+
     // TODO: Load from a file.
     /**def blacklist = List("we", "they", "it", "way", "much", "other",
       "many", "most", "only", "whereas", "such", "more", "few",
@@ -59,7 +58,7 @@ package object TreeConversions {
      **/
     def terminalValue : String = {
 
-      def terminalLabels(tree : LinguisticTree) : String = {
+      def terminalLabels(tree : Tree[String]) : String = {
         tree.getTerminals.asScala
           .map { _.getLabel }
           .map(Lemmatizer.lemmatize)
@@ -92,7 +91,7 @@ package object TreeConversions {
 
     }
 
-    def findBinaryRule(rule : (String, String)) : Option[(LinguisticTree, LinguisticTree)] = {
+    def findBinaryRule(rule : (String, String)) : Option[(Tree[String], Tree[String])] = {
 
       tree.getChildren.asScala.toList match {
         case List(a, b, _*) if (a.getLabel, b.getLabel) == rule => Some((a,b))
@@ -101,9 +100,9 @@ package object TreeConversions {
 
     }
 
-    def findBinaryRules(rules : Set[(String, String)]) : Option[(LinguisticTree, LinguisticTree)] = {
+    def findBinaryRules(rules : Set[(String, String)]) : Option[(Tree[String], Tree[String])] = {
 
-      rules.foldLeft[Option[(LinguisticTree, LinguisticTree)]](None) {
+      rules.foldLeft[Option[(Tree[String], Tree[String])]](None) {
         (result, rule) => result match {
           case Some(_) => result
           case None => tree.findBinaryRule(rule)

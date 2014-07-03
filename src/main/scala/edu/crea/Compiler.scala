@@ -27,7 +27,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   private[this] var logger : Logger = LoggerFactory.getLogger(classOf[Compiler])
 
-  def apply(tree : LinguisticTree) : GraphModel = {
+  def apply(tree : Tree[String]) : GraphModel = {
 
     val (_, edges) = compile(tree)
 
@@ -55,7 +55,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
         ("@NP", "NNPS"))
     }
 
-    def unapply(tree : LinguisticTree) : Boolean = {
+    def unapply(tree : Tree[String]) : Boolean = {
 
       tree.getLabel match {
         case "@NP" | "NP" if tree.existsBinaryRules(nounAdjunctRules) => true
@@ -69,7 +69,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   object MonovalentPredicate {
 
-    def unapply(tree : LinguisticTree) : Boolean = {
+    def unapply(tree : Tree[String]) : Boolean = {
 
       tree.getLabel match {
         case "VB" | "VBD" | "VBZ" | "VBP" | "VBG" | "VBN" => true
@@ -91,7 +91,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
         ("VBZ", "S"), ("VBZ", "NP"), ("VBZ", "PP"), ("VBZ", "SBAR"))
     }
 
-    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = {
+    def unapply(tree : Tree[String]) : Option[Tuple2[Tree[String], Tree[String]]] = {
 
       tree.getLabel match {
         case "@VP" | "VP" | "PP" => tree.findBinaryRules(divalentRules)
@@ -106,7 +106,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
     private[this] val trivalentRules = Set(("@VP", "NP"))
 
-    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = {
+    def unapply(tree : Tree[String]) : Option[Tuple2[Tree[String], Tree[String]]] = {
       tree.getLabel match {
         case "@VP" | "VP" => tree.findBinaryRules(trivalentRules)
         case _ => None
@@ -124,7 +124,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
         ("TO", "VP"), ("MD", "VP"))
     }
 
-    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = {
+    def unapply(tree : Tree[String]) : Option[Tuple2[Tree[String], Tree[String]]] = {
 
       tree.getLabel match {
         case "@VP" | "VP" => tree.findBinaryRules(nonfiniteVerbRules)
@@ -141,7 +141,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
       Set(("NP", "PP"), ("@NP", "PP"))
     }
 
-    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
+    def unapply(tree : Tree[String]) : Option[Tuple2[Tree[String], Tree[String]]] = tree.getLabel match {
       case "@NP" | "NP" => tree.findBinaryRules(nounPhraseWithPrepositionRules)
       case _ => None
     }
@@ -152,7 +152,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
     private[this] val prepositionWithNounPhraseRules = Set(("IN", "NP"))
 
-    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
+    def unapply(tree : Tree[String]) : Option[Tuple2[Tree[String], Tree[String]]] = tree.getLabel match {
       case "PP" => tree.findBinaryRules(prepositionWithNounPhraseRules)
       case _ => None
     }
@@ -161,7 +161,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
   object IgnoredConstituent {
 
-    def unapply(tree : LinguisticTree) : Boolean = {
+    def unapply(tree : Tree[String]) : Boolean = {
 
       tree.getLabel match {
         case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "-LRB-" | "-RRB-" | "PRN" | "QP" | "SINV" | "SBARQ" | "SQ" => true
@@ -176,7 +176,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
     private[this] def nounVerbRules = Set(("NP", "VP"), ("@S", "VP"))
 
-    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
+    def unapply(tree : Tree[String]) : Option[Tuple2[Tree[String], Tree[String]]] = tree.getLabel match {
       case "@S" | "S" | "NP" => tree.findBinaryRules(nounVerbRules)
       case _ => None
     }
@@ -187,14 +187,14 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
     private[this] def nounPhraseSubordinateClause = Set(("NP", "SBAR"), ("@NP", "SBAR"))
 
-    def unapply(tree : LinguisticTree) : Option[Tuple2[LinguisticTree, LinguisticTree]] = tree.getLabel match {
+    def unapply(tree : Tree[String]) : Option[Tuple2[Tree[String], Tree[String]]] = tree.getLabel match {
       case "NP" => tree.findBinaryRules(nounPhraseSubordinateClause)
       case _ => None
     }
 
   }
 
-  private[this] def compile(tree : LinguisticTree, lsts : (List[Node], List[Edge]) = (Nil, Nil)) : (List[Node], List[Edge]) = {
+  private[this] def compile(tree : Tree[String], lsts : (List[Node], List[Edge]) = (Nil, Nil)) : (List[Node], List[Edge]) = {
 
     val (nodes, edges) = lsts
 
@@ -370,19 +370,36 @@ object Compiler {
   import java.io.ByteArrayInputStream
   import java.io.InputStream
 
+  def apply(sentence : String, verbose : Boolean = true) : GraphModel = Compiler(new ByteArrayInputStream(sentence.getBytes), verbose)
+
+  def apply(inputStream : InputStream, verbose : Boolean) : GraphModel = {
+
+    val parser = new MemoizedParser(verbose = verbose)
+
+    val model = CreateGraphModel()
+
+    val compiler = new Compiler(model, verbose)
+    val sentenceTrees = Tokenize(inputStream).map(parser.apply)
+
+    sentenceTrees.iterator.foreach(compiler.apply)
+
+    model
+  }
+
+}
+
+object CompilerApp extends App {
+
   /**
     * Command line options for the tool.
     **/
-  case class Config(
-    file : File = null,
-    verbose : Boolean = false
-  )
+  case class Config(file : File = null, verbose : Boolean = false)
 
   /**
     * Set values for command line options. Specify
     * usage of the tool.
-   **/
-  val parser = new scopt.OptionParser[Config]("Compiler") {
+    **/
+  val optionParser = new scopt.OptionParser[Config]("Compiler") {
 
     head("""Reads a block of text from STDIN. Compiles text into a text-network.""")
 
@@ -398,43 +415,24 @@ object Compiler {
 
   }
 
-  def apply(sentence : String, verbose : Boolean = true) : GraphModel = Compiler(new ByteArrayInputStream(sentence.getBytes), verbose)
+  /**def main(args : Array[String]) : Unit =**/ {
 
-  def apply(inputStream : InputStream, verbose : Boolean) : GraphModel = {
+    optionParser.parse(args, Config()) map { cfg =>
 
-    val parser = new MemoizedParser(verbose = verbose)
+    if(cfg.file != null) {
 
-    val model = CreateGraphModel()
+      val fs : FileOutputStream = new FileOutputStream(cfg.file)
 
-    val compiler = new Compiler(model, verbose)
-    val sentenceTrees = Blurb.tokens(inputStream).map(parser.apply)
+      (new StaxGraphWriter).writeToStream(ToGexf(Compiler(System.in, cfg.verbose)), fs, "UTF-8")
 
-    sentenceTrees.foreach(compiler.apply)
-
-    model
-  }
-
-  def main(args : Array[String]) : Unit = {
-
-    parser.parse(args, Config()) map {
-      cfg => {
-
-        if(cfg.file != null) {
-
-          val fs : FileOutputStream = new FileOutputStream(cfg.file)
-
-          (new StaxGraphWriter).writeToStream(ToGexf(Compiler(System.in, cfg.verbose)), fs, "UTF-8")
-
-          fs.close()
-
-        }
-
-
-      }
+      fs.close()
 
     }
 
   }
 
 }
+
+}
+
 

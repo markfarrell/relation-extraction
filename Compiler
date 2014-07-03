@@ -1,5 +1,0 @@
-#!/bin/sh
-
-export JAVA_OPTS="-Xmx4096m -Xss256m"
-
-target/start edu.crea.Compiler $@
