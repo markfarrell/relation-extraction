@@ -29,7 +29,7 @@ scientific journal articles. The project should be composed of four software com
  3. Software to interpret Datalog environments and visualize them (as text-networks).
  4. Software to store, search and retrieve Datalog environments that were compiled.
 
-Currently, there is only software to compile textbooks into text-networks; separate components
+Currently, there is only software to compile text into text-networks; separate components
 for encoding first-order logic and data visualization are being worked on right now. There is
 yet to be progress made on items 1 and 4. If you would like to contribute to the project. please contact <code>m4farrel@csclub.uwaterloo.ca</code>.
 
