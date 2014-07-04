@@ -164,7 +164,9 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
     def unapply(tree : Tree[String]) : Boolean = {
 
       tree.getLabel match {
-        case "ADVP" | "X" | "@X" | "NX" | "@NX" | "DT" | "JJ" | "JJS" | "JJR" | "PRN" | "QP" | "SINV" | "SBARQ" | "SQ" | "PRP" | "PRP$" => true
+        case "SINV" | "SBARQ" | "SQ" => true
+        case "ADVP" | "X" | "NX" | "QP" | "PRN" => true
+        case "DT" | "JJ" | "JJS" | "JJR" | "PRP" | "PRP$" => true
         case _ => false
       }
 

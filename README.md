@@ -19,15 +19,25 @@ __Keywords__: Natural Language Processing
 
 ## 1 Introduction
 
-### 1.1 Description
+Software for compiling textbooks in text-networks should provide some
+relief for researchers dealing with the large quantity of information published in
+academic journal articles. The project should be composed of four software components:
 
-Software for compiling textbooks into text-networks.
+ 1. Software for aggregating textbooks in raw file format from a variety of sources.
+ 2. Software that compiles textbooks into [Prolog](http://en.wikipedia.org/wiki/Prolog), expressing
+    facts and rules derived from first-order logic.
+ 3. Software to interpret Prolog environments and visualize them (as text-networks).
+ 4. Software to store, search and retrieve Prolog environments that were compiled.
 
-### 1.2 Build
+Currently, there is only software to compile textbooks into text-networks; separate components
+for encoding first-order logic and data visualization are being worked on right now. There is
+yet to be progress made on items 1 and 4. It feels desirable to use and contribute to a Prolog interpreter written in Scala, such as the one being worked on [here](https://github.com/joehalliwell/scala-prolog). If you would like to contribute to the project. please contact <code>m4farrel@csclub.uwaterloo.ca</code>.
 
-To build the software, install SBT 0.13.0+ and then run <code>sbt stage</code>.
+### 1.1 Build
 
-### 1.3 Usage
+To build the current software, install SBT 0.13.0+ and then run <code>sbt stage</code>.
+
+### 1.2 Usage
 
 Compile the contents of a textbook into a [GEXF 1.2](http://gexf.net/format/index.html) file, a graph file format.
 
@@ -65,11 +75,25 @@ a tree of constituents.
 
 ##### 2.3.1.4 First-order Logic
 
-  The compiler implements a [zipper](http://www.haskell.org/haskellwiki/Zipper) that takes a tree of constituents and rebuilds it tree composed of [terms](http://en.wikipedia.org/wiki/Prolog): atoms and compounds terms. A set of patterns are matched on at each level of the constituent tree, whereafter atoms and compound terms are constructed from predicates and arguments that are found.
+  The compiler implements a [zipper](http://www.haskell.org/haskellwiki/Zipper) that takes a tree of constituents and rebuilds a tree composed of [terms](http://en.wikipedia.org/wiki/Prolog): atoms and compounds terms. A set of patterns are matched on at each level of the constituent tree, whereafter atoms and compound terms are constructed from predicates and arguments that are found in text.
 
 #### 2.3.2 Constituent Patterns
 
+The set of consituent patterns form a disjoint union: i.e. each pattern that is looked for
+at each level in the tree is unique. A disjoint set of constituent-pattern objects is
+implemented in Scala:
+
     sealed trait ConstituentPattern
+    private[this] object PredicateArgument extends ConstituentPattern { ... }
+    private[this] object MonovalentPredicate extends ConstituentPattern { ... }
+    private[this] object DivalentPredicate extends ConstituentPattern { ... }
+    private[this] object TrivalentPredicate extends ConstituentPattern { ... }
+    private[this] object NonfiniteVerbPhrase extends ConstituentPattern { ... }
+    private[this] object PrepositionWithNounPhrase extends ConstituentPattern { ... }
+    private[this] object NounVerbDeclarativeClause extends ConstituentPattern { ... }
+    private[this] object NounPhraseSubordinateClause extends ConstituentPattern { ... }
+    private[this] object IgnoredConstituent extends ConstituentPattern { ... }
+
 
 ##### 2.3.2.1 Predicate Arguments
 
@@ -77,17 +101,21 @@ Atom terms are constructed when predicate arguments are found in constituent tre
 
     private[this] object PredicateArgument extends ConstituentPattern {
 
-      def unapply(tree : Tree[String]) : Boolean = tree match {
-         case Tree.Node("NP", Stream("NN", "NNS")) => true
-         case Tree.Node("NP", Stream("NN", "NN")) => true
-         case Tree.Node("NP", Stream("NN", "NNPS")) => true
-         case Tree.Node("NP", Stream("NNP", "NNS")) => true
-         case Tree.Node("NP", Stream("NNP", "NN")) => true
-         case Tree.Node("NP", Stream("NNP", "NNPS")) => true
-         case Tree.Node("NP", Stream("@NP", "NNP")) => true
-         case Tree.Node("NP", Stream("@NP", "NN")) => true
-         case Tree.Node("NP", Stream("@NP", "NNPS")) => true
-         case _ => false
+      def unapply(tree : Tree[String]) : Option[Atom] = tree match {
+        case Tree.Node("NP", Stream("NN", "NNS")) => Atom(tree).some
+        case Tree.Node("NP", Stream("NN", "NN")) => Atom(tree).some
+        case Tree.Node("NP", Stream("NN", "NNPS")) => Atom(tree).some
+        case Tree.Node("NP", Stream("NNP", "NNS")) => Atom(tree).some
+        case Tree.Node("NP", Stream("NNP", "NN")) => Atom(tree).some
+        case Tree.Node("NP", Stream("NNP", "NNPS")) => Atom(tree).some
+        case Tree.Node("NP", Stream("@NP", "NNP")) => Atom(tree).some
+        case Tree.Node("NP", Stream("@NP", "NN")) => Atom(tree).some
+        case Tree.Node("NP", Stream("@NP", "NNPS")) => Atom(tree).some
+        case Tree.Node("NN", Stream()) => Atom(tree).some
+        case Tree.Node("NNS", Stream()) => Atom(tree).some
+        case Tree.Node("NNP", Stream()) => Atom(tree).some
+        case Tree.Node("NNPS", Stream()) => Atom(tree).some
+        case _ => none
       }
 
     }
@@ -178,6 +206,19 @@ Here is a list of constituents currently ignored by the compiler:
  - JJR (Adjective Comparative)
  - PRP (Personal Pronoun)
  - PRP$ (Possessive Pronoun)
+
+Here is the pattern's implementation:
+
+    object IgnoredConstituent extends ConstituentPattern {
+
+      def unapply(tree : Tree[String]) : Boolean = tree.loc.getLabel match {
+        case "SINV" | "SBARQ" | "SQ" => true
+        case "ADVP" | "X" | "NX" | "QP" | "PRN" => true
+        case "DT" | "JJ" | "JJS" | "JJR" | "PRP" | "PRP$" => true
+        case _ => false
+      }
+
+    }
 
 ###### 2.3.2.5.1 Adjective Phrases (ADJP)
 
