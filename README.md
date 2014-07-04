@@ -6,7 +6,7 @@ This document is a work-in-progress.
 
 The printed volume of scentific journal articles published each month could likely fill the room you are sitting in right now. It is diffcult to account for all of the findings
 presented in these articles. Our goal is to aggregate all of this textual data, to find ways to efficiently analyze its contents and to further research in scientific computing
-related to simulating biological processes. The textbook to text-network compiler software should help relieve this issue present in scientific
+related to simulating biological processes. The text to text-network compiler software should help relieve this issue present in scientific
 research.
 
 **General Terms**: Knowledge Representation, Bioinformatics
@@ -19,19 +19,19 @@ __Keywords__: Natural Language Processing
 
 ## 1 Introduction
 
-Software for compiling textbooks into text-networks should provide some
+Software for compiling raw text into text-networks should provide some
 relief for researchers dealing with the large quantity of information published in
-academic journal articles. The project should be composed of four software components:
+scientific journal articles. The project should be composed of four software components:
 
- 1. Software for aggregating textbooks in raw file format from a variety of sources.
- 2. Software that compiles textbooks into [Prolog](http://en.wikipedia.org/wiki/Prolog), expressing
+ 1. Software for aggregating journal articles and textbooks in raw file format from a variety of sources.
+ 2. Software that compiles text articles into [Datalog](http://en.wikipedia.org/wiki/Datalog), expressing
     facts and rules derived from first-order logic.
- 3. Software to interpret Prolog environments and visualize them (as text-networks).
- 4. Software to store, search and retrieve Prolog environments that were compiled.
+ 3. Software to interpret Datalog environments and visualize them (as text-networks).
+ 4. Software to store, search and retrieve Datalog environments that were compiled.
 
 Currently, there is only software to compile textbooks into text-networks; separate components
 for encoding first-order logic and data visualization are being worked on right now. There is
-yet to be progress made on items 1 and 4. It feels desirable to use and contribute to a Prolog interpreter written in Scala, such as the one being worked on [here](https://github.com/joehalliwell/scala-prolog). If you would like to contribute to the project. please contact <code>m4farrel@csclub.uwaterloo.ca</code>.
+yet to be progress made on items 1 and 4. If you would like to contribute to the project. please contact <code>m4farrel@csclub.uwaterloo.ca</code>.
 
 ### 1.1 Build
 
@@ -75,7 +75,8 @@ a tree of constituents.
 
 ##### 2.3.1.4 First-order Logic
 
-  The compiler implements a [zipper](http://www.haskell.org/haskellwiki/Zipper) that takes a tree of constituents and rebuilds a tree composed of [terms](http://en.wikipedia.org/wiki/Prolog): atoms and compounds terms. A set of patterns are matched on at each level of the constituent tree, whereafter atoms and compound terms are constructed from predicates and arguments that are found in text.
+  The compiler implements a [zipper](http://www.haskell.org/haskellwiki/Zipper) that takes a tree of constituents and rebuilds a tree composed of [terms](http://en.wikipedia.org/wiki/Prolog): atoms and compounds terms. A set of patterns are matched on at each level of the constituent tree, whereafter atoms and compound terms are constructed from [predicates](http://en.wikipedia.org/wiki/Predicate_%28mathematical_logic%29) and arguments that are found in text.
+
 
 #### 2.3.2 Constituent Patterns
 
@@ -119,7 +120,6 @@ Atom terms are constructed when predicate arguments are found in constituent tre
       }
 
     }
-
 
 ##### 2.3.2.2 Monovalent Predicate Expressions
 ##### 2.3.2.3 Divalent Predicate Expressions
