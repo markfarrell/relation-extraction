@@ -19,7 +19,7 @@ __Keywords__: Natural Language Processing
 
 ## 1 Introduction
 
-Software for compiling textbooks in text-networks should provide some
+Software for compiling textbooks into text-networks should provide some
 relief for researchers dealing with the large quantity of information published in
 academic journal articles. The project should be composed of four software components:
 
