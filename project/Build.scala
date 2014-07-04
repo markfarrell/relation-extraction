@@ -37,7 +37,7 @@ object ProjectBuild extends Build {
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1",
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models",
       "org.mapdb" % "mapdb" % "1.1.0-SNAPSHOT",
-      "com.typesafe.akka" %% "akka-actor" % "2.3.3"
+      "org.scalaz" %% "scalaz-core" % "7.0.6"
     )
   )
 

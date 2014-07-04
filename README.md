@@ -39,28 +39,60 @@ Compile the contents of a textbook into a [GEXF 1.2](http://gexf.net/format/inde
 ##### To find sentences in a text
 
 The software first tokenizes the text that it reads into individual sentences; a sentence will
-contain at least one independent clause, asserting a truth value from a composition of
-predicate expressions.
+contain at least one independent clause.
 
 ### 2.2 Parsing
 ##### To describe the grammatical phrase-structure of each sentence
 
-Each sentence is piped through the [The Berkeley Parser](http://nlp.cs.berkeley), to generate
-an abstract syntax tree that describes its phrase-structure. See [Penn Treebank II Constituent Tags](http://www.surdeanu.info/mihai/teaching/ista555-fall13/readings/PennTreebankConstituents.html).
+Each sentence is piped through the [The Berkeley Parser](http://nlp.cs.berkeley) to generate
+a tree of constituents.
 
 ### 2.3 Compilation
-##### To find simple predicate expressions in sentences
+##### To find atoms and compound terms in sentences
 
 #### 2.3.1 Definitions
 
 ##### 2.3.1.1 Constituents
-##### 2.3.1.2 Phrases
-##### 2.3.1.3 Clauses
-##### 2.3.1.4 Simple Predicate Expressions
 
-#### 2.3.2 Phrase-Structure Patterns
+ Constituents are nonterminal nodes of the trees produced by The Berkeley Parser. Each constituent
+ has a tag, describing the syntactic function of the subtree in relation to the sentence that was
+ parsed. Constituents are either words, phrases or clauses. See [Penn Treebank II Constituent Tags](http://www.surdeanu.info/mihai/teaching/ista555-fall13/readings/PennTreebankConstituents.html) for details and examples.
+
+##### 2.3.1.2 Phrases
+  Phrases are constituents that group together several words, but do not form a complete proposition.
+##### 2.3.1.3 Clauses
+  Clauses, in constrast to phrases, are groups of several constituents that form a complete proposition; they can be simple, made up of phrases, or compounded with other clauses.
+
+##### 2.3.1.4 First-order Logic
+
+  The compiler implements a [zipper](http://www.haskell.org/haskellwiki/Zipper) that takes a tree of constituents and rebuilds it tree composed of [terms](http://en.wikipedia.org/wiki/Prolog): atoms and compounds terms. A set of patterns are matched on at each level of the constituent tree, whereafter atoms and compound terms are constructed from predicates and arguments that are found.
+
+#### 2.3.2 Constituent Patterns
+
+    sealed trait ConstituentPattern
 
 ##### 2.3.2.1 Predicate Arguments
+
+Atom terms are constructed when predicate arguments are found in constituent trees.
+
+    private[this] object PredicateArgument extends ConstituentPattern {
+
+      def unapply(tree : Tree[String]) : Boolean = tree match {
+         case Tree.Node("NP", Stream("NN", "NNS")) => true
+         case Tree.Node("NP", Stream("NN", "NN")) => true
+         case Tree.Node("NP", Stream("NN", "NNPS")) => true
+         case Tree.Node("NP", Stream("NNP", "NNS")) => true
+         case Tree.Node("NP", Stream("NNP", "NN")) => true
+         case Tree.Node("NP", Stream("NNP", "NNPS")) => true
+         case Tree.Node("NP", Stream("@NP", "NNP")) => true
+         case Tree.Node("NP", Stream("@NP", "NN")) => true
+         case Tree.Node("NP", Stream("@NP", "NNPS")) => true
+         case _ => false
+      }
+
+    }
+
+
 ##### 2.3.2.2 Monovalent Predicate Expressions
 ##### 2.3.2.3 Divalent Predicate Expressions
 
@@ -95,14 +127,14 @@ Mammals make five classes of antibodies, each of which mediates a characteristic
                       (NP (NN antigen) (JJ binding)))))))))
         (. .)))
 
-Predicate Expressions:
+Facts:
 
-    make(mammal, class)
-    make(mammal, antibody)
-    follow(response, antigen)
-    mediate(class, response)
-    mediate(antibody, response)
-    has(antibody, class)
+    make(mammal, class).
+    make(mammal, antibody).
+    follow(response, antigen).
+    mediate(class, response).
+    mediate(antibody, response).
+    has(antibody, class).
 
 ##### 2.3.2.4 Trivalent Predicate Expressions
 
@@ -118,7 +150,34 @@ The man gave the dog his food.
                 (NP (PRP$ his) (NN food))))
           (. .)))
 
+Facts:
+
+    give(man, dog, food).
+
 ##### 2.3.2.5 Ignored Constituents
+
+Here is a list of constituents currently ignored by the compiler:
+
+###### Clause Constituents
+
+ - SQ (Direct Question)
+ - SBARQ (Indirect Question)
+ - SINV (Inverted Clause)
+
+###### Phrase Constituents
+
+ - ADVP (Adverbial Phrase)
+ - QP (Quantitative Phrase)
+ - PRN (Parenthetical Phrase)
+
+###### Word Constituents
+
+ - DT (Noun Determiner)
+ - JJ (Adjective)
+ - JJS (Adjective Superlative)
+ - JJR (Adjective Comparative)
+ - PRP (Personal Pronoun)
+ - PRP$ (Possessive Pronoun)
 
 ###### 2.3.2.5.1 Adjective Phrases (ADJP)
 
@@ -203,13 +262,13 @@ Phrase-structure tree:
 
 ##### Compilation Result
 
-Predicate Expressions:
+Facts:
 
-    string(monomer, monomer)
-    encode(monomer, information)
-    has(computer file, information)
-    encode(1 0, information)
-    has(1 0, sequence)
+    string(monomer, monomer).
+    encode(monomer, information).
+    has(computer file, information).
+    encode(1 0, information).
+    has(1 0, sequence).
 
 #### 2.4.2 Example
 
@@ -263,15 +322,15 @@ Phrase-structure tree:
 
 ##### Compilation Result
 
-Predicate Expressions:
+Facts:
 
-    be(gene, gene)
-    cluster(gene, virulence plasmid)
-    cluster(gene, chromosome)
-    cluster(gene, pathogenicity island)
-    has(chromosome, group)
-    has(pathogenicity island, group)
-    call(chromosome, pathogenicity island)
+    be(gene, gene).
+    cluster(gene, virulence plasmid).
+    cluster(gene, chromosome).
+    cluster(gene, pathogenicity island).
+    has(chromosome, group).
+    has(pathogenicity island, group).
+    call(chromosome, pathogenicity island).
 
 ## 3 Conclusions
 

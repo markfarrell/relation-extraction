@@ -29,8 +29,6 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.viz.NodeShape
 
 package object TreeConversions {
 
-  implicit def StringToTree(str : String) : Tree[String] = Trees.PennTreeReader.parseEasy(str, false)
-
   implicit class TreeEnhancer(tree : Tree[String]) {
 
     def blacklist : List[String] = Nil
