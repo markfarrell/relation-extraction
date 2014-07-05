@@ -35,7 +35,7 @@ object Lemmatizer {
     tmp
   }
 
-  def lemmatize(str : String) : String = {
+  def apply(str : String) : String = {
 
     val doc : Annotation = new Annotation(str)
 

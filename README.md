@@ -1,3 +1,4 @@
+
 # A Text-network Compiler
 
 This document is a work-in-progress.
@@ -31,7 +32,7 @@ scientific journal articles. The project should be composed of four software com
 
 Currently, there is only software to compile text into text-networks; separate components
 for encoding first-order logic and data visualization are being worked on right now. There is
-yet to be progress made on items 1 and 4. If you would like to contribute to the project. please contact <code>m4farrel@csclub.uwaterloo.ca</code>.
+yet to be progress made on items 1 and 4.
 
 ### 1.1 Build
 
@@ -42,6 +43,14 @@ To build the current software, install SBT 0.13.0+ and then run <code>sbt stage<
 Compile the contents of a textbook into a [GEXF 1.2](http://gexf.net/format/index.html) file, a graph file format.
 
     ./text-network-compiler -f an_output_file.gexf < an_input_file.txt
+
+### 1.3 Contributing
+
+ If you're interested in contributing to the project, feel free to post your questions and
+ discuss your plans on both the IRC channel and mailing list.
+
+ * IRC channel: <code>#crea</code> on <code>irc.freenode.net</code>.
+ * Mailing list: <code>crea-berkeley@googlegroups.com</code>.
 
 ## 2 The Software Design
 
@@ -122,6 +131,183 @@ Atom terms are constructed when predicate arguments are found in constituent tre
     }
 
 ##### 2.3.2.2 Monovalent Predicate Expressions
+
+A monovalent predicate takes one argument. Let's look at a couple of examples of sentences containing monovalent predicates:
+
+A sentence with one simple declarative clause:
+
+The man sleeps.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (VBZ sleeps)))
+        (. .)))
+
+Here, <code>sleeps</code> is the monovalent predicate and <code>man</code> is the argument
+applied to it to form a clause. Another example of a sentence with conjoined simple declarative clauses:
+
+The man sleeps, the dog walks and the cat eats.
+
+    (ROOT
+      (S
+        (@S
+          (@S
+            (@S
+              (@S
+                (S
+                  (NP (DT The) (NN man))
+                  (VP (VBZ sleeps)))
+                (, ,))
+              (S
+                (NP (DT the) (NN dog))
+                (VP (VBZ walks))))
+            (CC and))
+          (S
+            (NP (DT the) (NN cat))
+            (VP (VBZ eats))))
+        (. .)))
+
+Consider other sentences with the same predicate and argument, expressed with a different verb tense:
+
+The man slept.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (VBD slept)))
+        (. .)))
+
+The man is sleeping.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (VBZ is)
+            (VP (VBG sleeping))))
+        (. .)))
+
+The man was sleeping.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (VBD was)
+            (VP (VBG sleeping))))
+        (. .)))
+
+Examine sentences with adverbial phrases inserted:
+
+The man sleeps freely.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (VBZ sleeps)
+            (ADVP (RB freely))))
+        (. .)))
+
+The man freely sleeps.
+
+    (ROOT
+      (S
+        (@S
+          (@S
+            (NP (DT The) (NN man))
+            (ADVP (RB freely)))
+          (VP (VBZ sleeps)))
+        (. .)))
+
+Sometimes a modal verb will be inserted:
+
+The man might sleep.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (MD might)
+            (VP (VB sleep))))
+        (. .)))
+
+There are also phrasal verbs, combining a verb and a particle to form a new verb:
+
+The man takes off.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (VBZ takes)
+            (PRT (RP off))))
+        (. .)))
+
+
+Patterns can be built in Scala to find monovalent predicates and their arguments in constituent trees.
+
+Here's patterns for what has been found so far:
+
+    // Monovalent Predicate from 3rd-person singular present verb
+    Tree.Node("S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node("VBZ", y)))))
+    Tree.Node("@S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node("VBZ", y)))))
+
+    // Monovalent Predicate from past tense verb
+    Tree.Node("S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node("VBD", y)))))
+    Tree.Node("@S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node("VBD", y)))))
+
+    Tree.Node("S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(_, Tree.Node("VBG", y)))))
+    Tree.Node("@S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(_, Tree.Node("VBG", y)))))
+
+    Tree.Node("S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("VBZ", y),
+        Tree.Node("ADVP", _)
+      ))
+    ))
+
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("VBZ", y),
+        Tree.Node("ADVP", _)
+      ))
+    ))
+
+    Tree.Node("S", Stream(
+      Tree.Node("@S", Stream(
+        Tree.Node("NP", x),
+        Tree.Node("ADVP", _)
+      )),
+      Tree.Node("VP", Stream(Tree.Node("VBZ", y)))
+    ))
+
+    Tree.Node("@S", Stream(
+      Tree.Node("@S", Stream(
+        Tree.Node("NP", x),
+        Tree.Node("ADVP", _)
+      )),
+      Tree.Node("VP", Stream(Tree.Node("VBZ", y)))
+    ))
+
+The patterns match subtrees of constituents that can be used to construct a compound term from a monovalent predicate and an argument:
+
+    private[this] object MonovalentPredicate extends ConstituentPattern {
+
+      def unapply(tree : Tree[String]) : Option[CompoundTerm] = tree match {
+        case ...  => x match {
+          case PredicateArgument(atom) => (CompoundTerm(y, Stream(atom))).some
+        }
+        case _ => none
+      }
+
+    }
+
 ##### 2.3.2.3 Divalent Predicate Expressions
 
 
@@ -184,7 +370,7 @@ Facts:
 
 ##### 2.3.2.5 Ignored Constituents
 
-Here is a list of constituents currently ignored by the compiler:
+Here is a list of constituents ignored by the compiler:
 
 ###### Clause Constituents
 
@@ -206,6 +392,7 @@ Here is a list of constituents currently ignored by the compiler:
  - JJR (Adjective Comparative)
  - PRP (Personal Pronoun)
  - PRP$ (Possessive Pronoun)
+ - UH (Interjection)
 
 Here is the pattern's implementation:
 
@@ -214,14 +401,13 @@ Here is the pattern's implementation:
       def unapply(tree : Tree[String]) : Boolean = tree.loc.getLabel match {
         case "SINV" | "SBARQ" | "SQ" => true
         case "ADVP" | "X" | "NX" | "QP" | "PRN" => true
-        case "DT" | "JJ" | "JJS" | "JJR" | "PRP" | "PRP$" => true
+        case "DT" | "JJ" | "JJS" | "JJR" | "PRP" | "PRP$" | "UH" => true
         case _ => false
       }
 
     }
 
 ###### 2.3.2.5.1 Adjective Phrases (ADJP)
-
 
 The efficiency of antigen binding and cross-linking is greatly increased by a flexible hinge region in most antibodies, which allows the distance between the two antigen-binding sites to vary ( Figure 24-20 ).
 

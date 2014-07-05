@@ -16,7 +16,7 @@ import TreeConversions._
   * by providing a default configuration.
   * @param grammarFile {String} - Path to load serialized grammar file from.
  **/
-class Parser(grammarFile : String = "eng_sm6.gr") {
+class Parser(grammarFile : String) {
 
   private[this] val threshold : Double = 1.0
 

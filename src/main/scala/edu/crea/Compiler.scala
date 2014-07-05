@@ -2,14 +2,10 @@ package edu.crea
 
 import scala.collection.JavaConverters._
 import scala.collection.Iterator
-import scala.collection.immutable.{
-  List, Set, Stack
-}
 
 import edu.berkeley.nlp.syntax.Tree
 
-import java.io.File
-import java.io.FileOutputStream
+import java.io.{File, FileOutputStream}
 
 import org.slf4j.{Logger, LoggerFactory}
 import edu.berkeley.nlp.syntax.Trees.PennTreeRenderer
@@ -35,7 +31,7 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
       val label = edge.getEdgeData.getLabel
       val sourceLabel = edge.getSource.getNodeData.getLabel
       val targetLabel = edge.getTarget.getNodeData.getLabel
-      s"${label}(${sourceLabel}, ${targetLabel})"
+      s"${label}(${sourceLabel}, ${targetLabel})."
     }
 
     if(verbose) {

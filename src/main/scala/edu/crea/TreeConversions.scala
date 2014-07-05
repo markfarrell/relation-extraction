@@ -59,7 +59,7 @@ package object TreeConversions {
       def terminalLabels(tree : Tree[String]) : String = {
         tree.getTerminals.asScala
           .map { _.getLabel }
-          .map(Lemmatizer.lemmatize)
+          .map(Lemmatizer.apply)
           .filterNot(blacklist.contains)
           .mkString("")
       }

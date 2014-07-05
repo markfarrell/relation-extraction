@@ -6,7 +6,9 @@ import Keys._
 object ProjectBuild extends Build {
 
   def standardSettings = Defaults.defaultSettings ++ Seq(
-    initialCommands in console := "import edu.crea._",
+    initialCommands in console := """import edu.crea._
+      val parse = new MemoizedParser(grammarFile="src/main/resources/eng_sm6.gr", verbose=true)
+    """,
     name := "text-network compiler",
     version := "0.1",
     scalaVersion := "2.11.0",
