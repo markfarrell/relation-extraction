@@ -73,19 +73,21 @@ a tree of constituents.
 
 ##### 2.3.1.1 Constituents
 
- Constituents are nonterminal nodes of the trees produced by The Berkeley Parser. Each constituent
- has a tag, describing the syntactic function of the subtree in relation to the sentence that was
- parsed. Constituents are either words, phrases or clauses. See [Penn Treebank II Constituent Tags](http://www.surdeanu.info/mihai/teaching/ista555-fall13/readings/PennTreebankConstituents.html) for details and examples.
+Constituents are nonterminal nodes of the trees produced by The Berkeley Parser. Each constituent
+has a tag, describing the syntactic function of the subtree in relation to the sentence that was
+parsed. Constituents are either words, phrases or clauses. See [Penn Treebank II Constituent Tags](http://www.surdeanu.info/mihai/teaching/ista555-fall13/readings/PennTreebankConstituents.html) for details and examples.
 
 ##### 2.3.1.2 Phrases
-  Phrases are constituents that group together several words, but do not form a complete proposition.
+
+Phrases are constituents that group together several words, but do not form a complete proposition.
+
 ##### 2.3.1.3 Clauses
-  Clauses, in constrast to phrases, are groups of several constituents that form a complete proposition; they can be simple, made up of phrases, or compounded with other clauses.
+
+Clauses, in constrast to phrases, are groups of several constituents that form a complete proposition; they can be simple, made up of phrases, or compounded with other clauses.
 
 ##### 2.3.1.4 First-order Logic
 
   The compiler implements a [zipper](http://www.haskell.org/haskellwiki/Zipper) that takes a tree of constituents and rebuilds a tree composed of [terms](http://en.wikipedia.org/wiki/Prolog): atoms and compounds terms. A set of patterns are matched on at each level of the constituent tree, whereafter atoms and compound terms are constructed from [predicates](http://en.wikipedia.org/wiki/Predicate_%28mathematical_logic%29) and arguments that are found in text.
-
 
 #### 2.3.2 Constituent Patterns
 
@@ -98,10 +100,7 @@ implemented in Scala:
     private[this] object MonovalentPredicate extends ConstituentPattern { ... }
     private[this] object DivalentPredicate extends ConstituentPattern { ... }
     private[this] object TrivalentPredicate extends ConstituentPattern { ... }
-    private[this] object NonfiniteVerbPhrase extends ConstituentPattern { ... }
-    private[this] object PrepositionWithNounPhrase extends ConstituentPattern { ... }
-    private[this] object NounVerbDeclarativeClause extends ConstituentPattern { ... }
-    private[this] object NounPhraseSubordinateClause extends ConstituentPattern { ... }
+    private[this] object LogicalConnective extends ConsitutentPattern { ... }
     private[this] object IgnoredConstituent extends ConstituentPattern { ... }
 
 
@@ -252,21 +251,19 @@ Patterns can be built in Scala to find monovalent predicates and their arguments
 
 Here's patterns for what has been found so far:
 
-    // Monovalent Predicate from 3rd-person singular present verb
-    Tree.Node("S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node("VBZ", y)))))
-    Tree.Node("@S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node("VBZ", y)))))
+    // Monovalent Predicate from 3rd-person singular present verb, past tense verb, ...
+    Tree.Node("S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node(_, y)))))
+    Tree.Node("@S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node(_, y)))))
 
-    // Monovalent Predicate from past tense verb
-    Tree.Node("S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node("VBD", y)))))
-    Tree.Node("@S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node("VBD", y)))))
-
+    // Monovalent Predicate from present continuous verb, past continuous verb, ...
     Tree.Node("S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(_, Tree.Node("VBG", y)))))
     Tree.Node("@S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(_, Tree.Node("VBG", y)))))
 
+    // Monovalent Predicate from verb with adverbial phrase appended
     Tree.Node("S", Stream(
       Tree.Node("NP", x),
       Tree.Node("VP", Stream(
-        Tree.Node("VBZ", y),
+        Tree.Node(_, y),
         Tree.Node("ADVP", _)
       ))
     ))
@@ -274,11 +271,12 @@ Here's patterns for what has been found so far:
     Tree.Node("@S", Stream(
       Tree.Node("NP", x),
       Tree.Node("VP", Stream(
-        Tree.Node("VBZ", y),
+        Tree.Node(_, y),
         Tree.Node("ADVP", _)
       ))
     ))
 
+    // Monovalent Predicate from verb with adverbial phrase prepended
     Tree.Node("S", Stream(
       Tree.Node("@S", Stream(
         Tree.Node("NP", x),
@@ -294,6 +292,100 @@ Here's patterns for what has been found so far:
       )),
       Tree.Node("VP", Stream(Tree.Node("VBZ", y)))
     ))
+
+    // Monovalent Predicate from modal verb governing main verb
+    Tree.Node("S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("MD", _),
+        Tree.Node(_, y)
+      ))
+    ))
+
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("MD", _),
+        Tree.Node(_, y)
+      ))
+    ))
+
+    // Monovalent Predicate from phrasal verb
+    Tree.Node("S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node(_, y),
+        Tree.Node("PRT", z)
+      ))
+    ))
+
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node(_, y),
+        Tree.Node("PRT", z)
+      ))
+    ))
+
+Here are some slightly more complex ways to express the same facts about the <code>man</code>:
+
+The man might sleep quietly.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (MD might)
+            (VP (VB sleep)
+              (ADVP (RB quietly)))))
+        (. .)))
+
+The man might quietly sleep.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP
+            (@VP (MD might)
+              (ADVP (RB quietly)))
+            (VP (VB sleep))))
+        (. .)))
+
+The man might take off.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (MD might)
+            (VP (VB take)
+              (PRT (IN off)))))
+        (. .)))
+
+The man might have taken off.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (MD might)
+            (VP (VB have)
+              (VP (VBN taken)
+                (PRT (RP off))))))
+        (. .)))
+
+That type of man sleeps.
+
+    (ROOT
+      (S
+        (@S
+          (NP
+            (NP (DT That) (NN type))
+            (PP (IN of)
+              (NP (NN man))))
+          (VP (VBZ sleeps)))
+        (. .)))
 
 The patterns match subtrees of constituents that can be used to construct a compound term from a monovalent predicate and an argument:
 
@@ -309,7 +401,6 @@ The patterns match subtrees of constituents that can be used to construct a comp
     }
 
 ##### 2.3.2.3 Divalent Predicate Expressions
-
 
 Mammals make five classes of antibodies, each of which mediates a characteristic biological response following antigen binding.
 
@@ -380,6 +471,7 @@ Here is a list of constituents ignored by the compiler:
 
 ###### Phrase Constituents
 
+ - ADJP (Adjective Phrase)
  - ADVP (Adverbial Phrase)
  - QP (Quantitative Phrase)
  - PRN (Parenthetical Phrase)
@@ -400,7 +492,7 @@ Here is the pattern's implementation:
 
       def unapply(tree : Tree[String]) : Boolean = tree.loc.getLabel match {
         case "SINV" | "SBARQ" | "SQ" => true
-        case "ADVP" | "X" | "NX" | "QP" | "PRN" => true
+        case "ADJP" | "ADVP" | "X" | "NX" | "QP" | "PRN" => true
         case "DT" | "JJ" | "JJS" | "JJR" | "PRP" | "PRP$" | "UH" => true
         case _ => false
       }
@@ -408,6 +500,8 @@ Here is the pattern's implementation:
     }
 
 ###### 2.3.2.5.1 Adjective Phrases (ADJP)
+
+Adjective phrases are currently ignored by the compiler. However, it would be nice to be able to produce the facts <code>has(antigen, binding).</code> and <code>has(antigen, cross-linking).</code> from the adjective phrase found in this sentence:
 
 The efficiency of antigen binding and cross-linking is greatly increased by a flexible hinge region in most antibodies, which allows the distance between the two antigen-binding sites to vary ( Figure 24-20 ).
 
@@ -423,147 +517,13 @@ The efficiency of antigen binding and cross-linking is greatly increased by a fl
               (JJ cross-linking)))))
       ...)
 
-##### 2.3.2.5 Nonfinite Verb Phrases
-##### 2.3.2.6 Declarative Clauses Containing a Noun Phrase and Verb Phrase
-##### 2.3.2.7 Noun Phrases Followed by a Subordinate Clause
-
-### 2.4 Examples
-
-#### 2.4.1 Example
-
-##### Input
-
-Sentence:
-
-These monomers are strung together in a long linear sequence that encodes the genetic information, just as the sequence of 1s and 0s encodes the information in a computer file.
-
-##### Parser Result
-
-Phrase-structure tree:
-
-    (ROOT
-      (S
-        (@S
-          (NP (DT These) (NNS monomers))
-          (VP (VBP are)
-            (VP
-              (@VP
-                (@VP
-                  (@VP (VBN strung)
-                    (ADVP (RB together)))
-                  (PP (IN in)
-                    (NP
-                      (NP
-                        (@NP
-                          (@NP (DT a) (JJ long))
-                          (JJ linear))
-                        (NN sequence))
-                      (SBAR
-                        (WHNP (WDT that))
-                        (S
-                          (VP (VBZ encodes)
-                            (NP
-                              (@NP (DT the) (JJ genetic))
-                              (NN information))))))))
-                (, ,))
-              (SBAR
-                (@SBAR (RB just) (IN as))
-                (S
-                  (NP
-                    (NP (DT the) (NN sequence))
-                    (PP (IN of)
-                      (NP
-                        (@NP (NN 1s)
-                          (CC and))
-                        (NN 0s))))
-                  (VP
-                    (@VP (VBZ encodes)
-                      (NP (DT the) (NN information)))
-                    (PP (IN in)
-                      (NP
-                        (@NP (DT a) (NN computer))
-                        (NN file)))))))))
-        (. .)))
-
-
-
-##### Compilation Result
-
-Facts:
-
-    string(monomer, monomer).
-    encode(monomer, information).
-    has(computer file, information).
-    encode(1 0, information).
-    has(1 0, sequence).
-
-#### 2.4.2 Example
-
-##### Input
-
-Sentence:
-
-Virulence genes are frequently clustered together, either in groups on the bacterial chromosome called pathogenicity islands or on extrachromosomal virulence plasmids ( Figure 25-5 ).
-
-##### Parser Result
-
-Phrase-structure tree:
-
-    (ROOT
-      (S
-        (@S
-          (NP (JJ Virulence) (NNS genes))
-          (VP
-            (@VP (VBP are)
-              (ADVP (RB frequently)))
-            (VP
-              (@VP
-                (@VP (VBN clustered)
-                  (ADVP (RB together)))
-                (, ,))
-              (PP
-                (@PP
-                  (@PP (CC either)
-                    (PP (IN in)
-                      (NP
-                        (NP (NNS groups))
-                        (PP (IN on)
-                          (NP
-                            (NP
-                              (@NP (DT the) (JJ bacterial))
-                              (NN chromosome))
-                            (VP (VBN called)
-                              (S
-                                (NP (NN pathogenicity) (NNS islands)))))))))
-                  (CC or))
-                (PP (IN on)
-                  (NP
-                    (NP
-                      (@NP (JJ extrachromosomal) (NN virulence))
-                      (NNS plasmids))
-                    (PRN
-                      (@PRN (-LRB- -LRB-)
-                        (NP (NN Figure) (CD 25-5)))
-                      (-RRB- -RRB-))))))))
-        (. .)))
-
-##### Compilation Result
-
-Facts:
-
-    be(gene, gene).
-    cluster(gene, virulence plasmid).
-    cluster(gene, chromosome).
-    cluster(gene, pathogenicity island).
-    has(chromosome, group).
-    has(pathogenicity island, group).
-    call(chromosome, pathogenicity island).
+#### 2.3.2.6 Logical Implications
 
 ## 3 Conclusions
 
 ## 4 Recommendations
 
- * Use a hypergraph structure (edges between edges) to compose predicate expressions.
+ * Visualize logical implications using a hypergraph structure (edges between edges).
  * Write software that uses these text-networks to generate [CREAL](http://www.fasebj.org/cgi/content/meeting_abstract/26/1_MeetingAbstracts/717.3?sid=d7799d6d-aa85-4442-9055-3e2d97332c94):
 a language for describing biological systems from a macro to a molecular scale.
 
