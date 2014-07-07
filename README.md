@@ -131,7 +131,8 @@ Atom terms are constructed when predicate arguments are found in constituent tre
 
 ##### 2.3.2.2 Monovalent Predicate Expressions
 
-A monovalent predicate takes one argument. Let's look at a couple of examples of sentences containing monovalent predicates:
+A monovalent predicate takes one argument. Patterns can be built in Scala to find monovalent predicates and their arguments in constituent trees.
+Let's look at a couple of examples of sentences containing monovalent predicates:
 
 A sentence with one simple declarative clause:
 
@@ -143,6 +144,12 @@ The man sleeps.
           (NP (DT The) (NN man))
           (VP (VBZ sleeps)))
         (. .)))
+
+Patterns:
+
+    // Monovalent Predicate from 3rd-person singular present verb, past tense verb, ...
+    Tree.Node("S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node(_, y)))))
+    Tree.Node("@S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node(_, y)))))
 
 Here, <code>sleeps</code> is the monovalent predicate and <code>man</code> is the argument
 applied to it to form a clause. Another example of a sentence with conjoined simple declarative clauses:
@@ -168,6 +175,8 @@ The man sleeps, the dog walks and the cat eats.
             (VP (VBZ eats))))
         (. .)))
 
+It seems like the same patterns will hold for a list of conjoined simple declarative clauses.
+
 Consider other sentences with the same predicate and argument, expressed with a different verb tense:
 
 The man slept.
@@ -178,6 +187,8 @@ The man slept.
           (NP (DT The) (NN man))
           (VP (VBD slept)))
         (. .)))
+
+No new patterns when the past tense verb <code>slept</code> is used.
 
 The man is sleeping.
 
@@ -199,6 +210,14 @@ The man was sleeping.
             (VP (VBG sleeping))))
         (. .)))
 
+
+Patterns:
+
+    // Monovalent Predicate from present continuous verb, past continuous verb, ...
+    Tree.Node("S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(_, Tree.Node("VBG", y)))))
+    Tree.Node("@S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(_, Tree.Node("VBG", y)))))
+
+
 Examine sentences with adverbial phrases inserted:
 
 The man sleeps freely.
@@ -211,53 +230,7 @@ The man sleeps freely.
             (ADVP (RB freely))))
         (. .)))
 
-The man freely sleeps.
-
-    (ROOT
-      (S
-        (@S
-          (@S
-            (NP (DT The) (NN man))
-            (ADVP (RB freely)))
-          (VP (VBZ sleeps)))
-        (. .)))
-
-Sometimes a modal verb will be inserted:
-
-The man might sleep.
-
-    (ROOT
-      (S
-        (@S
-          (NP (DT The) (NN man))
-          (VP (MD might)
-            (VP (VB sleep))))
-        (. .)))
-
-There are also phrasal verbs, combining a verb and a particle to form a new verb:
-
-The man takes off.
-
-    (ROOT
-      (S
-        (@S
-          (NP (DT The) (NN man))
-          (VP (VBZ takes)
-            (PRT (RP off))))
-        (. .)))
-
-
-Patterns can be built in Scala to find monovalent predicates and their arguments in constituent trees.
-
-Here's patterns for what has been found so far:
-
-    // Monovalent Predicate from 3rd-person singular present verb, past tense verb, ...
-    Tree.Node("S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node(_, y)))))
-    Tree.Node("@S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(Tree.Node(_, y)))))
-
-    // Monovalent Predicate from present continuous verb, past continuous verb, ...
-    Tree.Node("S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(_, Tree.Node("VBG", y)))))
-    Tree.Node("@S", Stream(Tree.Node("NP", x), Tree.Node("VP", Stream(_, Tree.Node("VBG", y)))))
+Patterns:
 
     // Monovalent Predicate from verb with adverbial phrase appended
     Tree.Node("S", Stream(
@@ -276,6 +249,19 @@ Here's patterns for what has been found so far:
       ))
     ))
 
+The man freely sleeps.
+
+    (ROOT
+      (S
+        (@S
+          (@S
+            (NP (DT The) (NN man))
+            (ADVP (RB freely)))
+          (VP (VBZ sleeps)))
+        (. .)))
+
+Patterns:
+
     // Monovalent Predicate from verb with adverbial phrase prepended
     Tree.Node("S", Stream(
       Tree.Node("@S", Stream(
@@ -293,6 +279,20 @@ Here's patterns for what has been found so far:
       Tree.Node("VP", Stream(Tree.Node("VBZ", y)))
     ))
 
+Sometimes a modal verb will be inserted:
+
+The man might sleep.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (MD might)
+            (VP (VB sleep))))
+        (. .)))
+
+Patterns:
+
     // Monovalent Predicate from modal verb governing main verb
     Tree.Node("S", Stream(
       Tree.Node("NP", x),
@@ -309,6 +309,20 @@ Here's patterns for what has been found so far:
         Tree.Node(_, y)
       ))
     ))
+
+There are also phrasal verbs, combining a verb and a particle to form a new verb:
+
+The man takes off.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (VBZ takes)
+            (PRT (RP off))))
+        (. .)))
+
+Patterns:
 
     // Monovalent Predicate from phrasal verb
     Tree.Node("S", Stream(
@@ -340,6 +354,25 @@ The man might sleep quietly.
               (ADVP (RB quietly)))))
         (. .)))
 
+Patterns:
+
+    Tree.Node("S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(_,
+        Tree.Node("VP", Stream(y,
+          Tree.Node("ADVP", _)
+        ))
+      ))
+    ))
+
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(_,
+        Tree.Node("VP", Stream(y,
+          Tree.Node("ADVP", _)
+      ))
+    ))
+
 The man might quietly sleep.
 
     (ROOT
@@ -352,6 +385,30 @@ The man might quietly sleep.
             (VP (VB sleep))))
         (. .)))
 
+Patterns:
+
+    Tree.Node("S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("@VP", Stream(
+          Tree.Node("MD", _),
+          Tree.Node("ADVP", _)
+        )),
+        Tree.Node("VP", y)
+      ))
+    ))
+
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("@VP", Stream(
+          Tree.Node("MD", _),
+          Tree.Node("ADVP", _)
+        )),
+        Tree.Node("VP", y)
+      ))
+    ))
+
 The man might take off.
 
     (ROOT
@@ -362,6 +419,24 @@ The man might take off.
             (VP (VB take)
               (PRT (IN off)))))
         (. .)))
+
+Patterns:
+
+    Tree.Node("S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(_,
+        Tree.Node("VP", Stream(y,
+          Tree.Node("PRT", _)))
+      ))
+    ))
+
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(_,
+        Tree.Node("VP", Stream(y,
+          Tree.Node("PRT", _)))
+      ))
+    ))
 
 The man might have taken off.
 
@@ -375,17 +450,39 @@ The man might have taken off.
                 (PRT (RP off))))))
         (. .)))
 
-That type of man sleeps.
+Patterns:
 
-    (ROOT
-      (S
-        (@S
-          (NP
-            (NP (DT That) (NN type))
-            (PP (IN of)
-              (NP (NN man))))
-          (VP (VBZ sleeps)))
-        (. .)))
+    Tree.Node("S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("MD", _),
+        Tree.Node("VP", Stream(
+          Tree.Node("VB", _),
+          Tree.Node("VP", Stream(y,
+            Tree.Node("PRT", _)
+          ))
+        ))
+      ))
+    ))
+
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("MD", _),
+        Tree.Node("VP", Stream(
+          Tree.Node("VB", _),
+          Tree.Node("VP", Stream(y,
+            Tree.Node("PRT", _)
+          ))
+        ))
+      ))
+    ))
+
+ * Modal present perfect tense: The man might have slept.
+ * Modal present perfect tense with adverb prepended: The man might have quietly slept.
+ * Modal present perfect tense with adverb appended: The man might have slept quietly.
+ * Modal present perfect tense phrasal verb with adverb prepended: The man might have quietly taken off.
+ * Modal present perfect tense phrasal verb with adverb appended: The man might have taken off quietly.
 
 The patterns match subtrees of constituents that can be used to construct a compound term from a monovalent predicate and an argument:
 
@@ -393,7 +490,7 @@ The patterns match subtrees of constituents that can be used to construct a comp
 
       def unapply(tree : Tree[String]) : Option[CompoundTerm] = tree match {
         case ...  => x match {
-          case PredicateArgument(atom) => (CompoundTerm(y, Stream(atom))).some
+          case PredicateArgument(term) => (CompoundTerm(y, Stream(atom))).some
         }
         case _ => none
       }
@@ -439,7 +536,7 @@ Facts:
     follow(response, antigen).
     mediate(class, response).
     mediate(antibody, response).
-    has(antibody, class).
+    has(class, antibody).
 
 ##### 2.3.2.4 Trivalent Predicate Expressions
 
@@ -501,7 +598,7 @@ Here is the pattern's implementation:
 
 ###### 2.3.2.5.1 Adjective Phrases (ADJP)
 
-Adjective phrases are currently ignored by the compiler. However, it would be nice to be able to produce the facts <code>has(antigen, binding).</code> and <code>has(antigen, cross-linking).</code> from the adjective phrase found in this sentence:
+It would be nice to be able to produce the facts <code>has(antigen, binding).</code> and <code>has(antigen, cross-linking).</code> from the adjective phrase found in this sentence:
 
 The efficiency of antigen binding and cross-linking is greatly increased by a flexible hinge region in most antibodies, which allows the distance between the two antigen-binding sites to vary ( Figure 24-20 ).
 
@@ -516,6 +613,26 @@ The efficiency of antigen binding and cross-linking is greatly increased by a fl
                 (CC and))
               (JJ cross-linking)))))
       ...)
+
+#### 2.3.2.5 Prepositional phrases
+
+[Prepositional phrases](http://www.chompchomp.com/terms/prepositionalphrase.htm) function the same as adjectives and adverbs.
+
+Noun phrases can also be composed of another noun phrase and a prepositional phrases. A list of compound terms should be constructed from such a pattern. Consider an example sentence:
+
+That type of man sleeps.
+
+    (ROOT
+      (S
+        (@S
+          (NP
+            (NP (DT That) (NN type))
+            (PP (IN of)
+              (NP (NN man))))
+          (VP (VBZ sleeps)))
+        (. .)))
+
+<code>has(type, man).</code> should be a fact found in this sentence.
 
 #### 2.3.2.6 Logical Implications
 
