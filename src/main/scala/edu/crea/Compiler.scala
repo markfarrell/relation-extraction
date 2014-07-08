@@ -161,8 +161,8 @@ class Compiler(model : GraphModel, verbose : Boolean = false) {
 
       tree.getLabel match {
         case "SINV" | "SBARQ" | "SQ" => true
-        case "ADVP" | "X" | "NX" | "QP" | "PRN" => true
-        case "DT" | "JJ" | "JJS" | "JJR" | "PRP" | "PRP$" => true
+        case "ADJP" | "ADVP" | "X" | "NX" | "QP" | "PRN" => true
+        case "DT" | "JJ" | "JJS" | "JJR" | "PRP" | "PRP$" | "UH" => true
         case _ => false
       }
 

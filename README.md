@@ -478,11 +478,130 @@ Patterns:
       ))
     ))
 
- * Modal present perfect tense: The man might have slept.
- * Modal present perfect tense with adverb prepended: The man might have quietly slept.
- * Modal present perfect tense with adverb appended: The man might have slept quietly.
- * Modal present perfect tense phrasal verb with adverb prepended: The man might have quietly taken off.
- * Modal present perfect tense phrasal verb with adverb appended: The man might have taken off quietly.
+Modal present perfect tense:
+
+The man might have slept.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (MD might)
+            (VP (VB have)
+              (VP (VBD slept)))))
+        (. .)))
+
+Patterns:
+
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("MD", _),
+        Tree.Node("VP", Stream(
+          Tree.Node("VB", _),
+          Tree.Node("VP", Stream(y))
+        ))
+      ))
+    ))
+
+Modal present perfect tense with adverb prepended:
+
+The man might have quietly slept.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (MD might)
+            (VP (VB have)
+              (VP
+                (ADVP (RB quietly))
+                (VBN slept)))))
+        (. .)))
+
+Patterns:
+
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("VB", _),
+        Tree.Node("VP", Stream(
+          Tree.Node("ADVP", _),
+          y
+        ))
+      ))
+    ))
+
+Modal present perfect tense with adverb appended:
+
+The man might have slept quietly.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (MD might)
+            (VP (VB have)
+              (VP (VBD slept)
+                (ADVP (RB quietly))))))
+        (. .)))
+
+Modal present perfect tense phrasal verb with adverb prepended:
+
+The man might have quietly taken off.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (MD might)
+            (VP
+              (@VP (VB have)
+                (ADVP (RB quietly)))
+              (VP (VBN taken)
+                (PRT (RP off))))))
+        (. .)))
+
+Modal present perfect tense phrasal verb with adverb appended:
+
+The man might have taken off quietly.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP (MD might)
+            (VP (VB have)
+              (VP
+                (@VP (VBN taken)
+                  (PRT (RP off)))
+                (ADVP (RB quietly))))))
+        (. .)))
+
+Negated simple declarative clauses:
+
+The man might not have slept.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP
+            (@VP (MD might) (RB not))
+            (VP (VB have)
+              (VP (VBD slept)))))
+        (. .)))
+
+The man might did not sleep.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP
+            (@VP (VBD did) (RB not))
+            (VP (VB sleep))))
+        (. .)))
 
 The patterns match subtrees of constituents that can be used to construct a compound term from a monovalent predicate and an argument:
 
