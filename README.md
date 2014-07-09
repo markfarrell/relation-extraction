@@ -826,7 +826,7 @@ a language for describing biological systems from a macro to a molecular scale.
    Here's a set of links to articles and content that should be explored:
 
  *  The Open Biological and Biomedical Ontologies - http://www.obofoundry.org/.
-  
+ *  The paper titled "Semantic Parsing using Distributional Semantics and Probabilistic Logic" - http://sp14.ws/pub/bem-sp14-2014.pdf. 
 
 
 
