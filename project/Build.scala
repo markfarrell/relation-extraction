@@ -7,6 +7,8 @@ object ProjectBuild extends Build {
 
   def standardSettings = Defaults.defaultSettings ++ Seq(
     initialCommands in console := """import edu.crea._
+      import scalaz._
+      import Scalaz._
       val parse = new MemoizedParser(grammarFile="src/main/resources/eng_sm6.gr", verbose=true)
     """,
     name := "text-network compiler",
@@ -21,15 +23,6 @@ object ProjectBuild extends Build {
       "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
     ),
     libraryDependencies ++= Seq(
-      "javax.servlet" % "javax.servlet-api" % "3.1.0",
-      "org.eclipse.jetty" % "jetty-continuation" % "8.1.3.v20120416",
-      "org.eclipse.jetty" % "jetty-http" % "8.1.3.v20120416",
-      "org.eclipse.jetty" % "jetty-io" % "8.1.3.v20120416",
-      "org.eclipse.jetty" % "jetty-security" % "8.1.3.v20120416",
-      "org.eclipse.jetty" % "jetty-server" % "8.1.3.v20120416",
-      "org.eclipse.jetty" % "jetty-servlet" % "8.1.3.v20120416",
-      "org.eclipse.jetty" % "jetty-util" % "8.1.3.v20120416",
-      "org.eclipse.jetty" % "jetty-websocket" % "8.1.3.v20120416",
       "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
       "org.slf4j" % "slf4j-api" % "1.7.7",
       "org.slf4j" % "slf4j-log4j12" % "1.7.7",

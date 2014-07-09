@@ -103,7 +103,6 @@ implemented in Scala:
     private[this] object LogicalConnective extends ConsitutentPattern { ... }
     private[this] object IgnoredConstituent extends ConstituentPattern { ... }
 
-
 ##### 2.3.2.1 Predicate Arguments
 
 Atom terms are constructed when predicate arguments are found in constituent trees.
@@ -546,6 +545,23 @@ The man might have slept quietly.
                 (ADVP (RB quietly))))))
         (. .)))
 
+
+Patterns:
+
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("MD", _),
+        Tree.Node("VP", Stream(
+          Tree.Node("VB", _),
+          Tree.Node("VP", Stream(
+            Tree.Node("VBD", Stream(y)),
+            Tree.Node("ADVP", _)
+          ))
+        ))
+      ))
+    ))
+
 Modal present perfect tense phrasal verb with adverb prepended:
 
 The man might have quietly taken off.
@@ -561,6 +577,25 @@ The man might have quietly taken off.
               (VP (VBN taken)
                 (PRT (RP off))))))
         (. .)))
+
+Patterns:
+
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("MD", _),
+        Tree.Node("VP", Stream(
+          Tree.Node("@VP", Stream(
+            Tree.Node("VB", _),
+            Tree.Node("ADVP", _)
+          )),
+          Tree.Node("VP", Stream(
+            Tree.Node(_, Stream(_)),
+            Tree.Node("PRT", _)
+          ))
+        ))
+      ))
+    ))
 
 Modal present perfect tense phrasal verb with adverb appended:
 
@@ -578,30 +613,19 @@ The man might have taken off quietly.
                 (ADVP (RB quietly))))))
         (. .)))
 
-Negated simple declarative clauses:
+Patterns:
 
-The man might not have slept.
+    Tree.Node("@S", Stream(
+      Tree.Node("NP", x),
+      Tree.Node("VP", Stream(
+        Tree.Node("MD", _),
+        Tree.Node("VP", Stream(
+          Tree.Node("VB", Stream(_))
+        ))
+      ))
+    ))
 
-    (ROOT
-      (S
-        (@S
-          (NP (DT The) (NN man))
-          (VP
-            (@VP (MD might) (RB not))
-            (VP (VB have)
-              (VP (VBD slept)))))
-        (. .)))
 
-The man might did not sleep.
-
-    (ROOT
-      (S
-        (@S
-          (NP (DT The) (NN man))
-          (VP
-            (@VP (VBD did) (RB not))
-            (VP (VB sleep))))
-        (. .)))
 
 The patterns match subtrees of constituents that can be used to construct a compound term from a monovalent predicate and an argument:
 
@@ -753,7 +777,41 @@ That type of man sleeps.
 
 <code>has(type, man).</code> should be a fact found in this sentence.
 
-#### 2.3.2.6 Logical Implications
+#### 2.3.2.6 Negated Clauses
+
+Negated clauses are currently not handled by the software.
+
+Here are a couple examples of negated simple declarative clauses:
+
+The man did not sleep.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP
+            (@VP (VBD did) (RB not))
+            (VP (VB sleep))))
+        (. .)))
+
+The man might not have slept.
+
+    (ROOT
+      (S
+        (@S
+          (NP (DT The) (NN man))
+          (VP
+            (@VP (MD might) (RB not))
+            (VP (VB have)
+              (VP (VBD slept)))))
+        (. .)))
+
+
+#### 2.3.2.7 Logical Connectives
+
+##### 2.3.2.7.1 Implications
+
+##### 2.3.2.7.2 Conjunctions
 
 ## 3 Conclusions
 
