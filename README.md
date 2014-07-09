@@ -5,10 +5,9 @@ This document is a work-in-progress.
 
 ## Abstract
 
-The printed volume of scentific journal articles published each month could likely fill the room you are sitting in right now. It is diffcult to account for all of the findings
-presented in these articles. Our goal is to aggregate all of this textual data, to find ways to efficiently analyze its contents and to further research in scientific computing
-related to simulating biological processes. The text to text-network compiler software should help relieve this issue present in scientific
-research.
+The printed volume of scentific journal articles published each month could likely fill the room you are sitting in right now. When doing research, it is difficult to account for all of the findings
+presented in these articles. Aggregating text and visualizing it as a text-network should help to relieve this issue.
+In particular, the intention is to use this software as an aid for constructing an ontology in the domain of aging research. 
 
 **General Terms**: Knowledge Representation, Bioinformatics
 
