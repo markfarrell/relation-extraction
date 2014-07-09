@@ -821,3 +821,14 @@ The man might not have slept.
  * Write software that uses these text-networks to generate [CREAL](http://www.fasebj.org/cgi/content/meeting_abstract/26/1_MeetingAbstracts/717.3?sid=d7799d6d-aa85-4442-9055-3e2d97332c94):
 a language for describing biological systems from a macro to a molecular scale.
 
+### 4.1 Resources 
+
+   Here's a set of links to articles and content that should be explored:
+
+ *  The Open Biological and Biomedical Ontologies - http://www.obofoundry.org/.
+  
+
+
+
+
+
