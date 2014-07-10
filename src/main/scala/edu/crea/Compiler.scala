@@ -390,13 +390,13 @@ object CompilerApp extends App {
 
   /**
     * Command line options for the tool.
-    **/
+   **/
   case class Config(file : File = null, verbose : Boolean = false)
 
   /**
-    * Set values for command line options. Specify
-    * usage of the tool.
-    **/
+   * Set values for command line options. Specify
+   * usage of the tool.
+   **/
   val optionParser = new scopt.OptionParser[Config]("Compiler") {
 
     head("""Reads a block of text from STDIN. Compiles text into a text-network.""")
@@ -413,9 +413,7 @@ object CompilerApp extends App {
 
   }
 
-  /**def main(args : Array[String]) : Unit =**/ {
-
-    optionParser.parse(args, Config()) map { cfg =>
+  optionParser.parse(args, Config()) map { cfg =>
 
     if(cfg.file != null) {
 
@@ -428,8 +426,6 @@ object CompilerApp extends App {
     }
 
   }
-
-}
 
 }
 
