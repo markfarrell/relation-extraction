@@ -7,7 +7,7 @@ This document is a work-in-progress.
 
 The printed volume of scentific journal articles published each month could likely fill the room you are sitting in right now. When doing research, it is difficult to account for all of the findings
 presented in these articles. Aggregating text and visualizing it as a text-network should help to relieve this issue.
-In particular, the intention is to use this software as an aid for constructing an ontology in the domain of aging research. 
+In particular, the intention is to use this software as an aid for constructing an ontology in the domain of aging research.
 
 **General Terms**: Knowledge Representation, Bioinformatics
 
@@ -820,13 +820,13 @@ The man might not have slept.
  * Write software that uses these text-networks to generate [CREAL](http://www.fasebj.org/cgi/content/meeting_abstract/26/1_MeetingAbstracts/717.3?sid=d7799d6d-aa85-4442-9055-3e2d97332c94):
 a language for describing biological systems from a macro to a molecular scale.
 
-### 4.1 Resources 
+### 4.1 Resources
 
    Here's a set of links to articles and content that should be explored:
 
  *  The Open Biological and Biomedical Ontologies - http://www.obofoundry.org/.
- *  The paper titled "Semantic Parsing using Distributional Semantics and Probabilistic Logic" - http://sp14.ws/pub/bem-sp14-2014.pdf. 
-
+ *  The paper titled "Semantic Parsing using Distributional Semantics and Probabilistic Logic" - http://sp14.ws/pub/bem-sp14-2014.pdf.
+ *  Chinese whispers: an efficient graph clustering algorithm and its application to natural language processing problems - http://dl.acm.org/citation.cfm?id=1654774
 
 
 
