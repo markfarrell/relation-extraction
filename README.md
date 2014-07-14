@@ -106,27 +106,6 @@ implemented in Scala:
 
 Atom terms are constructed when predicate arguments are found in constituent trees.
 
-    private[this] object PredicateArgument extends ConstituentPattern {
-
-      def unapply(tree : Tree[String]) : Option[Atom] = tree match {
-        case Tree.Node("NP", Stream("NN", "NNS")) => Atom(tree).some
-        case Tree.Node("NP", Stream("NN", "NN")) => Atom(tree).some
-        case Tree.Node("NP", Stream("NN", "NNPS")) => Atom(tree).some
-        case Tree.Node("NP", Stream("NNP", "NNS")) => Atom(tree).some
-        case Tree.Node("NP", Stream("NNP", "NN")) => Atom(tree).some
-        case Tree.Node("NP", Stream("NNP", "NNPS")) => Atom(tree).some
-        case Tree.Node("NP", Stream("@NP", "NNP")) => Atom(tree).some
-        case Tree.Node("NP", Stream("@NP", "NN")) => Atom(tree).some
-        case Tree.Node("NP", Stream("@NP", "NNPS")) => Atom(tree).some
-        case Tree.Node("NN", Stream()) => Atom(tree).some
-        case Tree.Node("NNS", Stream()) => Atom(tree).some
-        case Tree.Node("NNP", Stream()) => Atom(tree).some
-        case Tree.Node("NNPS", Stream()) => Atom(tree).some
-        case _ => none
-      }
-
-    }
-
 ##### 2.3.2.2 Monovalent Predicate Expressions
 
 A monovalent predicate takes one argument. Patterns can be built in Scala to find monovalent predicates and their arguments in constituent trees.
