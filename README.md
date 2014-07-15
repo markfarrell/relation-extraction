@@ -10,11 +10,11 @@ This document is a work-in-progress.
 
 **General Terms**: Knowledge Representation, Bioinformatics
 
-__Keywords__: Natural Language Processing
+__Keywords__: Natural Language Processing, Semantic Parsing
 
-**Author**: Mark Farrell, [CSC](http://csclub.uwaterloo.ca).
+**Author**: Mark Farrell
 
-**Research Director**: Steven A. Garan, [CREA](http://crea.berkeley.edu).
+**Research Director**: Steven A. Garan
 
 ## 1 Introduction
 
