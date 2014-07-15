@@ -1,5 +1,6 @@
 
 # A Text-network Compiler
+###### For building knowledge bases that can be used to describe complex systems.
 
 This document is a work-in-progress.
 
