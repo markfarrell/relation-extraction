@@ -10,7 +10,7 @@ This document is a work-in-progress.
 
 **General Terms**: Knowledge Representation, Bioinformatics
 
-__Keywords__: Natural Language Processing, Semantic Parsing
+__Keywords__: Natural Language Processing, Semantic Parsing, Markov Clustering
 
 **Author**: Mark Farrell
 
