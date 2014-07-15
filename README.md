@@ -5,9 +5,7 @@ This document is a work-in-progress.
 
 ## Abstract
 
-The printed volume of scentific journal articles published each month could likely fill the room you are sitting in right now. When doing research, it is difficult to account for all of the findings
-presented in these articles. Aggregating text and visualizing it as a text-network should help to relieve this issue.
-In particular, the intention is to use this software as an aid for constructing an ontology in the domain of aging research.
+  It is the aspiration of [The Center for Research and Education On Aging (CREA)](http://crea.berkeley.edu) to build a knowledge base that can be used by a system to simulate the human aging process at all levels of abstraction. There is a need for a tool that can automate the construction of the knowledge base; reading text articles and constructing it solely by hand is infeasible. A software tool was developed that can compile text into text-networks. The text-networks can be used to generate [CREAL](http://crea.berkeley.edu/FASEB_POSTER2012_FINAL_FINAL_GOLD_VLSB_yellow_title_box_56x36_PDF.pdf) documents, a declarative language that will be used within the knowledge base to describe the human aging process. Clustering algorithms can be applied to the text-networks, revealing properties of human organs, actions that can be perform (on other organs), their locations in the human body and also alternative names used literature to describe them; this information is needed to generate CREAL documents. The tool can lead to significant process in building the knowledge base on aging, and consequently will provide new insight into the phenomena that drive the aging process.
 
 **General Terms**: Knowledge Representation, Bioinformatics
 
@@ -19,9 +17,7 @@ __Keywords__: Natural Language Processing
 
 ## 1 Introduction
 
-Software for compiling raw text into text-networks should provide some
-relief for researchers dealing with the large quantity of information published in
-scientific journal articles. The project should be composed of four software components:
+The project should be composed of four software components:
 
  1. Software for aggregating journal articles and textbooks in raw file format from a variety of sources.
  2. Software that compiles text articles into [Datalog](http://en.wikipedia.org/wiki/Datalog), expressing
@@ -791,22 +787,19 @@ The man might not have slept.
 
 ##### 2.3.2.7.2 Conjunctions
 
-## 3 Conclusions
+## 3 Results 
 
-## 4 Recommendations
+## 4 Discussion
 
  * Visualize logical implications using a hypergraph structure (edges between edges).
- * Write software that uses these text-networks to generate [CREAL](http://www.fasebj.org/cgi/content/meeting_abstract/26/1_MeetingAbstracts/717.3?sid=d7799d6d-aa85-4442-9055-3e2d97332c94):
-a language for describing biological systems from a macro to a molecular scale.
 
-### 4.1 Resources
+## 5 Resources
 
    Here's a set of links to articles and content that should be explored:
 
  *  The Open Biological and Biomedical Ontologies - http://www.obofoundry.org/.
  *  The paper titled "Semantic Parsing using Distributional Semantics and Probabilistic Logic" - http://sp14.ws/pub/bem-sp14-2014.pdf.
  * Chinese whispers: an efficient graph clustering algorithm and its application to natural language processing problems - http://dl.acm.org/citation.cfm?id=1654774
- * CREA develops a language for describing biological systems from a macro to a molecular scale - http://crea.berkeley.edu/FASEB_POSTER2012_FINAL_FINAL_GOLD_VLSB_yellow_title_box_56x36_PDF.pdf
 
 
 
