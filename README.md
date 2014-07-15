@@ -805,7 +805,8 @@ a language for describing biological systems from a macro to a molecular scale.
 
  *  The Open Biological and Biomedical Ontologies - http://www.obofoundry.org/.
  *  The paper titled "Semantic Parsing using Distributional Semantics and Probabilistic Logic" - http://sp14.ws/pub/bem-sp14-2014.pdf.
- *  Chinese whispers: an efficient graph clustering algorithm and its application to natural language processing problems - http://dl.acm.org/citation.cfm?id=1654774
+ * Chinese whispers: an efficient graph clustering algorithm and its application to natural language processing problems - http://dl.acm.org/citation.cfm?id=1654774
+ * CREA develops a language for describing biological systems from a macro to a molecular scale - http://crea.berkeley.edu/FASEB_POSTER2012_FINAL_FINAL_GOLD_VLSB_yellow_title_box_56x36_PDF.pdf
 
 
 
