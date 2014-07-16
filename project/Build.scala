@@ -9,7 +9,8 @@ object ProjectBuild extends Build {
     initialCommands in console := """import edu.crea._
       import scalaz._
       import Scalaz._
-      val parse = new MemoizedParser(verbose=true)
+      import Patterns._
+      implicit val parse = new MemoizedParser(verbose=true)
     """,
     name := "text-network compiler",
     version := "0.1",

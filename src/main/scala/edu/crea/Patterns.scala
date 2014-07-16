@@ -23,13 +23,30 @@ package object Patterns {
   sealed trait Term
 
   case class Atom(id : String) extends Term
-  case class CompoundTerm[T <: Term](id : String, args : T) extends Term
+  case class Compound(atom : Atom, args : List[Atom]) extends Term
 
   implicit val AtomEqual : Equal[Atom] = Equal.equal(_.id === _.id)
 
-  implicit val MonovalentCompoundTermEqual : Equal[CompoundTerm[Atom]] = Equal.equal { (x, y) =>
-    x.id === y.id &&
-    x.args === y.args
+  implicit val CompoundEqual : Equal[Compound] = Equal.equal {
+    (x, y) => (x.atom, x.args) === (y.atom, y.args)
+  }
+
+  implicit val AtomMonoid : Monoid[Atom] = new Monoid[Atom] {
+
+    def zero : Atom = Atom(Monoid[String].zero)
+
+    def append(a1 : Atom, a2: => Atom) : Atom = Atom(List(a1.id, a2.id).distinct.mkString(" ").trim)
+
+  }
+
+  implicit val CompoundMonoid : Monoid[Compound] = new Monoid[Compound] {
+
+    def zero : Compound = Compound(Monoid[Atom].zero, Monoid[List[Atom]].zero)
+
+    def append(a1 : Compound, a2 : => Compound) : Compound = {
+      Compound(a1.atom |+| a2.atom, a1.args |+| a2.args)
+    }
+
   }
 
   implicit class TreeAdditions[T <% String](tree : Tree[T]) {
@@ -44,14 +61,15 @@ package object Patterns {
       tree.leaves.flatMap(_.split(" "))
         .map(terminal => Lemmatizer(terminal.toLowerCase))
         .mkString(" ")
-
+        .trim
     }
 
   }
+
   class Preterminal(value : String) {
 
     def unapply(tree : Tree[String]) : Option[String] = tree match {
-      case Tree.Node(value, Stream(Tree.Node(terminal, Stream()))) => terminal.some
+      case Tree.Node(compareValue, Stream(Tree.Node(terminal, Stream()))) if compareValue === value => terminal.some
       case _ => none
     }
 
@@ -65,7 +83,7 @@ package object Patterns {
 
   sealed trait ConstituentPattern
 
-  object PredicateArgument extends ConstituentPattern {
+  object PredicateArgumentExpression extends ConstituentPattern {
 
     val preNN = Preterminal(NN)
     val preNNS = Preterminal(NNS)
@@ -74,73 +92,210 @@ package object Patterns {
     val preDT = Preterminal(DT)
 
     def apply(tree : Tree[String]) : Option[Atom] = tree match {
-      case preNN(_) | preNNS(_) | preNNP(_) | preNNPS(_) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNN(_), preNN(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNN(_), preNNS(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNN(_), preNNP(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNN(_), preNNPS(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNS(_), preNN(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNS(_), preNNS(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNS(_), preNNP(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNS(_), preNNPS(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNP(_), preNN(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNP(_), preNNS(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNP(_), preNNP(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNP(_), preNNPS(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNPS(_), preNN(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNPS(_), preNNS(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNPS(_), preNNP(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(preNNPS(_), preNNPS(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(Tree.Node(AtNP, _), preNN(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(Tree.Node(AtNP, _), preNNS(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(Tree.Node(AtNP, _), preNNP(_))) => Atom(tree.id).some
-      case Tree.Node(NP, Stream(Tree.Node(AtNP, _), preNNPS(_))) => Atom(tree.id).some
-      case Tree.Node(NP|AtNP, Stream(Tree.Node(DT, Stream()), x)) => Atom(x.id).some
+
+      case preNN(_) | preNNS(_) | preNNP(_) | preNNPS(_) =>
+
+        Atom(tree.id).some
+
+      case Tree.Node(NP|AtNP, Stream(Tree.Node(DT, _), x)) =>
+
+        Atom(x.id).some
+
+      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(atom))) =>
+
+        atom.some
+
+      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(a1), PredicateArgumentExpression(a2))) =>
+
+        a1.some |+| a2.some
+
+      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(a1), Tree.Node(PP, Stream(Tree.Node(IN, Stream(_)), PredicateArgumentExpression(a2))))) =>
+
+        a2.some |+| a1.some
+
+      case Tree.Node(AtS, Stream(PredicateArgumentExpression(atom), Tree.Node(ADVP, Stream(Tree.Node(RB, Stream(_)))))) =>
+
+        atom.some
+
       case _ => none
+
     }
 
     def unapply(tree : Tree[String]) : Option[Atom] = apply(tree)
 
-    def test : Unit = {
+  }
 
-      val id = "abc"
-      assert(PredicateArgument(NN.node(id.leaf)) === Atom(id).some)
-      assert(PredicateArgument(NNS.node(id.leaf)) === Atom(id).some)
-      assert(PredicateArgument(NNP.node(id.leaf)) === Atom(id).some)
-      assert(PredicateArgument(NNPS.node(id.leaf)) === Atom(id).some)
+  object PredicateArgumentsExpression extends ConstituentPattern {
 
-      assert(PredicateArgument(NP.node(NN.node("car".leaf), NNS.node("monkeys".leaf))) === Atom("car monkey").some)
-      assert(PredicateArgument(NP.node(NNS.node("monkeys".leaf), NN.node("car".leaf))) === Atom("monkey car").some)
-      assert(PredicateArgument(NP.node(NNS.node("monkeys".leaf), NNP.node("Toronto".leaf))) === Atom("monkey toronto").some)
+    def apply(tree : Tree[String]) : Option[List[Compound]] = tree match {
+
+      case PredicateArgumentExpression(atom) =>
+
+        List(Compound(Monoid[Atom].zero, List(atom))).some
+
+      case Tree.Node(NP|AtNP, Stream(PredicateArgumentsExpression(lst1), PredicateArgumentsExpression(lst2))) =>
+
+        lst1.some |+| lst2.some
+
+      case Tree.Node(NP|AtNP, Stream(PredicateArgumentsExpression(lst1), Tree.Node(SBAR, Stream(Tree.Node(IN, Stream(_)), ClauseExpression(lst2))))) =>
+
+        lst1.some |+| lst2.some
+
+      case Tree.Node(S|AtS, Stream(PredicateArgumentExpression(atom), Tree.Node(_, Stream(_)))) =>
+
+        List(Compound(Monoid[Atom].zero, List(atom))).some
+
+      case _ => none
 
     }
+
+    def unapply(tree : Tree[String]) : Option[List[Compound]] = apply(tree)
 
   }
 
-  object MonovalentPredicateExpression extends ConstituentPattern {
+  object PredicateExpression extends ConstituentPattern {
 
-    def apply(tree : Tree[String]) : Option[CompoundTerm[_ <: Term]] = tree match {
-      case Tree.Node(S|AtS, Stream(MonovalentPredicateExpression(term), _)) => term.some
-      case Tree.Node(S|AtS, Stream(PredicateArgument(args), Tree.Node(VP, Stream(Tree.Node(_, Stream(l)))))) => CompoundTerm[Atom](l.id, args).some
+    private[this] val preVB = Preterminal(VB)
+    private[this] val preVBD = Preterminal(VBD)
+    private[this] val preVBG = Preterminal(VBG)
+    private[this] val preVBN = Preterminal(VBN)
+    private[this] val preVBP = Preterminal(VBP)
+    private[this] val preVBZ = Preterminal(VBZ)
+
+    def apply(tree : Tree[String]) : Option[List[Compound]] = tree match {
+
+      case preVB(_) | preVBD(_) | preVBG(_) | preVBN(_) | preVBP(_) | preVBZ(_) =>
+
+        List(Compound(Atom(tree.id), List())).some
+
+      case Tree.Node(VP|AtVP, Stream(preVBZ(_) | preVBD(_) | preVB(_) | preVBP(_), PredicateExpression(lst))) =>
+
+        lst.some
+
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst1), PredicateExpression(lst2))) =>
+
+        (lst1 |+| lst2).some
+
+      case Tree.Node(VP|AtVP, Stream(_, PredicateExpression(lst))) =>
+
+        lst.some
+
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst), Tree.Node(PRT, Stream(particle)))) =>
+
+        (lst.map { (_ : Compound) |+| Compound(Atom(particle.id), List()) }).some
+
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst2), PredicateArgumentsExpression(lst1))) =>
+
+        val args = (lst1 >>= { _.args }).distinct
+        val lst3 = lst2.map { c => Compound(c.atom, args |+| c.args) }
+
+        (lst1 |+| lst3).filterNot(_.atom === Monoid[Atom].zero).some
+
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst))) =>
+
+        lst.some
+
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst), Tree.Node(ADVP, Stream(Tree.Node(RB, Stream(_)))))) =>
+
+        lst.some
+
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst), Tree.Node(_, Stream(_)))) =>
+
+        lst.some
+
       case _ => none
-    }
-
-    def unapply(tree : Tree[String]) : Option[CompoundTerm[_ <: Term]] = apply(tree)
-
-    def test(implicit parse : MemoizedParser) : Unit = {
-
-      assert(RootExpression(parse("The man sleeps.")) == CompoundTerm("sleep", Atom("man")).some)
 
     }
+
+    def unapply(tree : Tree[String]) : Option[List[Compound]] = apply(tree)
+
+  }
+
+  object ClauseExpression extends ConstituentPattern {
+
+    def apply(tree : Tree[String]) : Option[List[Compound]] = tree match {
+
+      case Tree.Node(S|AtS, Stream(ClauseExpression(lst1), ClauseExpression(lst2))) =>
+
+        lst1.some |+| lst2.some
+
+      case Tree.Node(S|AtS, Stream(ClauseExpression(lst), Tree.Node(_, Stream(_)))) =>
+
+        lst.some
+
+      case Tree.Node(S|AtS, Stream(PredicateArgumentsExpression(lst1), PredicateExpression(lst2))) =>
+
+        val args = (lst1 >>= { _.args }).distinct
+        val lst3 = lst2.map { c => Compound(c.atom, args |+| c.args) }
+
+        (lst1 |+| lst3).filterNot(_.atom === Monoid[Atom].zero).some
+
+      case _ => none
+
+    }
+
+    def unapply(tree : Tree[String]) : Option[List[Compound]] = apply(tree)
 
   }
 
   object RootExpression extends ConstituentPattern {
 
-    def apply(tree : Tree[String]) : Option[Term] = tree match {
-      case Tree.Node(ROOT, Stream(MonovalentPredicateExpression(term))) => term.some
+    def apply(tree : Tree[String]) : Option[List[Compound]] = tree match {
+      case Tree.Node(ROOT, Stream(ClauseExpression(lst))) => lst.some
       case _ => none
     }
+
+    def test(implicit parse : MemoizedParser) : Unit = {
+
+      implicit def string2Result(str : String) : Option[List[Compound]] = RootExpression(parse(str))
+
+      {
+        val expect = List(Compound(Atom("walk"),List(Atom("toronto monkey")))).some
+        assert(expect === "The Toronto monkey can walk.")
+        assert(expect === "The Toronto monkeys can walk.")
+        assert(expect === "The Toronto Monkeys can walk.")
+      }
+
+      {
+        val expect = List(Compound(Atom("sleep"), List(Atom("man")))).some
+        assert(expect === "The man sleeps.")
+        assert(expect === "The man is sleeping.")
+        assert(expect === "The man was freely sleeping.")
+        assert(expect === "The man freely sleeps.")
+        assert(expect === "The man freely has slept.")
+        assert(expect === "The man might sleep.")
+        assert(expect === "The man might be sleeping.")
+        assert(expect === "The man might sleep quietly.")
+        assert(expect === "The man might quietly and patiently sleep.")
+      }
+
+      {
+        val expect = List(Compound(Atom("take off"), List(Atom("man")))).some
+        assert(expect === "The man takes off.")
+        assert(expect === "The man has taken off.")
+        assert(expect === "The man might take off.")
+        assert(expect === "The man might have taken off.")
+        assert(expect === "The man might freely have taken off.")
+      }
+
+      {
+        val expect = List(Compound(Atom("take"),List(Atom("man type"), Atom("dog")))).some
+        assert(expect === "That type of man took the dog.")
+        assert(expect === "That type of man has taken the dog.")
+      }
+
+      {
+        val expect = List(Compound(Atom("walk"),List(Atom("man"), Atom("dog"))), Compound(Atom("eat"),List(Atom("man")))).some
+        assert(expect === "The man can walk the dog and can eat.")
+      }
+
+      {
+        val expect = Some(List(Compound(Atom("see"),List(Atom("man"))), Compound(Atom("walk"),List(Atom("man"), Atom("dog")))))
+        assert(expect === "The man if the man can see walked the dog.")
+      }
+
+    }
+
   }
 
 }
@@ -155,6 +310,7 @@ package object Constituents {
   val SINV = "SINV"
   val SQ = "SQ"
   val ADJP = "ADJP"
+  val ADVP = "ADVP"
   val CONJP = "CONJP"
   val FRAG = "FRAG"
   val INTJ = "INTJ"
@@ -180,6 +336,7 @@ package object Constituents {
   val AtSINV = "@SINV"
   val AtSQ = "@SQ"
   val AtADJP = "@ADJP"
+  val AtADVP = "@ADVP"
   val AtCONJP = "@CONJP"
   val AtFRAG = "@FRAG"
   val AtINTJ = "@INTJ"
