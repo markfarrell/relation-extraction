@@ -23,7 +23,8 @@ package object Patterns {
   sealed trait Term
 
   case class Atom(id : String) extends Term
-  case class Compound(atom : Atom, args : List[Atom]) extends Term
+
+  case class Compound(atom : Atom = Monoid[Atom].zero, args : List[Atom] = Monoid[List[Atom]].zero) extends Term
 
   implicit val AtomEqual : Equal[Atom] = Equal.equal(_.id === _.id)
 
@@ -44,7 +45,7 @@ package object Patterns {
     def zero : Compound = Compound(Monoid[Atom].zero, Monoid[List[Atom]].zero)
 
     def append(a1 : Compound, a2 : => Compound) : Compound = {
-      Compound(a1.atom |+| a2.atom, a1.args |+| a2.args)
+      Compound(a1.atom |+| a2.atom, (a1.args |+| a2.args).distinct)
     }
 
   }
@@ -105,13 +106,13 @@ package object Patterns {
 
         atom.some
 
-      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(a1), PredicateArgumentExpression(a2))) =>
+      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(args1), PredicateArgumentExpression(args2))) =>
 
-        a1.some |+| a2.some
+        args1.some |+| args2.some
 
-      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(a1), Tree.Node(PP, Stream(Tree.Node(IN, Stream(_)), PredicateArgumentExpression(a2))))) =>
+      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(args1), Tree.Node(PP, Stream(Tree.Node(IN, Stream(_)), PredicateArgumentExpression(args2))))) =>
 
-        a2.some |+| a1.some
+        args2.some |+| args1.some
 
       case Tree.Node(AtS, Stream(PredicateArgumentExpression(atom), Tree.Node(ADVP, Stream(Tree.Node(RB, Stream(_)))))) =>
 
@@ -127,29 +128,25 @@ package object Patterns {
 
   object PredicateArgumentsExpression extends ConstituentPattern {
 
-    def apply(tree : Tree[String]) : Option[List[Compound]] = tree match {
+    def apply(tree : Tree[String]) : Option[List[Atom]] = tree match {
 
       case PredicateArgumentExpression(atom) =>
 
-        List(Compound(Monoid[Atom].zero, List(atom))).some
+        List(atom).some
 
-      case Tree.Node(NP|AtNP, Stream(PredicateArgumentsExpression(lst1), PredicateArgumentsExpression(lst2))) =>
+      case Tree.Node(NP|AtNP, Stream(PredicateArgumentsExpression(args1), PredicateArgumentsExpression(args2))) =>
 
-        lst1.some |+| lst2.some
+        args1.some |+| args2.some
 
-      case Tree.Node(NP|AtNP, Stream(PredicateArgumentsExpression(lst1), Tree.Node(SBAR, Stream(Tree.Node(IN, Stream(_)), ClauseExpression(lst2))))) =>
+      case Tree.Node(S|AtS, Stream(PredicateArgumentsExpression(arguments), Tree.Node(_, Stream(_)))) =>
 
-        lst1.some |+| lst2.some
-
-      case Tree.Node(S|AtS, Stream(PredicateArgumentExpression(atom), Tree.Node(_, Stream(_)))) =>
-
-        List(Compound(Monoid[Atom].zero, List(atom))).some
+        arguments.some
 
       case _ => none
 
     }
 
-    def unapply(tree : Tree[String]) : Option[List[Compound]] = apply(tree)
+    def unapply(tree : Tree[String]) : Option[List[Atom]] = apply(tree)
 
   }
 
@@ -166,7 +163,7 @@ package object Patterns {
 
       case preVB(_) | preVBD(_) | preVBG(_) | preVBN(_) | preVBP(_) | preVBZ(_) =>
 
-        List(Compound(Atom(tree.id), List())).some
+        List(Compound(atom=Atom(tree.id))).some
 
       case Tree.Node(VP|AtVP, Stream(preVBZ(_) | preVBD(_) | preVB(_) | preVBP(_), PredicateExpression(lst))) =>
 
@@ -182,14 +179,11 @@ package object Patterns {
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst), Tree.Node(PRT, Stream(particle)))) =>
 
-        (lst.map { (_ : Compound) |+| Compound(Atom(particle.id), List()) }).some
+        lst.map((_ : Compound) |+| Compound(atom=Atom(particle.id))).some
 
-      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst2), PredicateArgumentsExpression(lst1))) =>
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PredicateArgumentsExpression(arguments))) =>
 
-        val args = (lst1 >>= { _.args }).distinct
-        val lst3 = lst2.map { c => Compound(c.atom, args |+| c.args) }
-
-        (lst1 |+| lst3).filterNot(_.atom === Monoid[Atom].zero).some
+        predicates.map((_ : Compound) |+| Compound(args=arguments)).some
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst))) =>
 
@@ -211,24 +205,59 @@ package object Patterns {
 
   }
 
+  object PhraseExpression extends ConstituentPattern {
+
+    def apply(tree : Tree[String]) : Option[Tuple2[List[Atom], List[Compound]]] = tree match {
+
+      case Tree.Node(NP|AtNP|S|AtS, Stream(PredicateArgumentsExpression(arguments), ClauseExpression(clauses))) =>
+
+        (arguments, clauses).some
+
+      case Tree.Node(NP|AtNP|S|AtS, Stream(ClauseExpression(clauses), PredicateArgumentsExpression(arguments))) =>
+
+        (arguments, clauses).some
+
+      case Tree.Node(S|AtS, Stream(PhraseExpression((arguments, clauses)), Tree.Node(_, Stream(_)))) =>
+
+        (arguments, clauses).some
+
+      case _ => none
+
+    }
+
+    def unapply(tree : Tree[String]) : Option[Tuple2[List[Atom], List[Compound]]] = apply(tree)
+
+  }
+
   object ClauseExpression extends ConstituentPattern {
 
     def apply(tree : Tree[String]) : Option[List[Compound]] = tree match {
 
-      case Tree.Node(S|AtS, Stream(ClauseExpression(lst1), ClauseExpression(lst2))) =>
+      case Tree.Node(S|AtS|SBAR|AtSBAR, Stream(ClauseExpression(clauses1), ClauseExpression(clauses2))) =>
 
-        lst1.some |+| lst2.some
+        clauses1.some |+| clauses2.some
 
-      case Tree.Node(S|AtS, Stream(ClauseExpression(lst), Tree.Node(_, Stream(_)))) =>
+      case Tree.Node(S|AtS|SBAR|AtSBAR, Stream(ClauseExpression(clauses), Tree.Node(_, Stream(_)))) =>
 
-        lst.some
+        clauses.some
 
-      case Tree.Node(S|AtS, Stream(PredicateArgumentsExpression(lst1), PredicateExpression(lst2))) =>
+      case Tree.Node(S|AtS, Stream(PhraseExpression((arguments, clauses)), PredicateExpression(predicates))) => {
 
-        val args = (lst1 >>= { _.args }).distinct
-        val lst3 = lst2.map { c => Compound(c.atom, args |+| c.args) }
+        clauses.some |+| predicates.map(compound => Compound(args=arguments) |+| compound).some
 
-        (lst1 |+| lst3).filterNot(_.atom === Monoid[Atom].zero).some
+      }
+
+      case Tree.Node(S|AtS, Stream(PredicateArgumentsExpression(arguments), PredicateExpression(predicates))) =>
+
+        predicates.map(compound => Compound(args=arguments) |+| compound).some
+
+      case Tree.Node(AtSBAR, Stream(ClauseExpression(clauses), Tree.Node(_, Stream(_)))) =>
+
+        clauses.some
+
+      case Tree.Node(SBAR, Stream(Tree.Node(IN, Stream(_)), ClauseExpression(clauses))) =>
+
+        clauses.some
 
       case _ => none
 
@@ -290,10 +319,22 @@ package object Patterns {
       }
 
       {
-        val expect = Some(List(Compound(Atom("see"),List(Atom("man"))), Compound(Atom("walk"),List(Atom("man"), Atom("dog")))))
+        val expect = List(Compound(Atom("see"),List(Atom("man"))), Compound(Atom("walk"),List(Atom("man"), Atom("dog")))).some
         assert(expect === "The man if the man can see walked the dog.")
+        assert(expect === "The man, if the man can see, can walk the dog.")
       }
 
+      {
+        val expect = List(Compound(Atom("see"),List(Atom("man"))), Compound(Atom("walk"),List(Atom("man"))), Compound(Atom("walk"),List(Atom("man"), Atom("dog")))).some
+        assert(expect === "The man, if the man can see, and if the man can walk, can walk the dog.")
+      }
+
+      {
+        val expect = List(Compound(Atom("walk"),List(Atom("man"))), Compound(Atom("walk"),List(Atom("dog")))).some
+        assert(expect === "If the man can walk the dog can walk.")
+        assert(expect === "If the man can walk, the dog can walk.")
+        assert(expect === "If the man can walk, then the dog can walk.")
+      }
     }
 
   }
@@ -392,5 +433,62 @@ package object Constituents {
   val WP = "WP"
   val WP$ = "WP$"
   val WRB = "WRB"
+
+}
+
+object ToGraph {
+
+  import Patterns._
+
+  import org.gephi.graph.api.{GraphModel, Node, Edge}
+
+  def apply(clauses : List[Compound], model : GraphModel) : Unit = {
+
+    for {
+      compound <- clauses
+      (sourceAtom, targetAtom) <- compound.args.sliding(2).map(lst => (lst.head, lst.last))
+    } {
+
+      val label = compound.atom.id
+      val source = createNode(sourceAtom.id, model)
+      val target = createNode(targetAtom.id, model)
+
+      createEdge(label, source, target, model)
+
+    }
+
+  }
+
+  private[this] def createNode(label : String, model : GraphModel) : Node = {
+
+    Option(model.getGraph.getNode(label)) match {
+      case Some(node) => node
+      case None => {
+
+        val node = model.factory.newNode(label)
+
+        node.getNodeData.setLabel(label)
+        node.getNodeData.setColor(0.5f, 0.5f, 0.5f)
+
+        model.getGraph.addNode(node)
+
+        node
+      }
+    }
+
+  }
+
+  private[this] def createEdge(label : String, source : Node, target : Node, model : GraphModel) : Edge = {
+
+    val edge = model.factory.newEdge(source, target)
+
+    edge.getEdgeData.setColor(0.5f, 0.5f, 0.5f)
+    edge.getEdgeData.setLabel(label)
+
+    model.getGraph.addEdge(edge)
+
+    edge
+
+  }
 
 }
