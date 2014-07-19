@@ -9,7 +9,6 @@ import org.slf4j.{ Logger, LoggerFactory }
 
 import scala.util.Try
 import scala.collection.JavaConverters._
-import TreeConversions._
 
 class MemoizedParser(file : File = new File("database"), grammarFile : String = "eng_sm6.gr", verbose : Boolean = false) {
 
@@ -20,14 +19,20 @@ class MemoizedParser(file : File = new File("database"), grammarFile : String = 
   private[this] lazy val parser = new Parser(grammarFile)
 
   def apply(token : String) : Tree[String] = {
+
     val tree = Option(hashMap.get(token)) match {
-      case Some(treeObj) => treeObj.asInstanceOf[Tree[String]]
-      case None => {
+
+      case Some(treeObj) =>
+
+        treeObj.asInstanceOf[Tree[String]]
+
+      case None =>
+
         val tree = parser(token)
         hashMap.put(token, tree)
         db.commit()
         tree
-      }
+
     }
 
     if(verbose) {
@@ -38,6 +43,7 @@ class MemoizedParser(file : File = new File("database"), grammarFile : String = 
     }
 
     tree
+
   }
 
 }

@@ -9,8 +9,6 @@ import edu.berkeley.nlp.PCFGLA.CoarseToFineMaxRuleParser
 
 import edu.berkeley.nlp.io.PTBLineLexer
 
-import TreeConversions._
-
 /**
   * Enables the use of the BerkeleyParser for parsing sentences
   * by providing a default configuration.

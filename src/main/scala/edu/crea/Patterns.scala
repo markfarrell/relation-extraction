@@ -24,7 +24,7 @@ package object Patterns {
 
   case class Atom(id : String) extends Term
 
-  case class Compound(atom : Atom = Monoid[Atom].zero, args : List[Atom] = Monoid[List[Atom]].zero) extends Term
+  case class Compound(atom : Atom = Monoid[Atom].zero, args : Stream[Atom] = Monoid[Stream[Atom]].zero) extends Term
 
   implicit val AtomEqual : Equal[Atom] = Equal.equal(_.id === _.id)
 
@@ -36,16 +36,16 @@ package object Patterns {
 
     def zero : Atom = Atom(Monoid[String].zero)
 
-    def append(a1 : Atom, a2: => Atom) : Atom = Atom(List(a1.id, a2.id).distinct.mkString(" ").trim)
+    def append(a1 : Atom, a2: => Atom) : Atom = Atom(Stream(a1.id, a2.id).distinct.mkString(" ").trim)
 
   }
 
   implicit val CompoundMonoid : Monoid[Compound] = new Monoid[Compound] {
 
-    def zero : Compound = Compound(Monoid[Atom].zero, Monoid[List[Atom]].zero)
+    def zero : Compound = Compound(Monoid[Atom].zero, Monoid[Stream[Atom]].zero)
 
     def append(a1 : Compound, a2 : => Compound) : Compound = {
-      Compound(a1.atom |+| a2.atom, (a1.args |+| a2.args).distinct)
+      Compound(a1.atom |+| a2.atom, (a1.args |+| a2.args).filterNot(_ === Monoid[Atom].zero).distinct)
     }
 
   }
@@ -63,6 +63,7 @@ package object Patterns {
         .map(terminal => Lemmatizer(terminal.toLowerCase))
         .mkString(" ")
         .trim
+
     }
 
   }
@@ -91,24 +92,46 @@ package object Patterns {
     val preNNP = Preterminal(NNP)
     val preNNPS = Preterminal(NNPS)
     val preDT = Preterminal(DT)
+    val preJJ = Preterminal(JJ)
+    val preJJR = Preterminal(JJR)
+    val preJJS = Preterminal(JJS)
+    val preRB = Preterminal(RB)
+    val preRBR = Preterminal(RBR)
+    val preRBS = Preterminal(RBS)
 
     def apply(tree : Tree[String]) : Option[Atom] = tree match {
 
-      case preNN(_) | preNNS(_) | preNNP(_) | preNNPS(_) =>
+      case preDT(_) | preRB(_) | preRBR(_) | preRBS(_) | preJJR(_) | preJJS(_) =>
+
+        Monoid[Atom].zero.some
+
+      case preNN(_) | preNNS(_) | preNNP(_) | preNNPS(_) | preJJ(_) =>
 
         Atom(tree.id).some
 
-      case Tree.Node(NP|AtNP, Stream(Tree.Node(DT, _), x)) =>
-
-        Atom(x.id).some
-
-      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(atom))) =>
+      case Tree.Node(ADJP|AtADJP, Stream(PredicateArgumentExpression(atom))) =>
 
         atom.some
 
-      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(args1), PredicateArgumentExpression(args2))) =>
+      case Tree.Node(NP|AtNP, Stream(Tree.Node(DT, Stream(_)), PredicateArgumentExpression(atom))) =>
+
+        atom.some
+
+      case Tree.Node(NP|AtNP, Stream(Tree.Node(VBG, Stream(x)), PredicateArgumentExpression(atom))) =>
+
+        Atom(x.id).some |+| atom.some
+
+      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(atom))) =>
+
+        atom.some
+
+      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(args1), PredicateArgumentExpression(args2))) =>
 
         args1.some |+| args2.some
+
+      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(atom), Tree.Node(_, Stream(_)))) =>
+
+        atom.some
 
       case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(args1), Tree.Node(PP, Stream(Tree.Node(IN, Stream(_)), PredicateArgumentExpression(args2))))) =>
 
@@ -128,11 +151,11 @@ package object Patterns {
 
   object PredicateArgumentsExpression extends ConstituentPattern {
 
-    def apply(tree : Tree[String]) : Option[List[Atom]] = tree match {
+    def apply(tree : Tree[String]) : Option[Stream[Atom]] = tree match {
 
       case PredicateArgumentExpression(atom) =>
 
-        List(atom).some
+        Stream(atom).some
 
       case Tree.Node(NP|AtNP, Stream(PredicateArgumentsExpression(args1), PredicateArgumentsExpression(args2))) =>
 
@@ -146,7 +169,7 @@ package object Patterns {
 
     }
 
-    def unapply(tree : Tree[String]) : Option[List[Atom]] = apply(tree)
+    def unapply(tree : Tree[String]) : Option[Stream[Atom]] = apply(tree)
 
   }
 
@@ -159,55 +182,63 @@ package object Patterns {
     private[this] val preVBP = Preterminal(VBP)
     private[this] val preVBZ = Preterminal(VBZ)
 
-    def apply(tree : Tree[String]) : Option[List[Compound]] = tree match {
+    def apply(tree : Tree[String]) : Option[Stream[Compound]] = tree match {
 
       case preVB(_) | preVBD(_) | preVBG(_) | preVBN(_) | preVBP(_) | preVBZ(_) =>
 
-        List(Compound(atom=Atom(tree.id))).some
+        Stream(Compound(atom=Atom(tree.id))).some
 
-      case Tree.Node(VP|AtVP, Stream(preVBZ(_) | preVBD(_) | preVB(_) | preVBP(_), PredicateExpression(lst))) =>
+      case Tree.Node(VP|AtVP, Stream(preVBZ(_) | preVBD(_) | preVB(_) | preVBP(_), PredicateExpression(stream))) =>
 
-        lst.some
+        stream.some
 
-      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst1), PredicateExpression(lst2))) =>
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream1), PredicateExpression(stream2))) =>
 
-        (lst1 |+| lst2).some
+        (stream1 |+| stream2).some
 
-      case Tree.Node(VP|AtVP, Stream(_, PredicateExpression(lst))) =>
+      case Tree.Node(VP|AtVP, Stream(_, PredicateExpression(stream))) =>
 
-        lst.some
+        stream.some
 
-      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst), Tree.Node(PRT, Stream(particle)))) =>
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream), Tree.Node(PRT, Stream(particle)))) =>
 
-        lst.map((_ : Compound) |+| Compound(atom=Atom(particle.id))).some
+        stream.map((_ : Compound) |+| Compound(atom=Atom(particle.id))).some
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PredicateArgumentsExpression(arguments))) =>
 
         predicates.map((_ : Compound) |+| Compound(args=arguments)).some
 
-      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst))) =>
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), Tree.Node(PP, Stream(Tree.Node(IN, Stream(in)), PredicateArgumentsExpression(arguments))))) =>
 
-        lst.some
+        predicates.map((_ : Compound) |+| Compound(atom=Atom(in.id), args=arguments)).some
 
-      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst), Tree.Node(ADVP, Stream(Tree.Node(RB, Stream(_)))))) =>
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), Tree.Node(PP, Stream(Tree.Node(AtPP, Stream(_, Tree.Node(IN, Stream(in)))), PredicateArgumentsExpression(arguments))))) =>
 
-        lst.some
+        predicates.map((_ : Compound) |+| Compound(atom=Atom(in.id), args=arguments)).some
 
-      case Tree.Node(VP|AtVP, Stream(PredicateExpression(lst), Tree.Node(_, Stream(_)))) =>
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream))) =>
 
-        lst.some
+        stream.some
+
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream), Tree.Node(ADVP, Stream(Tree.Node(RB, Stream(_)))))) =>
+
+        stream.some
+
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream), Tree.Node(_, Stream(_)))) =>
+
+        stream.some
 
       case _ => none
 
     }
 
-    def unapply(tree : Tree[String]) : Option[List[Compound]] = apply(tree)
+    def unapply(tree : Tree[String]) : Option[Stream[Compound]] = apply(tree)
 
   }
 
   object PhraseExpression extends ConstituentPattern {
 
-    def apply(tree : Tree[String]) : Option[Tuple2[List[Atom], List[Compound]]] = tree match {
+    def apply(tree :  Tree[String]) : Option[Tuple2[Stream[Atom], Stream[Compound]]] = tree match {
 
       case Tree.Node(NP|AtNP|S|AtS, Stream(PredicateArgumentsExpression(arguments), ClauseExpression(clauses))) =>
 
@@ -217,21 +248,34 @@ package object Patterns {
 
         (arguments, clauses).some
 
-      case Tree.Node(S|AtS, Stream(PhraseExpression((arguments, clauses)), Tree.Node(_, Stream(_)))) =>
+      case Tree.Node(NP|AtNP|S|AtS, Stream(PhraseExpression((arguments, clauses)), Tree.Node(_, Stream(_)))) =>
 
         (arguments, clauses).some
+
+      case Tree.Node(NP|AtNP, Stream(
+        PredicateArgumentsExpression(arguments),
+        Tree.Node(SBAR, Stream(
+          Tree.Node(WHNP, Stream(
+            Tree.Node(_, Stream(_)))),
+            Tree.Node(S|AtS, Stream(
+              PredicateExpression(predicates)
+            ))
+        ))
+      )) =>
+
+        (arguments, predicates.map(compound => Compound(args=arguments) |+| compound)).some
 
       case _ => none
 
     }
 
-    def unapply(tree : Tree[String]) : Option[Tuple2[List[Atom], List[Compound]]] = apply(tree)
+    def unapply(tree : Tree[String]) : Option[Tuple2[Stream[Atom], Stream[Compound]]] = apply(tree)
 
   }
 
   object ClauseExpression extends ConstituentPattern {
 
-    def apply(tree : Tree[String]) : Option[List[Compound]] = tree match {
+    def apply(tree : Tree[String]) : Option[Stream[Compound]] = tree match {
 
       case Tree.Node(S|AtS|SBAR|AtSBAR, Stream(ClauseExpression(clauses1), ClauseExpression(clauses2))) =>
 
@@ -241,11 +285,9 @@ package object Patterns {
 
         clauses.some
 
-      case Tree.Node(S|AtS, Stream(PhraseExpression((arguments, clauses)), PredicateExpression(predicates))) => {
+      case Tree.Node(S|AtS, Stream(PhraseExpression((arguments, clauses)), PredicateExpression(predicates))) =>
 
         clauses.some |+| predicates.map(compound => Compound(args=arguments) |+| compound).some
-
-      }
 
       case Tree.Node(S|AtS, Stream(PredicateArgumentsExpression(arguments), PredicateExpression(predicates))) =>
 
@@ -263,30 +305,32 @@ package object Patterns {
 
     }
 
-    def unapply(tree : Tree[String]) : Option[List[Compound]] = apply(tree)
+    def unapply(tree : Tree[String]) : Option[Stream[Compound]] = apply(tree)
 
   }
 
   object RootExpression extends ConstituentPattern {
 
-    def apply(tree : Tree[String]) : Option[List[Compound]] = tree match {
-      case Tree.Node(ROOT, Stream(ClauseExpression(lst))) => lst.some
+    def apply(tree : Tree[String]) : Option[Stream[Compound]] = tree match {
+      case Tree.Node(ROOT, Stream(ClauseExpression(stream))) => stream.some
       case _ => none
     }
 
-    def test(implicit parse : MemoizedParser) : Unit = {
+    def test : Unit = {
 
-      implicit def string2Result(str : String) : Option[List[Compound]] = RootExpression(parse(str))
+      val parse = new MemoizedParser
+
+      implicit def string2Result(str : String) : Option[Stream[Compound]] = RootExpression(parse(str))
 
       {
-        val expect = List(Compound(Atom("walk"),List(Atom("toronto monkey")))).some
+        val expect = Stream(Compound(Atom("walk"),Stream(Atom("toronto monkey")))).some
         assert(expect === "The Toronto monkey can walk.")
         assert(expect === "The Toronto monkeys can walk.")
         assert(expect === "The Toronto Monkeys can walk.")
       }
 
       {
-        val expect = List(Compound(Atom("sleep"), List(Atom("man")))).some
+        val expect = Stream(Compound(Atom("sleep"), Stream(Atom("man")))).some
         assert(expect === "The man sleeps.")
         assert(expect === "The man is sleeping.")
         assert(expect === "The man was freely sleeping.")
@@ -299,7 +343,7 @@ package object Patterns {
       }
 
       {
-        val expect = List(Compound(Atom("take off"), List(Atom("man")))).some
+        val expect = Stream(Compound(Atom("take off"), Stream(Atom("man")))).some
         assert(expect === "The man takes off.")
         assert(expect === "The man has taken off.")
         assert(expect === "The man might take off.")
@@ -308,131 +352,65 @@ package object Patterns {
       }
 
       {
-        val expect = List(Compound(Atom("take"),List(Atom("man type"), Atom("dog")))).some
+        val expect = Stream(Compound(Atom("take"),Stream(Atom("man type"), Atom("dog")))).some
         assert(expect === "That type of man took the dog.")
         assert(expect === "That type of man has taken the dog.")
       }
 
       {
-        val expect = List(Compound(Atom("walk"),List(Atom("man"), Atom("dog"))), Compound(Atom("eat"),List(Atom("man")))).some
+        val expect = Stream(Compound(Atom("walk"),Stream(Atom("man"), Atom("dog"))), Compound(Atom("eat"),Stream(Atom("man")))).some
         assert(expect === "The man can walk the dog and can eat.")
       }
 
       {
-        val expect = List(Compound(Atom("see"),List(Atom("man"))), Compound(Atom("walk"),List(Atom("man"), Atom("dog")))).some
+        val expect = Stream(Compound(Atom("see"),Stream(Atom("man"))), Compound(Atom("walk"),Stream(Atom("man"), Atom("dog")))).some
         assert(expect === "The man if the man can see walked the dog.")
         assert(expect === "The man, if the man can see, can walk the dog.")
       }
 
       {
-        val expect = List(Compound(Atom("see"),List(Atom("man"))), Compound(Atom("walk"),List(Atom("man"))), Compound(Atom("walk"),List(Atom("man"), Atom("dog")))).some
+        val expect = Stream(Compound(Atom("see"), Stream(Atom("man"))), Compound(Atom("walk"), Stream(Atom("man"))), Compound(Atom("walk"), Stream(Atom("man"), Atom("dog")))).some
         assert(expect === "The man, if the man can see, and if the man can walk, can walk the dog.")
       }
 
       {
-        val expect = List(Compound(Atom("walk"),List(Atom("man"))), Compound(Atom("walk"),List(Atom("dog")))).some
+        val expect = Stream(Compound(Atom("walk"), Stream(Atom("man"))), Compound(Atom("walk"), Stream(Atom("dog")))).some
         assert(expect === "If the man can walk the dog can walk.")
         assert(expect === "If the man can walk, the dog can walk.")
         assert(expect === "If the man can walk, then the dog can walk.")
       }
+
+      {
+        val expect = Stream(Compound(Atom("depend on"), Stream(Atom("age disease progression"), Atom("critical crucial health balance")))).some
+        assert(expect === "Age disease progression has depended on the critical and crucial health balance.")
+        assert(expect === "Age disease progression depends on the critical and crucial health balance.")
+        assert(expect === "Disease progression with aging undoubtedly depends on the critical and crucial health balance.")
+        assert(expect === "Disease progression with aging depends undoubtedly on the critical and crucial health balance.")
+        assert(expect === "Age disease progression has depended on the highly critical, crucial health balance.")
+        assert(expect === "Age disease progression has depended on the critical and highly crucial health balance.")
+        assert(expect === "Age disease progression has depended on the critical, highly crucial health balance.")
+        assert(expect === "Age disease progression also depends on the critical, highly crucial health balance.")
+      }
+
+      {
+        val expect = Stream(
+          Compound(Atom("worsen"), Stream(Atom("age disease progression"))),
+          Compound(Atom("depend on"), Stream(Atom("age disease progression"), Atom("critical crucial health balance")))
+        ).some
+        assert(expect === "Age disease progression that can worsen also depends on the critical, highly crucial health balance.")
+      }
+
+      {
+        val expect = Stream(
+          Compound(Atom("be"), Stream(Atom("age disease progression"), Atom("unfortunate"))),
+          Compound(Atom("depend on"), Stream(Atom("age disease progression"), Atom("critical crucial health balance")))
+        ).some
+        assert(expect === "Age disease progression, which is unfortunate, also depends on the critical, highly crucial health balance.")
+        assert(expect === "Age disease progression, which is highly unfortunate, also depends on the critical, highly crucial health balance.")
+      }
     }
 
   }
-
-}
-
-package object Constituents {
-
-  val ROOT = "ROOT"
-
-  val S = "S"
-  val SBARQ = "SBARQ"
-  val SBAR = "SBAR"
-  val SINV = "SINV"
-  val SQ = "SQ"
-  val ADJP = "ADJP"
-  val ADVP = "ADVP"
-  val CONJP = "CONJP"
-  val FRAG = "FRAG"
-  val INTJ = "INTJ"
-  val LST = "LST"
-  val NAC = "NAC"
-  val NP = "NP"
-  val NX = "NX"
-  val PP = "PP"
-  val PRN = "PRN"
-  val PRT = "PRT"
-  val QP = "QP"
-  val RRC = "RRC"
-  val UCP = "UCP"
-  val VP = "VP"
-  val WHADJP = "WHADJP"
-  val WHAVP = "WHAVP"
-  val WHNP = "WHNP"
-  val WHPP = "WHPP"
-  val X = "X"
-  val AtS = "@S"
-  val AtSBARQ = "@SBARQ"
-  val AtSBAR = "@SBAR"
-  val AtSINV = "@SINV"
-  val AtSQ = "@SQ"
-  val AtADJP = "@ADJP"
-  val AtADVP = "@ADVP"
-  val AtCONJP = "@CONJP"
-  val AtFRAG = "@FRAG"
-  val AtINTJ = "@INTJ"
-  val AtLST = "@LST"
-  val AtNAC = "@NAC"
-  val AtNP = "@NP"
-  val AtNX = "@NX"
-  val AtPP = "@PP"
-  val AtPRN = "@PRN"
-  val AtPRT = "@PRT"
-  val AtQP = "@QP"
-  val AtRRC = "@RRC"
-  val AtUCP = "@UCP"
-  val AtVP = "@VP"
-  val AtWHADJP = "@WHADJP"
-  val AtWHAVP = "@WHAVP"
-  val AtWHNP = "@WHNP"
-  val AtWHPP = "@WHPP"
-  val AtX = "@X"
-  val CC = "CC"
-  val CD = "CD"
-  val DT = "DT"
-  val EX = "EX"
-  val FW = "FW"
-  val IN = "IN"
-  val JJ = "JJ"
-  val JJR = "JJR"
-  val JJS = "JJS"
-  val LS = "LS"
-  val MD = "MD"
-  val NN = "NN"
-  val NNS = "NNS"
-  val NNP = "NNP"
-  val NNPS = "NNPS"
-  val PDT = "PDT"
-  val POS = "POS"
-  val PRP = "PRP"
-  val PRP$ = "PRP$"
-  val RB = "RB"
-  val RBR = "RBR"
-  val RBS = "RBS"
-  val RP = "RP"
-  val SYM = "SYM"
-  val TO = "TO"
-  val UH = "UH"
-  val VB = "VB"
-  val VBD = "VBD"
-  val VBG = "VBG"
-  val VBN = "VBN"
-  val VBP = "VBP"
-  val VBZ = "VBZ"
-  val WDT = "WDT"
-  val WP = "WP"
-  val WP$ = "WP$"
-  val WRB = "WRB"
 
 }
 
@@ -442,11 +420,11 @@ object ToGraph {
 
   import org.gephi.graph.api.{GraphModel, Node, Edge}
 
-  def apply(clauses : List[Compound], model : GraphModel) : Unit = {
+  def apply(clauses : Stream[Compound], model : GraphModel) : Unit = {
 
     for {
       compound <- clauses
-      (sourceAtom, targetAtom) <- compound.args.sliding(2).map(lst => (lst.head, lst.last))
+      (sourceAtom, targetAtom) <- compound.args.sliding(2).map(stream => (stream.head, stream.last))
     } {
 
       val label = compound.atom.id
