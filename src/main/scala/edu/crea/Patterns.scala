@@ -1,5 +1,8 @@
 package edu.crea
 
+import scala.collection.JavaConverters._
+import scala.collection.JavaConversions._
+
 import scalaz._
 import Scalaz._
 
@@ -7,45 +10,41 @@ package object Patterns {
 
   import Constituents._
 
-  implicit def convertTree[T](javaTree : edu.berkeley.nlp.syntax.Tree[T]) : Tree[T] = {
+  import Isomorphism.<=>
 
-    import scala.collection.JavaConverters._
+  type BerkeleyTree[T] = edu.berkeley.nlp.syntax.Tree[T]
 
-    val children = javaTree.getChildren.asScala.toStream.map(convertTree)
+  implicit def isoTree[T] = new (BerkeleyTree[T] <=> Tree[T]) {
 
-    children.size match {
-      case 0 => javaTree.getLabel.leaf
-      case _ => Tree.node(javaTree.getLabel, children)
+    val to : BerkeleyTree[T] => Tree[T] = { berkeleyTree =>
+
+      val children = berkeleyTree.getChildren.asScala.toStream.map(to)
+
+      children.size match {
+        case 0 => berkeleyTree.getLabel.leaf
+        case _ => Tree.node(berkeleyTree.getLabel, children)
+      }
+
+    }
+
+    val from : Tree[T] => BerkeleyTree[T] = {
+       case Tree.Node(label, Stream()) => new BerkeleyTree[T](label)
+       case Tree.Node(label, subForest) => new BerkeleyTree[T](label, subForest.map(from).toList)
     }
 
   }
 
-  sealed trait Term
+  implicit def toTree[T](berkeleyTree : BerkeleyTree[T]) : Tree[T] = isoTree.to(berkeleyTree)
+  implicit def fromTree[T](tree : Tree[T]) : BerkeleyTree[T] = isoTree.from(tree)
 
-  case class Atom(id : String) extends Term
+  implicit def showTree[T] = new Show[Tree[T]] {
 
-  case class Compound(atom : Atom = Monoid[Atom].zero, args : Stream[Atom] = Monoid[Stream[Atom]].zero) extends Term
+    override def shows(tree : Tree[T]) : String = {
 
-  implicit val AtomEqual : Equal[Atom] = Equal.equal(_.id === _.id)
+      import edu.berkeley.nlp.syntax.Trees.PennTreeRenderer
 
-  implicit val CompoundEqual : Equal[Compound] = Equal.equal {
-    (x, y) => (x.atom, x.args) === (y.atom, y.args)
-  }
+      PennTreeRenderer.render(tree)
 
-  implicit val AtomMonoid : Monoid[Atom] = new Monoid[Atom] {
-
-    def zero : Atom = Atom(Monoid[String].zero)
-
-    def append(a1 : Atom, a2: => Atom) : Atom = Atom(Stream(a1.id, a2.id).distinct.mkString(" ").trim)
-
-  }
-
-  implicit val CompoundMonoid : Monoid[Compound] = new Monoid[Compound] {
-
-    def zero : Compound = Compound(Monoid[Atom].zero, Monoid[Stream[Atom]].zero)
-
-    def append(a1 : Compound, a2 : => Compound) : Compound = {
-      Compound(a1.atom |+| a2.atom, (a1.args |+| a2.args).filterNot(_ === Monoid[Atom].zero).distinct)
     }
 
   }
@@ -64,6 +63,36 @@ package object Patterns {
         .mkString(" ")
         .trim
 
+    }
+
+  }
+
+  sealed trait Term
+
+  case class Atom(id : String) extends Term
+
+  case class Compound(atom : Atom = Monoid[Atom].zero, args : Stream[Atom] = Monoid[Stream[Atom]].zero) extends Term
+
+  implicit val equalAtom : Equal[Atom] = Equal.equal(_.id === _.id)
+
+  implicit val equalCompound : Equal[Compound] = Equal.equal {
+    (x, y) => (x.atom, x.args) === (y.atom, y.args)
+  }
+
+  implicit val monoidAtom : Monoid[Atom] = new Monoid[Atom] {
+
+    def zero : Atom = Atom(Monoid[String].zero)
+
+    def append(a1 : Atom, a2: => Atom) : Atom = Atom(Stream(a1.id, a2.id).distinct.mkString(" ").trim)
+
+  }
+
+  implicit val monoidCompound : Monoid[Compound] = new Monoid[Compound] {
+
+    def zero : Compound = Compound(Monoid[Atom].zero, Monoid[Stream[Atom]].zero)
+
+    def append(a1 : Compound, a2 : => Compound) : Compound = {
+      Compound(a1.atom |+| a2.atom, (a1.args |+| a2.args).filterNot(_ === Monoid[Atom].zero).distinct)
     }
 
   }
@@ -98,6 +127,7 @@ package object Patterns {
     val preRB = Preterminal(RB)
     val preRBR = Preterminal(RBR)
     val preRBS = Preterminal(RBS)
+    val preFW = Preterminal(FW)
 
     def apply(tree : Tree[String]) : Option[Atom] = tree match {
 
@@ -105,11 +135,11 @@ package object Patterns {
 
         Monoid[Atom].zero.some
 
-      case preNN(_) | preNNS(_) | preNNP(_) | preNNPS(_) | preJJ(_) =>
+      case preNN(_) | preNNS(_) | preNNP(_) | preNNPS(_) | preJJ(_) | preFW(_) =>
 
         Atom(tree.id).some
 
-      case Tree.Node(ADJP|AtADJP, Stream(PredicateArgumentExpression(atom))) =>
+      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(atom))) =>
 
         atom.some
 
@@ -117,7 +147,7 @@ package object Patterns {
 
         atom.some
 
-      case Tree.Node(NP|AtNP, Stream(Tree.Node(VBG, Stream(x)), PredicateArgumentExpression(atom))) =>
+      case Tree.Node(NP|AtNP, Stream(Tree.Node(VBG|VBN, Stream(x)), PredicateArgumentExpression(atom))) =>
 
         Atom(x.id).some |+| atom.some
 
@@ -133,9 +163,6 @@ package object Patterns {
 
         atom.some
 
-      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(args1), Tree.Node(PP, Stream(Tree.Node(IN, Stream(_)), PredicateArgumentExpression(args2))))) =>
-
-        args2.some |+| args1.some
 
       case Tree.Node(AtS, Stream(PredicateArgumentExpression(atom), Tree.Node(ADVP, Stream(Tree.Node(RB, Stream(_)))))) =>
 
@@ -157,11 +184,27 @@ package object Patterns {
 
         Stream(atom).some
 
-      case Tree.Node(NP|AtNP, Stream(PredicateArgumentsExpression(args1), PredicateArgumentsExpression(args2))) =>
+      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(argument), Tree.Node(PP, Stream(Tree.Node(IN|VBG|TO, Stream(_)), PredicateArgumentsExpression(args2))))) =>
+
+        args2.map((_ : Atom) |+| argument).some
+
+      case Tree.Node(NP|AtNP|ADJP|AtADJP|PP|AtPP, Stream(PredicateArgumentsExpression(args1), PredicateArgumentsExpression(args2))) =>
 
         args1.some |+| args2.some
 
-      case Tree.Node(S|AtS, Stream(PredicateArgumentsExpression(arguments), Tree.Node(_, Stream(_)))) =>
+      case Tree.Node(PP|AtPP, Stream(Tree.Node(IN|VBG|TO, Stream(_)), PredicateArgumentsExpression(arguments))) =>
+
+        arguments.some
+
+      case Tree.Node(PP|AtPP, Stream(Tree.Node(AtPP, Stream(_, Tree.Node(IN|VBG|TO, Stream(_)))), PredicateArgumentsExpression(arguments))) =>
+
+        arguments.some
+
+      case Tree.Node(ADJP|AtADJP, Stream(Tree.Node(JJ, Stream(_)), PredicateArgumentsExpression(arguments))) =>
+
+        arguments.some
+
+      case Tree.Node(S|AtS|NP|AtNP|PP|AtPP, Stream(PredicateArgumentsExpression(arguments), Tree.Node(_, Stream(_)))) =>
 
         arguments.some
 
@@ -188,7 +231,7 @@ package object Patterns {
 
         Stream(Compound(atom=Atom(tree.id))).some
 
-      case Tree.Node(VP|AtVP, Stream(preVBZ(_) | preVBD(_) | preVB(_) | preVBP(_), PredicateExpression(stream))) =>
+      case Tree.Node(VP|AtVP, Stream(preVB(_) | preVBD(_) | preVBG(_) | preVBN(_) | preVBP(_) | preVBZ(_),  PredicateExpression(stream))) =>
 
         stream.some
 
@@ -208,14 +251,6 @@ package object Patterns {
 
         predicates.map((_ : Compound) |+| Compound(args=arguments)).some
 
-      case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), Tree.Node(PP, Stream(Tree.Node(IN, Stream(in)), PredicateArgumentsExpression(arguments))))) =>
-
-        predicates.map((_ : Compound) |+| Compound(atom=Atom(in.id), args=arguments)).some
-
-      case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), Tree.Node(PP, Stream(Tree.Node(AtPP, Stream(_, Tree.Node(IN, Stream(in)))), PredicateArgumentsExpression(arguments))))) =>
-
-        predicates.map((_ : Compound) |+| Compound(atom=Atom(in.id), args=arguments)).some
-
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream))) =>
 
         stream.some
@@ -227,6 +262,19 @@ package object Patterns {
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream), Tree.Node(_, Stream(_)))) =>
 
         stream.some
+
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PhraseExpression((arguments, clauses)))) =>
+
+        predicates.map(compound => Compound(args=arguments) |+| compound).some |+| clauses.some
+
+      case Tree.Node(ADJP, Stream(_,
+        Tree.Node(PP, Stream(
+          Tree.Node(IN, Stream(_)),
+          Tree.Node(S, Stream(PredicateExpression(predicates)))
+        ))
+      )) =>
+
+        predicates.some
 
       case _ => none
 
@@ -262,6 +310,10 @@ package object Patterns {
             ))
         ))
       )) =>
+
+        (arguments, predicates.map(compound => Compound(args=arguments) |+| compound)).some
+
+      case Tree.Node(NP|AtNP, Stream(PredicateArgumentsExpression(arguments), PredicateExpression(predicates))) =>
 
         (arguments, predicates.map(compound => Compound(args=arguments) |+| compound)).some
 
@@ -381,7 +433,7 @@ package object Patterns {
       }
 
       {
-        val expect = Stream(Compound(Atom("depend on"), Stream(Atom("age disease progression"), Atom("critical crucial health balance")))).some
+        val expect = Stream(Compound(Atom("depend"), Stream(Atom("age disease progression"), Atom("critical crucial health balance")))).some
         assert(expect === "Age disease progression has depended on the critical and crucial health balance.")
         assert(expect === "Age disease progression depends on the critical and crucial health balance.")
         assert(expect === "Disease progression with aging undoubtedly depends on the critical and crucial health balance.")
@@ -395,7 +447,7 @@ package object Patterns {
       {
         val expect = Stream(
           Compound(Atom("worsen"), Stream(Atom("age disease progression"))),
-          Compound(Atom("depend on"), Stream(Atom("age disease progression"), Atom("critical crucial health balance")))
+          Compound(Atom("depend"), Stream(Atom("age disease progression"), Atom("critical crucial health balance")))
         ).some
         assert(expect === "Age disease progression that can worsen also depends on the critical, highly crucial health balance.")
       }
@@ -403,7 +455,7 @@ package object Patterns {
       {
         val expect = Stream(
           Compound(Atom("be"), Stream(Atom("age disease progression"), Atom("unfortunate"))),
-          Compound(Atom("depend on"), Stream(Atom("age disease progression"), Atom("critical crucial health balance")))
+          Compound(Atom("depend"), Stream(Atom("age disease progression"), Atom("critical crucial health balance")))
         ).some
         assert(expect === "Age disease progression, which is unfortunate, also depends on the critical, highly crucial health balance.")
         assert(expect === "Age disease progression, which is highly unfortunate, also depends on the critical, highly crucial health balance.")
