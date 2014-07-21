@@ -92,5 +92,7 @@ package object Constituents {
   val WP = "WP"
   val WP$ = "WP$"
   val WRB = "WRB"
+  val LRB = "-LRB-"
+  val RRB = "-RRB-"
 
 }

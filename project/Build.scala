@@ -10,7 +10,9 @@ object ProjectBuild extends Build {
       import scalaz._
       import Scalaz._
       import Patterns._
-      implicit val parse = new MemoizedParser(verbose=true)
+      import Terms._
+      import Trees._
+      implicit val parse = new MemoizedParser
     """,
     name := "text-network compiler",
     version := "0.1",
@@ -24,7 +26,7 @@ object ProjectBuild extends Build {
       "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
     ),
     libraryDependencies ++= Seq(
-      "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
+      "org.scalatest" %% "scalatest" % "2.2.0" % "test",
       "org.slf4j" % "slf4j-api" % "1.7.7",
       "org.slf4j" % "slf4j-log4j12" % "1.7.7",
       "log4j" % "log4j" % "1.2.17",

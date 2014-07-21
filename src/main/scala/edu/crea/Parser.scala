@@ -1,7 +1,9 @@
 package edu.crea
 
+import scalaz._
+import Scalaz._
+
 import edu.berkeley.nlp.util.Numberer
-import edu.berkeley.nlp.syntax.Tree
 import edu.berkeley.nlp.PCFGLA.ParserData
 import edu.berkeley.nlp.PCFGLA.Grammar
 import edu.berkeley.nlp.PCFGLA.Lexicon
@@ -9,12 +11,7 @@ import edu.berkeley.nlp.PCFGLA.CoarseToFineMaxRuleParser
 
 import edu.berkeley.nlp.io.PTBLineLexer
 
-/**
-  * Enables the use of the BerkeleyParser for parsing sentences
-  * by providing a default configuration.
-  * @param grammarFile {String} - Path to load serialized grammar file from.
- **/
-class Parser(grammarFile : String) {
+class Parser(grammarPath : String = "eng_sm6.gr") {
 
   private[this] val threshold : Double = 1.0
 
@@ -25,7 +22,7 @@ class Parser(grammarFile : String) {
   private[this] val variational : Boolean = false
 
   private[this] val tokenizer : PTBLineLexer = new PTBLineLexer
-  private[this] val pData : ParserData = ParserData.Load(grammarFile)
+  private[this] val pData : ParserData = ParserData.Load(grammarPath)
 
   private[this] val parser : CoarseToFineMaxRuleParser = {
 
@@ -43,11 +40,8 @@ class Parser(grammarFile : String) {
 
   }
 
- /**
-   * Parse an English sentence and returns a parts-of-speech-annotated tree.
-   * @param sentence The sentence to be parsed.
-  **/
   def apply(sentence : String) : Tree[String] = {
+    import Trees._
     parser.getBestConstrainedParse(tokenizer.tokenizeLine(sentence), null, null)
   }
 

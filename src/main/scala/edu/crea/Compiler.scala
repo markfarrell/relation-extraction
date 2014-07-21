@@ -14,6 +14,7 @@ object Compiler {
   private[this] lazy val parser = new MemoizedParser
   private[this] lazy val model = CreateGraphModel()
   private[this] val charset = "UTF-8"
+  private[this] val cores = 4
 
   def apply(inputStream : => InputStream, outputStream : => OutputStream) : Float = {
 
@@ -22,22 +23,19 @@ object Compiler {
 
     def tokens = Tokenize(inputStream)
 
-    // TODO: Compilation can be parallelized and memoized.
-    def clauseLists = {
-      tokens.map(parser.apply)
-        .map(toTree)
-        .map(RootExpression.apply)
-    }
+    // TODO: Compilation can be memoized.
 
-    clauseLists.iterator.foreach {
-      case Some(clauses) => {
+    tokens.map(parser.apply)
+      .grouped(cores)
+      .flatMap(group => group.par.map(RootExpression.apply))
+      .foreach {
+        case Some(clauses) =>
 
-        ToGraph(clauses, model)
-        success += 1f
+           ToGraph(clauses, model)
+           success += 1f
 
+        case None => fail += 1f
       }
-      case None => fail += 1f
-    }
 
     writer.writeToStream(ToGexf(model), outputStream, charset)
 
@@ -51,7 +49,7 @@ object Compiler {
 
     def tokens = Tokenize(fs)
 
-    def pairs = tokens.zip(tokens.map(parser.apply).map(toTree).map(RootExpression.apply))
+    def pairs = tokens.zip(tokens.map(parser.apply).map(RootExpression.apply))
 
     val it = pairs.filter(_._2 === none).map(_._1).iterator
 
