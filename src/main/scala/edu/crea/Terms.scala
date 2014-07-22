@@ -43,7 +43,7 @@ package object Terms {
 
   implicit val showCompound : Show[Compound] = new Show[Compound] {
 
-    override def shows(compound : Compound) : String = s"""<compound:${compound.atom.id}(${compound.args.mkString(",")})>"""
+    override def shows(compound : Compound) : String = s"""<compound:${compound.atom.id}(${compound.args.map(_.shows).mkString(", ")})>"""
 
   }
 

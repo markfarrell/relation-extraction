@@ -113,6 +113,14 @@ class CompileSuite extends FunSuite {
 
   }
 
+  test("VP + PP") {
+
+    val expect = Stream(Compound(Atom("talk"), Stream(Atom("man"), Atom("cat")))).some
+
+    expect assert_=== Compile("The man can talk about the cat.")
+
+  }
+
   test("NP + PP and VP + PP.") {
 
     val expect = Stream(Compound(Atom("depend"), Stream(Atom("age progression"), Atom("health balance")))).some

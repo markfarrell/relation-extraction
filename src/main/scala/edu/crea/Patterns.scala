@@ -28,22 +28,22 @@ package object Patterns {
 
   object PredicateArgumentExpression extends ConstituentPattern {
 
-    val preNN = Preterminal(NN)
-    val preNNS = Preterminal(NNS)
-    val preNNP = Preterminal(NNP)
-    val preNNPS = Preterminal(NNPS)
-    val preDT = Preterminal(DT)
-    val preJJ = Preterminal(JJ)
-    val preJJR = Preterminal(JJR)
-    val preJJS = Preterminal(JJS)
-    val preRB = Preterminal(RB)
-    val preRBR = Preterminal(RBR)
-    val preRBS = Preterminal(RBS)
-    val preFW = Preterminal(FW)
-    val prePRP = Preterminal(PRP)
-    val prePRP$ = Preterminal(PRP$)
-    val preCD = Preterminal(CD)
-    val preEX = Preterminal(EX)
+    private[this] val preNN = Preterminal(NN)
+    private[this] val preNNS = Preterminal(NNS)
+    private[this] val preNNP = Preterminal(NNP)
+    private[this] val preNNPS = Preterminal(NNPS)
+    private[this] val preDT = Preterminal(DT)
+    private[this] val preJJ = Preterminal(JJ)
+    private[this] val preJJR = Preterminal(JJR)
+    private[this] val preJJS = Preterminal(JJS)
+    private[this] val preRB = Preterminal(RB)
+    private[this] val preRBR = Preterminal(RBR)
+    private[this] val preRBS = Preterminal(RBS)
+    private[this] val preFW = Preterminal(FW)
+    private[this] val prePRP = Preterminal(PRP)
+    private[this] val prePRP$ = Preterminal(PRP$)
+    private[this] val preCD = Preterminal(CD)
+    private[this] val preEX = Preterminal(EX)
 
     def apply(tree : Tree[String]) : Option[Atom] = tree match {
 
@@ -55,35 +55,23 @@ package object Patterns {
 
         Atom(tree.id).some
 
-      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(atom))) =>
+      case Tree.Node(ADJP|AtADJP, Stream(Tree.Node(JJ, Stream(_)), PredicateArgumentExpression(arg))) =>
 
-        atom.some
+        arg.some
 
-      case Tree.Node(NP|AtNP, Stream(Tree.Node(DT, Stream(_)), PredicateArgumentExpression(atom))) =>
+      case Tree.Node(ADJP|AtADJP, Stream(Tree.Node(JJ, Stream(_)), Tree.Node(_, Stream(_)))) =>
 
-        atom.some
+        Monoid[Atom].zero.some
 
-      case Tree.Node(NP|AtNP, Stream(Tree.Node(VBG|VBN, Stream(x)), PredicateArgumentExpression(atom))) =>
+      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(Tree.Node(DT, Stream(_)), PredicateArgumentExpression(arg))) =>
 
-        Atom(x.id).some |+| atom.some
+        arg.some
 
-      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(atom))) =>
+      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(arg1), PredicateArgumentExpression(arg2))) =>
 
-        atom.some
+        arg1.some |+| arg2.some
 
-      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(args1), PredicateArgumentExpression(args2))) =>
-
-        args1.some |+| args2.some
-
-      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(atom), Tree.Node(_, Stream(_)))) =>
-
-        atom.some
-
-      case Tree.Node(AtS, Stream(PredicateArgumentExpression(atom), Tree.Node(ADVP, Stream(Tree.Node(RB, Stream(_)))))) =>
-
-        atom.some
-
-      case _ => none
+        case _ => none
 
     }
 
@@ -95,35 +83,34 @@ package object Patterns {
 
     def apply(tree : Tree[String]) : Option[Stream[Atom]] = tree match {
 
-      case PredicateArgumentExpression(atom) =>
+      case PredicateArgumentExpression(arg) =>
 
-        Stream(atom).some
+        Stream(arg).some
 
-      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(argument), Tree.Node(PP, Stream(Tree.Node(IN|VBG|TO, Stream(_)), PredicateArgumentsExpression(args2))))) =>
+      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentsExpression(args))) =>
 
-        args2.map((_ : Atom) |+| argument).some
+        args.some
 
-      case Tree.Node(NP|AtNP|ADJP|AtADJP|PP|AtPP, Stream(PredicateArgumentsExpression(args1), PredicateArgumentsExpression(args2))) =>
+      case Tree.Node(NP|AtNP, Stream(Tree.Node(VBG|VBN, Stream(x)), PredicateArgumentsExpression(args))) =>
+
+        val newArg = Atom(x.id)
+
+        args.map(arg => newArg |+| arg).some
+
+      case Tree.Node(AtS, Stream(PredicateArgumentsExpression(args), Tree.Node(ADVP, Stream(Tree.Node(RB, Stream(_)))))) =>
+
+        args.some
+
+      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentsExpression(args1), PredicateArgumentsExpression(args2))) =>
 
         args1.some |+| args2.some
 
-      case Tree.Node(PP|AtPP, Stream(Tree.Node(IN|VBG|TO, Stream(_)), PredicateArgumentsExpression(arguments))) =>
-
-        arguments.some
-
-      case Tree.Node(PP|AtPP, Stream(Tree.Node(AtPP, Stream(_, Tree.Node(IN|VBG|TO, Stream(_)))), PredicateArgumentsExpression(arguments))) =>
-
-        arguments.some
-
-      case Tree.Node(ADJP|AtADJP, Stream(Tree.Node(JJ, Stream(_)), PredicateArgumentsExpression(arguments))) =>
-
-        arguments.some
 
       case Tree.Node(PRN, Stream(Tree.Node(AtPRN, Stream(Tree.Node(LRB, Stream(_)), PredicateArgumentsExpression(arguments))), Tree.Node(RRB, Stream(_)))) =>
 
         arguments.some
 
-      case Tree.Node(S|AtS|NP|AtNP|PP|AtPP, Stream(PredicateArgumentsExpression(arguments), Tree.Node(_, Stream(_)))) =>
+      case Tree.Node(S|AtS|NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentsExpression(arguments), Tree.Node(_, Stream(_)))) =>
 
         arguments.some
 
@@ -182,15 +169,15 @@ package object Patterns {
 
         stream.some
 
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PrepositionalPhraseExpression((arguments, clauses)))) =>
+
+        predicates.map(compound => Compound(args=arguments) |+| compound).some |+| clauses.some
+
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PhraseExpression((arguments, clauses)))) =>
 
         predicates.map(compound => Compound(args=arguments) |+| compound).some |+| clauses.some
 
       case Tree.Node(ADJP, Stream(_, PredicateExpression(predicates))) =>
-
-        predicates.some
-
-      case Tree.Node(PP|AtPP, Stream(Tree.Node(IN|TO|VBG, Stream(_)), PredicateExpression(predicates))) =>
 
         predicates.some
 
@@ -206,9 +193,43 @@ package object Patterns {
 
   }
 
+  object PrepositionalPhraseExpression extends ConstituentPattern {
+
+    def apply(tree : Tree[String]) : Option[Tuple2[Stream[Atom], Stream[Compound]]] = tree match {
+
+      case Tree.Node(PP|AtPP, Stream(Tree.Node(IN|VBG|TO, Stream(_)), PhraseExpression((arguments, clauses)))) =>
+
+        (arguments, clauses).some
+
+      case Tree.Node(PP|AtPP, Stream(Tree.Node(IN|VBG|TO, Stream(_)), PredicateArgumentsExpression(arguments))) =>
+
+        (arguments, Stream()).some
+
+      case Tree.Node(PP|AtPP, Stream(Tree.Node(AtPP, Stream(_, Tree.Node(IN|VBG|TO, Stream(_)))), PhraseExpression((arguments, clauses)))) =>
+
+        (arguments, clauses).some
+
+      case Tree.Node(PP|AtPP, Stream(Tree.Node(AtPP, Stream(_, Tree.Node(IN|VBG|TO, Stream(_)))), PredicateArgumentsExpression(arguments))) =>
+
+        (arguments, Stream()).some
+
+      case _ => none
+
+    }
+
+    def unapply(tree : Tree[String]) :  Option[Tuple2[Stream[Atom], Stream[Compound]]] = apply(tree)
+
+  }
+
   object PhraseExpression extends ConstituentPattern {
 
     def apply(tree :  Tree[String]) : Option[Tuple2[Stream[Atom], Stream[Compound]]] = tree match {
+
+      case Tree.Node(NP|AtNP|S|AtS, Stream(PredicateArgumentsExpression(args1), PrepositionalPhraseExpression((args2, clauses)))) =>
+
+        def arguments = args2.flatMap(arg2 => args1.map(arg1 => arg2 |+| arg1))
+
+        (arguments, clauses).some
 
       case Tree.Node(NP|AtNP|S|AtS, Stream(PredicateArgumentsExpression(arguments), ClauseExpression(clauses))) =>
 
@@ -217,6 +238,7 @@ package object Patterns {
       case Tree.Node(NP|AtNP|S|AtS, Stream(PredicateArgumentsExpression(args1), PhraseExpression((args2, clauses)))) =>
 
         (args1 |+| args2, clauses).some
+
 
       case Tree.Node(NP|AtNP|S|AtS, Stream(ClauseExpression(clauses), PredicateArgumentsExpression(arguments))) =>
 
@@ -243,9 +265,13 @@ package object Patterns {
 
         (arguments, predicates.map(compound => Compound(args=arguments) |+| compound)).some
 
-      case Tree.Node(AtS, Stream(Tree.Node(PP, Stream(Tree.Node(IN, Stream(_)), PhraseExpression((arguments, clauses)))))) =>
+      case Tree.Node(S|AtS, Stream(PhraseExpression((arguments, clauses)))) =>
 
         (arguments, clauses).some
+
+      case Tree.Node(S|AtS, Stream(PhraseExpression((args1, clauses1)), PhraseExpression(args2, clauses2))) =>
+
+        (args1 |+| args2, clauses1 |+| clauses2).some
 
       case _ => none
 

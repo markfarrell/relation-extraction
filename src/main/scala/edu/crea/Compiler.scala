@@ -31,8 +31,8 @@ object Compiler {
       .foreach {
         case Some(clauses) =>
 
-           ToGraph(clauses, model)
-           success += 1f
+          ToGraph(clauses, model)
+          success += 1f
 
         case None => fail += 1f
       }

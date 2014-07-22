@@ -13,6 +13,11 @@ object ProjectBuild extends Build {
       import Terms._
       import Trees._
       implicit val parse = new MemoizedParser
+      def compile(sentence : String) : Option[Stream[Compound]] = {
+        val tree = parse(sentence)
+        println(tree.shows)
+        RootExpression(tree)
+      }
     """,
     name := "text-network compiler",
     version := "0.1",
