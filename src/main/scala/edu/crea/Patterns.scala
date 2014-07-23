@@ -55,13 +55,13 @@ package object Patterns {
 
         Atom(tree.id).some
 
-      case Tree.Node(ADJP|AtADJP, Stream(Tree.Node(JJ, Stream(_)), PredicateArgumentExpression(arg))) =>
+      case Tree.Node(NP|AtNP, Stream(Tree.Node(VBG|VBN, Stream(x)), PredicateArgumentExpression(arg))) =>
+
+        Atom(x.id).some |+| arg.some
+
+      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(arg))) =>
 
         arg.some
-
-      case Tree.Node(ADJP|AtADJP, Stream(Tree.Node(JJ, Stream(_)), Tree.Node(_, Stream(_)))) =>
-
-        Monoid[Atom].zero.some
 
       case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(Tree.Node(DT, Stream(_)), PredicateArgumentExpression(arg))) =>
 
@@ -70,6 +70,9 @@ package object Patterns {
       case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(arg1), PredicateArgumentExpression(arg2))) =>
 
         arg1.some |+| arg2.some
+
+      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(arg), Tree.Node(_, Stream(_)))) =>
+        arg.some
 
         case _ => none
 
@@ -83,34 +86,26 @@ package object Patterns {
 
     def apply(tree : Tree[String]) : Option[Stream[Atom]] = tree match {
 
+      case Tree.Node(NP|AtNP, Stream(
+        Tree.Node(AtNP, Stream(
+          PredicateArgumentsExpression(args1),
+          Tree.Node(CC|COMMA, Stream(_))
+        )),
+        PredicateArgumentsExpression(args2)
+      )) =>
+
+        args1.some |+| args2.some
+
       case PredicateArgumentExpression(arg) =>
 
         Stream(arg).some
 
-      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentsExpression(args))) =>
-
-        args.some
-
-      case Tree.Node(NP|AtNP, Stream(Tree.Node(VBG|VBN, Stream(x)), PredicateArgumentsExpression(args))) =>
-
-        val newArg = Atom(x.id)
-
-        args.map(arg => newArg |+| arg).some
 
       case Tree.Node(AtS, Stream(PredicateArgumentsExpression(args), Tree.Node(ADVP, Stream(Tree.Node(RB, Stream(_)))))) =>
 
         args.some
 
-      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentsExpression(args1), PredicateArgumentsExpression(args2))) =>
-
-        args1.some |+| args2.some
-
-
-      case Tree.Node(PRN, Stream(Tree.Node(AtPRN, Stream(Tree.Node(LRB, Stream(_)), PredicateArgumentsExpression(arguments))), Tree.Node(RRB, Stream(_)))) =>
-
-        arguments.some
-
-      case Tree.Node(S|AtS|NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentsExpression(arguments), Tree.Node(_, Stream(_)))) =>
+      case Tree.Node(S|AtS, Stream(PredicateArgumentsExpression(arguments), Tree.Node(_, Stream(_)))) =>
 
         arguments.some
 
@@ -149,13 +144,19 @@ package object Patterns {
 
         stream.some
 
-      case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream), Tree.Node(PRT, Stream(particle)))) =>
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), Tree.Node(PRT, Stream(particle)))) =>
 
-        stream.map((_ : Compound) |+| Compound(atom=Atom(particle.id))).some
+        predicates.map((_ : Compound) |+| Compound(atom=Atom(particle.id))).some
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PredicateArgumentsExpression(arguments))) =>
 
-        predicates.map((_ : Compound) |+| Compound(args=arguments)).some
+        def newPredicates = predicates.flatMap { compound =>
+
+          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+
+        }
+
+        newPredicates.some
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream))) =>
 
@@ -171,11 +172,23 @@ package object Patterns {
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PrepositionalPhraseExpression((arguments, clauses)))) =>
 
-        predicates.map(compound => Compound(args=arguments) |+| compound).some |+| clauses.some
+        def newPredicates = predicates.flatMap { compound =>
+
+          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+
+        }
+
+        newPredicates.some |+| clauses.some
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PhraseExpression((arguments, clauses)))) =>
 
-        predicates.map(compound => Compound(args=arguments) |+| compound).some |+| clauses.some
+        def newPredicates = predicates.flatMap { compound =>
+
+          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+
+        }
+
+        newPredicates.some |+| clauses.some
 
       case Tree.Node(ADJP, Stream(_, PredicateExpression(predicates))) =>
 
@@ -213,6 +226,16 @@ package object Patterns {
 
         (arguments, Stream()).some
 
+      case Tree.Node(PRN, Stream(
+        Tree.Node(AtPRN, Stream(
+          Tree.Node(LRB, Stream(_)),
+          PrepositionalPhraseExpression((arguments, clauses))
+        )),
+        Tree.Node(RRB, Stream(_))
+      )) =>
+
+        (arguments, clauses).some
+
       case _ => none
 
     }
@@ -230,6 +253,26 @@ package object Patterns {
         def arguments = args2.flatMap(arg2 => args1.map(arg1 => arg2 |+| arg1))
 
         (arguments, clauses).some
+
+      case Tree.Node(PRN, Stream(
+        Tree.Node(AtPRN, Stream(
+          Tree.Node(LRB, Stream(_)),
+          PhraseExpression((arguments, clauses))
+        )),
+        Tree.Node(RRB, Stream(_))
+      )) =>
+
+        (arguments, clauses).some
+
+      case Tree.Node(PRN, Stream(
+        Tree.Node(AtPRN, Stream(
+          Tree.Node(LRB, Stream(_)),
+          PredicateArgumentsExpression(arguments)
+        )),
+        Tree.Node(RRB, Stream(_))
+      )) =>
+
+        (arguments, Stream()).some
 
       case Tree.Node(NP|AtNP|S|AtS, Stream(PredicateArgumentsExpression(arguments), ClauseExpression(clauses))) =>
 
@@ -259,11 +302,23 @@ package object Patterns {
         ))
       )) =>
 
-        (arguments, predicates.map(compound => Compound(args=arguments) |+| compound)).some
+        def newPredicates = predicates.flatMap { compound =>
+
+          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+
+        }
+
+        (arguments, newPredicates).some
 
       case Tree.Node(NP|AtNP, Stream(PredicateArgumentsExpression(arguments), PredicateExpression(predicates))) =>
 
-        (arguments, predicates.map(compound => Compound(args=arguments) |+| compound)).some
+        def newPredicates = predicates.flatMap { compound =>
+
+          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+
+        }
+
+        (arguments, newPredicates).some
 
       case Tree.Node(S|AtS, Stream(PhraseExpression((arguments, clauses)))) =>
 
@@ -295,11 +350,19 @@ package object Patterns {
 
       case Tree.Node(S|AtS, Stream(PhraseExpression((arguments, clauses)), PredicateExpression(predicates))) =>
 
-        clauses.some |+| predicates.map(compound => Compound(args=arguments) |+| compound).some
+        clauses.some |+| predicates.flatMap { compound =>
+
+          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+
+        }.some
 
       case Tree.Node(S|AtS, Stream(PredicateArgumentsExpression(arguments), PredicateExpression(predicates))) =>
 
-        predicates.map(compound => Compound(args=arguments) |+| compound).some
+        predicates.flatMap { compound =>
+
+          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+
+        }.some
 
       case Tree.Node(AtSBAR, Stream(ClauseExpression(clauses), Tree.Node(_, Stream(_)))) =>
 

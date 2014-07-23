@@ -47,4 +47,10 @@ package object Terms {
 
   }
 
+  implicit val showCompoundStream : Show[Stream[Compound]] = new Show[Stream[Compound]] {
+
+    override def shows(stream : Stream[Compound]) : String = stream.iterator.map(_.shows).mkString("\n")
+
+  }
+
 }

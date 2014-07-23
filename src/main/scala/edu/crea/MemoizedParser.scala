@@ -6,31 +6,35 @@ import java.io.File
 import scalaz._
 import Scalaz._
 
+import scala.util.{Try, Success, Failure}
+
 class MemoizedParser(file : File = new File("database")) {
 
   import Trees._
 
   private[this] lazy val db = DBMaker.newFileDB(file).closeOnJvmShutdown.make()
-  private[this] lazy val hashMap = db.getHashMap[String, BerkeleyTree[String]]("parses")
+  private[this] lazy val parseMap = db.getTreeMap[String, BerkeleyTree[String]]("parses")
   private[this] lazy val parser = new Parser
 
   def apply(token : String) : Tree[String] = {
 
-    val tree = Option(hashMap.get(token)) match {
+    val tree = Try(Option(parseMap.get(token))) match {
 
-      case Some(treeObj) =>
+      case Success(Some(treeObj)) =>
 
         val tree : Tree[String] = treeObj.asInstanceOf[BerkeleyTree[String]]
 
         tree
 
-      case None =>
+      case _ =>
 
         val tree = parser(token)
         val berkeleyTree : BerkeleyTree[String] = tree
 
-        hashMap.put(token, berkeleyTree)
-        db.commit()
+        Try {
+          parseMap.put(token, berkeleyTree)
+          db.commit()
+        }
 
         tree
 

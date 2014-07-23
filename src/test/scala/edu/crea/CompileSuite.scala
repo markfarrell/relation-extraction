@@ -153,5 +153,26 @@ class CompileSuite extends FunSuite {
 
   }
 
+  test("Subject & Object lists.") {
+
+    val expect = Stream(
+      Compound(Atom("walk"), Stream(Atom("type"), Atom("cat"))),
+      Compound(Atom("walk"), Stream(Atom("kind"), Atom("cat"))),
+      Compound(Atom("walk"), Stream(Atom("man class"), Atom("cat"))),
+      Compound(Atom("walk"), Stream(Atom("dog class"), Atom("cat"))),
+      Compound(Atom("walk"), Stream(Atom("type"), Atom("elephant"))),
+      Compound(Atom("walk"), Stream(Atom("kind"), Atom("elephant"))),
+      Compound(Atom("walk"), Stream(Atom("man class"), Atom("elephant"))),
+      Compound(Atom("walk"), Stream(Atom("dog class"), Atom("elephant"))),
+      Compound(Atom("walk"), Stream(Atom("type"), Atom("fox"))),
+      Compound(Atom("walk"), Stream(Atom("kind"), Atom("fox"))),
+      Compound(Atom("walk"), Stream(Atom("man class"), Atom("fox"))),
+      Compound(Atom("walk"), Stream(Atom("dog class"), Atom("fox")))
+    ).some
+
+    expect assert_=== Compile("That type, kind, and class of man and dog can walk the cat, the elephant and the fox.")
+
+  }
+
 }
 
