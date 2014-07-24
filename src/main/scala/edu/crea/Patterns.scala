@@ -47,7 +47,12 @@ package object Patterns {
 
     def apply(tree : Tree[String]) : Option[Atom] = tree match {
 
-      case preDT(_) | preRB(_) | preRBR(_) | preRBS(_) | preJJR(_) | preJJS(_) | prePRP(_) | prePRP$(_) | preEX(_) | preJJ(_) | preCD(_) =>
+      case Tree.Node(PRN|AtPRN, _) | Tree.Node(ADVP|AtADVP, _) =>
+
+        Monoid[Atom].zero.some
+
+      case preDT(_) | preRB(_) | preRBR(_) | preRBS(_) | preJJR(_) | preJJS(_)
+        | prePRP(_) | prePRP$(_) | preEX(_) | preJJ(_) | preCD(_) =>
 
         Monoid[Atom].zero.some
 
@@ -58,6 +63,10 @@ package object Patterns {
       case Tree.Node(NP|AtNP, Stream(Tree.Node(VBG|VBN, Stream(x)), PredicateArgumentExpression(arg))) =>
 
         Atom(x.id).some |+| arg.some
+
+      case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(arg), Tree.Node(VBG|VBN, Stream(x)))) =>
+
+        arg.some |+| Atom(x.id).some
 
       case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(arg))) =>
 
@@ -101,7 +110,7 @@ package object Patterns {
         Stream(arg).some
 
 
-      case Tree.Node(AtS, Stream(PredicateArgumentsExpression(args), Tree.Node(ADVP, Stream(Tree.Node(RB, Stream(_)))))) =>
+      case Tree.Node(AtS, Stream(PredicateArgumentsExpression(args))) =>
 
         args.some
 
@@ -226,16 +235,6 @@ package object Patterns {
 
         (arguments, Stream()).some
 
-      case Tree.Node(PRN, Stream(
-        Tree.Node(AtPRN, Stream(
-          Tree.Node(LRB, Stream(_)),
-          PrepositionalPhraseExpression((arguments, clauses))
-        )),
-        Tree.Node(RRB, Stream(_))
-      )) =>
-
-        (arguments, clauses).some
-
       case _ => none
 
     }
@@ -248,31 +247,15 @@ package object Patterns {
 
     def apply(tree :  Tree[String]) : Option[Tuple2[Stream[Atom], Stream[Compound]]] = tree match {
 
+      case Tree.Node(PRN|AtPRN, _) =>
+
+        (Stream(), Stream()).some
+
       case Tree.Node(NP|AtNP|S|AtS, Stream(PredicateArgumentsExpression(args1), PrepositionalPhraseExpression((args2, clauses)))) =>
 
         def arguments = args2.flatMap(arg2 => args1.map(arg1 => arg2 |+| arg1))
 
         (arguments, clauses).some
-
-      case Tree.Node(PRN, Stream(
-        Tree.Node(AtPRN, Stream(
-          Tree.Node(LRB, Stream(_)),
-          PhraseExpression((arguments, clauses))
-        )),
-        Tree.Node(RRB, Stream(_))
-      )) =>
-
-        (arguments, clauses).some
-
-      case Tree.Node(PRN, Stream(
-        Tree.Node(AtPRN, Stream(
-          Tree.Node(LRB, Stream(_)),
-          PredicateArgumentsExpression(arguments)
-        )),
-        Tree.Node(RRB, Stream(_))
-      )) =>
-
-        (arguments, Stream()).some
 
       case Tree.Node(NP|AtNP|S|AtS, Stream(PredicateArgumentsExpression(arguments), ClauseExpression(clauses))) =>
 

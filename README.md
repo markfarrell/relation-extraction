@@ -10,7 +10,7 @@ This document is a work-in-progress.
 
 **General Terms**: Natural Language Processing, Bioinformatics
 
-__Keywords__: , Semantic Parsing, Markov Clustering, Bayesian Spam Filtering
+__Keywords__: Semantic Parsing, Clustering Algorithms, Spam Filtering
 
 **Author**: Mark Farrell
 
