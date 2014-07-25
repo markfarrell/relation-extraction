@@ -12,7 +12,7 @@ object ProjectBuild extends Build {
       import Patterns._
       import Terms._
       import Trees._
-      implicit val parse = new MemoizedParser
+      implicit val parse = new Parser
       def compile(sentence : String) : Option[Stream[Compound]] = {
         val tree = parse(sentence)
         println(tree.shows)

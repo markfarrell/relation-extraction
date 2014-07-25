@@ -1,4 +1,4 @@
-package edu.crea
+package edu.crea.nlp
 
 import java.util.Properties
 import java.io.PrintStream

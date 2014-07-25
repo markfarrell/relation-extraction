@@ -1,17 +1,22 @@
-package edu.crea
+package edu.crea.gexf
 
 import java.io.{File, InputStream, OutputStream, FileInputStream, FileOutputStream}
+
+import org.slf4j.{LoggerFactory, Logger}
 
 import org.gephi.graph.api.GraphModel
 import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 
-object Compiler {
+import scalaz._
+import Scalaz._
 
-  import Patterns._
-  import scalaz._
-  import Scalaz._
+import edu.crea.nlp.{Tokenize, Parser, Compile}
+import edu.crea.nlp.Terms._
+import edu.crea.nlp.Patterns._
 
-  private[this] lazy val parser = new MemoizedParser
+object GexfCompiler {
+
+  private[this] lazy val parser = new Parser
   private[this] lazy val model = CreateGraphModel()
   private[this] val charset = "UTF-8"
   private[this] val cores = 4
@@ -34,39 +39,23 @@ object Compiler {
           ToGraph(clauses, model)
           success += 1f
 
-        case None => fail += 1f
+        case None =>
+
+          fail += 1f
+
       }
 
     writer.writeToStream(ToGexf(model), outputStream, charset)
 
-    fail/(fail+success)
-
-  }
-
-  def fails(file : File) : Stream[String] = {
-
-    def fs = new FileInputStream(file)
-
-    def tokens = Tokenize(fs)
-
-    def pairs = tokens.zip(tokens.map(parser.apply).map(RootExpression.apply))
-
-    val it = pairs.filter(_._2 === none).map(_._1).iterator
-
-    def stream : Stream[String] = if(it.hasNext) {
-      it.next #:: stream
-    } else {
-      fs.close()
-      Stream.empty[String]
-    }
-
-    stream
+    success/(fail+success)
 
   }
 
 }
 
-object CompilerApp extends App {
+object GexfCompilerApp extends App {
+
+  private[this] val logger = LoggerFactory.getLogger(GexfCompilerApp.getClass)
 
   /**
     * Command line options for the tool.
@@ -95,11 +84,14 @@ object CompilerApp extends App {
 
       val fs : FileOutputStream = new FileOutputStream(cfg.file)
 
-      val rate = Compiler(System.in, fs)
+      val rate = GexfCompiler(System.in, fs) * 100f
 
       if(rate > 0f) {
+
         val result = "%.3f".format(rate)
-        println(s"Fail rate: ${result}")
+
+        logger.debug(s"Success rate: ${result}%")
+
       }
 
       fs.close()

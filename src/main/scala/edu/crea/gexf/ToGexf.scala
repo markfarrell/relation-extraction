@@ -1,4 +1,4 @@
-package edu.crea
+package edu.crea.gexf
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.HashMap

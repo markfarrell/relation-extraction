@@ -1,4 +1,4 @@
-package edu.crea
+package edu.crea.nlp
 
 import java.util.Scanner
 import java.io.{ InputStream, ByteArrayInputStream }
@@ -14,6 +14,7 @@ object Tokenize {
   def apply(in : InputStream) : Stream[String] = {
 
     val scanner = new Scanner(in)
+
     scanner.useDelimiter("""(?<=[!?.])\s+(?=[A-Z]+)""")
 
     def stream : Stream[String] = if(scanner.hasNext) {

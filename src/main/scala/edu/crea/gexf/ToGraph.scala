@@ -1,6 +1,7 @@
-package edu.crea
+package edu.crea.gexf
 
-import Terms._
+import edu.crea.nlp.Terms._
+
 import org.gephi.graph.api.{GraphModel, Node, Edge}
 
 object ToGraph {

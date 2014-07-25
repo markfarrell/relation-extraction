@@ -1,4 +1,4 @@
-package edu.crea
+package edu.crea.nlp
 
 import scalaz._
 import Scalaz._

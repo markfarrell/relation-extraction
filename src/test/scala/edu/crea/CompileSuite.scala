@@ -1,4 +1,4 @@
-package edu.crea
+package edu.crea.nlp
 
 import org.scalatest.FunSuite
 
@@ -8,23 +8,19 @@ import Terms._
 import scalaz._
 import Scalaz._
 
-object Compile {
+class CompileSuite extends FunSuite {
 
   private[this] val parse = new Parser
 
-  def apply(sentence : String) : Option[Stream[Compound]] = RootExpression(parse(sentence))
-
-}
-
-class CompileSuite extends FunSuite {
+  private[this] def compile(sentence : String) : Option[Stream[Compound]] = RootExpression(parse(sentence))
 
   test("Noun forms.") {
 
     val expect = Stream(Compound(Atom("walk"),Stream(Atom("toronto monkey")))).some
 
-    expect assert_=== Compile("The Toronto monkey can walk.")
-    expect assert_=== Compile("The Toronto monkeys can walk.")
-    expect assert_=== Compile("The Toronto Monkeys can walk.")
+    expect assert_=== compile("The Toronto monkey can walk.")
+    expect assert_=== compile("The Toronto monkeys can walk.")
+    expect assert_=== compile("The Toronto Monkeys can walk.")
 
   }
 
@@ -32,15 +28,15 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(Compound(Atom("sleep"), Stream(Atom("man")))).some
 
-    expect assert_=== Compile("The man sleeps.")
-    expect assert_=== Compile("The man is sleeping.")
-    expect assert_=== Compile("The man was freely sleeping.")
-    expect assert_=== Compile("The man freely sleeps.")
-    expect assert_=== Compile("The man freely has slept.")
-    expect assert_=== Compile("The man might sleep.")
-    expect assert_=== Compile("The man might be sleeping.")
-    expect assert_=== Compile("The man might sleep quietly.")
-    expect assert_=== Compile("The man might quietly and patiently sleep.")
+    expect assert_=== compile("The man sleeps.")
+    expect assert_=== compile("The man is sleeping.")
+    expect assert_=== compile("The man was freely sleeping.")
+    expect assert_=== compile("The man freely sleeps.")
+    expect assert_=== compile("The man freely has slept.")
+    expect assert_=== compile("The man might sleep.")
+    expect assert_=== compile("The man might be sleeping.")
+    expect assert_=== compile("The man might sleep quietly.")
+    expect assert_=== compile("The man might quietly and patiently sleep.")
 
   }
 
@@ -48,11 +44,11 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(Compound(Atom("take off"), Stream(Atom("man")))).some
 
-    expect assert_=== Compile("The man takes off.")
-    expect assert_=== Compile("The man has taken off.")
-    expect assert_=== Compile("The man might take off.")
-    expect assert_=== Compile("The man might have taken off.")
-    expect assert_=== Compile("The man might freely have taken off.")
+    expect assert_=== compile("The man takes off.")
+    expect assert_=== compile("The man has taken off.")
+    expect assert_=== compile("The man might take off.")
+    expect assert_=== compile("The man might have taken off.")
+    expect assert_=== compile("The man might freely have taken off.")
 
   }
 
@@ -60,8 +56,8 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(Compound(Atom("take"),Stream(Atom("man type"), Atom("dog")))).some
 
-    expect assert_=== Compile("That type of man took the dog.")
-    expect assert_=== Compile("That type of man has taken the dog.")
+    expect assert_=== compile("That type of man took the dog.")
+    expect assert_=== compile("That type of man has taken the dog.")
 
   }
 
@@ -69,7 +65,7 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(Compound(Atom("walk"),Stream(Atom("man"), Atom("dog"))), Compound(Atom("eat"),Stream(Atom("man")))).some
 
-    expect assert_=== Compile("The man can walk the dog and can eat.")
+    expect assert_=== compile("The man can walk the dog and can eat.")
 
   }
 
@@ -77,8 +73,8 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(Compound(Atom("see"),Stream(Atom("man"))), Compound(Atom("walk"),Stream(Atom("man"), Atom("dog")))).some
 
-    expect assert_=== Compile("The man if the man can see walked the dog.")
-    expect assert_=== Compile("The man, if the man can see, can walk the dog.")
+    expect assert_=== compile("The man if the man can see walked the dog.")
+    expect assert_=== compile("The man, if the man can see, can walk the dog.")
 
   }
 
@@ -86,7 +82,7 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(Compound(Atom("see"), Stream(Atom("man"))), Compound(Atom("walk"), Stream(Atom("man"))), Compound(Atom("walk"), Stream(Atom("man"), Atom("dog")))).some
 
-    expect assert_=== Compile("The man, if the man can see, and if the man can walk, can walk the dog.")
+    expect assert_=== compile("The man, if the man can see, and if the man can walk, can walk the dog.")
 
   }
 
@@ -94,9 +90,9 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(Compound(Atom("walk"), Stream(Atom("man"))), Compound(Atom("walk"), Stream(Atom("dog")))).some
 
-    expect assert_=== Compile("If the man can walk the dog can walk.")
-    expect assert_=== Compile("If the man can walk, the dog can walk.")
-    expect assert_=== Compile("If the man can walk, then the dog can walk.")
+    expect assert_=== compile("If the man can walk the dog can walk.")
+    expect assert_=== compile("If the man can walk, the dog can walk.")
+    expect assert_=== compile("If the man can walk, then the dog can walk.")
 
   }
 
@@ -104,12 +100,12 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(Compound(Atom("depend"), Stream(Atom("age disease progression"), Atom("health balance")))).some
 
-    expect assert_=== Compile("Age disease progression has depended on the critical and crucial health balance.")
-    expect assert_=== Compile("Age disease progression depends on the critical and crucial health balance.")
-    expect assert_=== Compile("Age disease progression has depended on the highly critical, crucial health balance.")
-    expect assert_=== Compile("Age disease progression has depended on the critical and highly crucial health balance.")
-    expect assert_=== Compile("Age disease progression has depended on the critical, highly crucial health balance.")
-    expect assert_=== Compile("Age disease progression also depends on the critical, highly crucial health balance.")
+    expect assert_=== compile("Age disease progression has depended on the critical and crucial health balance.")
+    expect assert_=== compile("Age disease progression depends on the critical and crucial health balance.")
+    expect assert_=== compile("Age disease progression has depended on the highly critical, crucial health balance.")
+    expect assert_=== compile("Age disease progression has depended on the critical and highly crucial health balance.")
+    expect assert_=== compile("Age disease progression has depended on the critical, highly crucial health balance.")
+    expect assert_=== compile("Age disease progression also depends on the critical, highly crucial health balance.")
 
   }
 
@@ -117,7 +113,7 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(Compound(Atom("talk"), Stream(Atom("man"), Atom("cat")))).some
 
-    expect assert_=== Compile("The man can talk about the cat.")
+    expect assert_=== compile("The man can talk about the cat.")
 
   }
 
@@ -125,8 +121,8 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(Compound(Atom("depend"), Stream(Atom("age progression"), Atom("health balance")))).some
 
-    expect assert_=== Compile("Disease progression with aging undoubtedly depends on the critical and crucial health balance.")
-    expect assert_=== Compile("Disease progression with aging depends undoubtedly on the critical and crucial health balance.")
+    expect assert_=== compile("Disease progression with aging undoubtedly depends on the critical and crucial health balance.")
+    expect assert_=== compile("Disease progression with aging depends undoubtedly on the critical and crucial health balance.")
 
   }
 
@@ -137,7 +133,7 @@ class CompileSuite extends FunSuite {
       Compound(Atom("depend"), Stream(Atom("age disease progression"), Atom("health balance")))
     ).some
 
-    expect assert_=== Compile("Age disease progression that can worsen also depends on the critical, highly crucial health balance.")
+    expect assert_=== compile("Age disease progression that can worsen also depends on the critical, highly crucial health balance.")
 
   }
 
@@ -148,8 +144,8 @@ class CompileSuite extends FunSuite {
       Compound(Atom("depend"), Stream(Atom("age disease progression"), Atom("health balance")))
     ).some
 
-    expect assert_=== Compile("Age disease progression, which is unfortunate, also depends on the critical, highly crucial health balance.")
-    expect assert_=== Compile("Age disease progression, which is highly unfortunate, also depends on the critical, highly crucial health balance.")
+    expect assert_=== compile("Age disease progression, which is unfortunate, also depends on the critical, highly crucial health balance.")
+    expect assert_=== compile("Age disease progression, which is highly unfortunate, also depends on the critical, highly crucial health balance.")
 
   }
 
@@ -170,7 +166,7 @@ class CompileSuite extends FunSuite {
       Compound(Atom("walk"), Stream(Atom("dog class"), Atom("fox")))
     ).some
 
-    expect assert_=== Compile("That type, kind, and class of man and dog can walk the cat, the elephant and the fox.")
+    expect assert_=== compile("That type, kind, and class of man and dog can walk the cat, the elephant and the fox.")
 
   }
 

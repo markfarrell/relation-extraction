@@ -1,9 +1,8 @@
-package edu.crea
+package edu.crea.nlp
 
 package object Constituents {
 
   val ROOT = "ROOT"
-
   val S = "S"
   val SBARQ = "SBARQ"
   val SBAR = "SBAR"

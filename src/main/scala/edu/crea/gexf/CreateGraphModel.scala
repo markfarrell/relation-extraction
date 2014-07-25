@@ -1,4 +1,4 @@
-package edu.crea
+package edu.crea.gexf
 
 import org.gephi.graph.api.GraphModel
 
