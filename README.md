@@ -1,32 +1,44 @@
 
-# A Text-network Compiler
-###### For building knowledge bases that can be used to describe complex systems.
-
-This document is a work-in-progress.
+## Constructing a Knowledge Base on Aging: an Automated Approach
+###### Mark Farrell 
 
 ## Abstract
 
-  It is the aspiration of the Center for Research and Education On Aging [(CREA)](http://crea.berkeley.edu) to build a knowledge base that can be used by a system to simulate the human aging process at all levels of abstraction. There is a need for a tool that can automate the construction of the knowledge base; reading text articles and constructing it solely by hand is infeasible. A software tool was developed that can compile text into text-networks. The text-networks can be used to generate [CREAL](http://crea.berkeley.edu/FASEB_POSTER2012_FINAL_FINAL_GOLD_VLSB_yellow_title_box_56x36_PDF.pdf) documents, a declarative language that will be used within the knowledge base to describe the human aging process. Clustering algorithms, such as Chinese Whispers, can be applied to the text-networks, revealing properties of human organs, actions that can be performed (on other organs), their locations in the human body and also alternative names used in literature to describe them; this information is needed to generate CREAL documents. The tool can lead to significant process in building the knowledge base on aging, and consequently will provide new insight into the phenomena that drive the aging process.
+It is the aspiration of the Center for Research and Education On Aging [(CREA)](http://crea.berkeley.edu) to build a knowledge base that can be used by a system to simulate the human aging process at all levels of abstraction. Software was developed to automate the construction of the knowledge base; reading text articles and constructing it solely by hand appears infeasible. The tool can lead to significant process in building the knowledge base on aging, and consequently will provide new insight into the phenomena that drive the aging process.
 
-**General Terms**: Natural Language Processing, Bioinformatics
+## Introduction
 
-__Keywords__: Semantic Parsing, Clustering Algorithms, Spam Filtering
+ Software was developed to automate the construction of CREA's knowledge base, describing the aging process. Text documents are tokenized into sentences, parsed into constituent trees that detail the phrase-structure of each sentence, and then compiled into a graph. On the graph, each edge and its connect nodes represent a binary predicate that is applied to a subject and object to form a logical proposition; the text is translated into a format that makes structured queries and analyses feasible. New software methods have been developed to find and extract predicates, subjects and objects from English sentences. A software system is being pieced together, to search for keywords related to aging, fetch journal publications that match those keywords, compile the articles into elements of a graph, store all graph elements in one large graph database, and provide a web service that users can visit to browse the knowledge base. 
 
-**Author**: Mark Farrell
+## Background Knowledge 
 
-**Research Director**: Steven A. Garan
+### Constituents
 
-## Build
+Constituents are nonterminal nodes of the trees produced by The Berkeley Parser. Each constituent
+has a tag, describing the syntactic function of the subtree in relation to the sentence that was
+parsed. Constituents are either words, phrases or clauses. See [Penn Treebank II Constituent Tags](http://www.surdeanu.info/mihai/teaching/ista555-fall13/readings/PennTreebankConstituents.html) for details and examples.
+
+### Phrases
+
+Phrases are constituents that group together several words, but do not form a complete proposition.
+
+### Clauses
+
+Clauses, in constrast to phrases, are groups of several constituents that form a complete proposition; they can be simple, made up of phrases, or compounded with other clauses. A sentence contains at least one clause. 
+
+## Instructions
+
+### Build
 
 To build the current software, install SBT 0.13.0+ and then run <code>sbt stage</code>.
 
-## Usage
+### Usage
 
 Compile the contents of a textbook into a [GEXF 1.2](http://gexf.net/format/index.html) file, a graph file format.
 
     ./text-network-compiler -f an_output_file.gexf < an_input_file.txt
 
-## Contribute
+### Contribute
 
  If you're interested in contributing to the project, feel free to post your questions and
  discuss your plans on both the IRC channel and mailing list.
@@ -34,13 +46,15 @@ Compile the contents of a textbook into a [GEXF 1.2](http://gexf.net/format/inde
  * IRC channel: <code>#crea</code> on <code>irc.freenode.net</code>.
  * Mailing list: <code>crea-berkeley@googlegroups.com</code>.
 
+## Results 
+
+ [![Results](images/results.png)](http://markfarrell.ca/creal)
+
 ## Resources
 
-   Here's a set of links to articles and content that should be explored:
-
- *  The Open Biological and Biomedical Ontologies - http://www.obofoundry.org/.
- *  The paper titled "Semantic Parsing using Distributional Semantics and Probabilistic Logic" - http://sp14.ws/pub/bem-sp14-2014.pdf.
- * Chinese whispers: an efficient graph clustering algorithm and its application to natural language processing problems - http://dl.acm.org/citation.cfm?id=1654774
+ *  [The Open Biological and Biomedical Ontologies](http://www.obofoundry.org/)
+ *  [Semantic Parsing using Distributional Semantics and Probabilistic Logic](http://sp14.ws/pub/bem-sp14-2014.pdf)
+ *  [Chinese whispers: an efficient graph clustering algorithm and its application to natural language processing problems](http://dl.acm.org/citation.cfm?id=1654774)
 
 
 
