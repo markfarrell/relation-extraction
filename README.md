@@ -1,6 +1,7 @@
 
 #### Constructing a Knowledge Base on Aging: an Automated Approach
-###### Mark Farrell 
+###### Author: Mark Farrell, Undergraduate Student at the University of Waterloo
+###### Director: Steven A. Garan, Researcher at Lawrence Berkeley National Laboratory 
 
 #### Abstract
 
