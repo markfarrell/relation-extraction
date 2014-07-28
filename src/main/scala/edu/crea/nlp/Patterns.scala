@@ -18,32 +18,26 @@ package object Patterns {
 
   }
 
-  object Preterminal {
-
-    def apply(value : String) : Preterminal = new Preterminal(value)
-
-  }
-
   sealed trait ConstituentPattern
 
   object PredicateArgumentExpression extends ConstituentPattern {
 
-    private[this] val preNN = Preterminal(NN)
-    private[this] val preNNS = Preterminal(NNS)
-    private[this] val preNNP = Preterminal(NNP)
-    private[this] val preNNPS = Preterminal(NNPS)
-    private[this] val preDT = Preterminal(DT)
-    private[this] val preJJ = Preterminal(JJ)
-    private[this] val preJJR = Preterminal(JJR)
-    private[this] val preJJS = Preterminal(JJS)
-    private[this] val preRB = Preterminal(RB)
-    private[this] val preRBR = Preterminal(RBR)
-    private[this] val preRBS = Preterminal(RBS)
-    private[this] val preFW = Preterminal(FW)
-    private[this] val prePRP = Preterminal(PRP)
-    private[this] val prePRP$ = Preterminal(PRP$)
-    private[this] val preCD = Preterminal(CD)
-    private[this] val preEX = Preterminal(EX)
+    private[this] val preNN = new Preterminal(NN)
+    private[this] val preNNS = new Preterminal(NNS)
+    private[this] val preNNP = new Preterminal(NNP)
+    private[this] val preNNPS = new Preterminal(NNPS)
+    private[this] val preDT = new Preterminal(DT)
+    private[this] val preJJ = new Preterminal(JJ)
+    private[this] val preJJR = new Preterminal(JJR)
+    private[this] val preJJS = new Preterminal(JJS)
+    private[this] val preRB = new Preterminal(RB)
+    private[this] val preRBR = new Preterminal(RBR)
+    private[this] val preRBS = new Preterminal(RBS)
+    private[this] val preFW = new Preterminal(FW)
+    private[this] val prePRP = new Preterminal(PRP)
+    private[this] val prePRP$ = new Preterminal(PRP$)
+    private[this] val preCD = new Preterminal(CD)
+    private[this] val preEX = new Preterminal(EX)
 
     def apply(tree : Tree[String]) : Option[Atom] = tree match {
 
@@ -128,12 +122,12 @@ package object Patterns {
 
   object PredicateExpression extends ConstituentPattern {
 
-    private[this] val preVB = Preterminal(VB)
-    private[this] val preVBD = Preterminal(VBD)
-    private[this] val preVBG = Preterminal(VBG)
-    private[this] val preVBN = Preterminal(VBN)
-    private[this] val preVBP = Preterminal(VBP)
-    private[this] val preVBZ = Preterminal(VBZ)
+    private[this] val preVB = new Preterminal(VB)
+    private[this] val preVBD = new Preterminal(VBD)
+    private[this] val preVBG = new Preterminal(VBG)
+    private[this] val preVBN = new Preterminal(VBN)
+    private[this] val preVBP = new Preterminal(VBP)
+    private[this] val preVBZ = new Preterminal(VBZ)
 
     def apply(tree : Tree[String]) : Option[Stream[Compound]] = tree match {
 
@@ -161,7 +155,7 @@ package object Patterns {
 
         def newPredicates = predicates.flatMap { compound =>
 
-          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+          arguments.map(arg => Compound(args=Stream(arg)) |+| compound)
 
         }
 

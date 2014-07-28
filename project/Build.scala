@@ -6,7 +6,7 @@ import Keys._
 object ProjectBuild extends Build {
 
   def standardSettings = Defaults.defaultSettings ++ Seq(
-    initialCommands in console := """import edu.crea._
+    initialCommands in console := """import edu.crea.nlp._
       import scalaz._
       import Scalaz._
       import Patterns._
@@ -21,7 +21,7 @@ object ProjectBuild extends Build {
     """,
     name := "text-network compiler",
     version := "0.1",
-    scalaVersion := "2.11.0",
+    scalaVersion := "2.11.1",
     maintainer in Debian := "Mark Farrell",
     mainClass in (Compile) := Some("edu.crea.CompilerApp"),
     packageDescription in Debian := "Compiles textbooks into text-networks.",
