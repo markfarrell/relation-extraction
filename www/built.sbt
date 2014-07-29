@@ -1,8 +1,12 @@
 scalaJSSettings
 
+workbenchSettings
+
 name := "crea-www"
 
 scalaVersion := "2.11.1"
+
+bootSnippet := "edu.crea.www.WebApp.main();"
 
 ScalaJSKeys.jsDependencies += ProvidedJS / "sigma.min.js"
 
