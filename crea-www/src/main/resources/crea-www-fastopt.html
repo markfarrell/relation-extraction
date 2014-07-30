@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Center for Research and Education on Aging</title>
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+
+      .main-header {
+        font-family: serif;
+        color: #FFD67D;
+        top: 0;
+        left: 0;
+        right: 0;
+        position: absolute;
+        width: 100%;
+        height: 31px;
+        z-index: 100;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        background: #1A2C85;
+      }
+
+      .main-header ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .main-header li {
+        float: left;
+        padding-right: 10px;
+        padding-left: 10px;
+      }
+
+      .main-header li a {
+        color: inherit !important;
+        text-decoration: none !important;
+        }
+        
+      #graph-container {
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        position: absolute;
+        background: #121629;
+        z-index: 0;
+      }
+
+    </style>
+
+  </head>
+  <body>
+
+    <div class="main-header">
+      <ul>
+        <li>
+          <a href="http://crea.berkeley.edu" target="_blank">
+            <img src="images/logo.png" alt="crea"/>
+          </a>
+        </li>
+        <li style="float:right; line-height: 31px">
+          <a class="fa fa-github fa-lg" href="http://github.com/markfarrell" target="_blank"></a>
+        </li>
+      </ul>
+    </div>
+
+    <div id="container">
+      <div id="graph-container"></div>
+    </div>
+
+    <script type="text/javascript" src="../crea-www-jsdeps.js"></script>
+    <script type="text/javascript" src="../crea-www-fastopt.js"></script>
+    <script type="text/javascript">
+      var app = edu.crea.www.WebApp();
+      app.main();
+    </script>
+
+  </body>
+</html>

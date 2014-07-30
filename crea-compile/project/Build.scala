@@ -19,11 +19,11 @@ object ProjectBuild extends Build {
         RootExpression(tree)
       }
     """,
-    name := "text-network compiler",
-    version := "0.1",
+    name := "crea-compile",
+    version := "1.0",
     scalaVersion := "2.11.1",
     maintainer in Debian := "Mark Farrell",
-    mainClass in (Compile) := Some("edu.crea.CompilerApp"),
+    mainClass in (Compile) := Some("edu.crea.gexf.GexfCompiler"),
     packageDescription in Debian := "Compiles textbooks into text-networks.",
     resolvers ++= Seq(
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",

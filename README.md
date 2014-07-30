@@ -31,25 +31,24 @@ Clauses, in constrast to phrases, are groups of several constituents that form a
 
 ##### Build
 
-To build the current software, install SBT 0.13.0+ and then run <code>sbt stage</code>.
+To build the current software, install SBT 0.13.0+ and then run <code>sbt stage</code> from the <code>crea-compile</code> directory.
 
 ##### Usage
 
 Compile the contents of a textbook into a [GEXF 1.2](http://gexf.net/format/index.html) file, a graph file format.
 
-    ./text-network-compiler -f an_output_file.gexf < an_input_file.txt
+    ./crea-compile -f an_output_file.gexf < an_input_file.txt
 
 ##### Contribute
 
  If you're interested in contributing to the project, feel free to post your questions and
- discuss your plans on both the IRC channel and mailing list.
+ discuss your plans on the mailing list.
 
- * IRC channel: <code>#crea</code> on <code>irc.freenode.net</code>.
  * Mailing list: <code>crea-berkeley@googlegroups.com</code>.
 
 #### Results 
 
- [![Results](images/results.png)](http://markfarrell.ca/creal)
+ [![Results](results.png)](http://markfarrell.ca/creal)
 
 #### Resources
 
