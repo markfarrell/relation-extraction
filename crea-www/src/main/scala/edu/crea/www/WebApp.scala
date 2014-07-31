@@ -2,6 +2,10 @@ package edu.crea.www
 
 import scala.scalajs._
 import scala.scalajs.js.Dynamic.newInstance
+import js.annotation.JSExport
+
+import org.scalajs.dom
+import dom.document
 
 object WebApp extends js.JSApp {
 
@@ -36,13 +40,16 @@ object WebApp extends js.JSApp {
     settings = settings
   )
 
+  private[this] lazy val sigma = newInstance(sigmajs)(config)
+
+  @JSExport 
+  def search = println("Searching")
+
   def main() = {
 
     sigmajs.renderers.`def` = sigmajs.renderers.canvas
 
     sigmajs.parsers.gexf(gexfPath, js.Dynamic.literal(), { (gexfSig : js.Dynamic) =>
-
-      val sigma = newInstance(sigmajs)(config)
 
       val graph : js.Object = js.Dynamic.literal(
         nodes = gexfSig.graph.nodes(),

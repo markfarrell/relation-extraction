@@ -8,6 +8,8 @@ scalaVersion := "2.11.1"
 
 bootSnippet := "edu.crea.www.WebApp.main();"
 
+libraryDependencies += "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6"
+
 ScalaJSKeys.jsDependencies += ProvidedJS / "sigma.min.js"
 
 ScalaJSKeys.jsDependencies += ProvidedJS / "sigma.parsers.gexf.min.js" dependsOn "sigma.min.js"

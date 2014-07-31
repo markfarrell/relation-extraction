@@ -3,40 +3,9 @@
   <head>
     <meta charset="UTF-8">
     <title>Center for Research and Education on Aging</title>
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
     <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
     <style>
-
-      .main-header {
-        font-family: serif;
-        color: #FFD67D;
-        top: 0;
-        left: 0;
-        right: 0;
-        position: absolute;
-        width: 100%;
-        height: 31px;
-        z-index: 100;
-        padding-top: 5px;
-        padding-bottom: 5px;
-        background: #1A2C85;
-      }
-
-      .main-header ul {
-        list-style-type: none;
-        margin: 0;
-        padding: 0;
-      }
-
-      .main-header li {
-        float: left;
-        padding-right: 10px;
-        padding-left: 10px;
-      }
-
-      .main-header li a {
-        color: inherit !important;
-        text-decoration: none !important;
-        }
         
       #graph-container {
         top: 0;
@@ -46,6 +15,68 @@
         position: absolute;
         background: #121629;
         z-index: 0;
+      }
+
+      .main-header {
+        font-family: serif;
+        color: #FFD67D;
+        top: 0;
+        left: 0;
+        right: 0;
+        position: absolute;
+        width: 100%;
+        height: 41px;
+        z-index: 100;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        background: #1A2C85;
+      }
+
+      .watermark { 
+        font-size: 5em; 
+        bottom: 0;
+        right: 0;
+        padding-right: 0.25em;
+        position: absolute;
+        z-index: 50;
+      } 
+
+      li.search { 
+        background: #121629;
+        color: #CCA34A;
+        float: right;
+        margin-right: 0.5em;
+        border-radius: 5px; 
+      } 
+
+      input[type="search"] { 
+        color: inherit;
+        background: inherit;
+        height: 31px;
+        padding-left: 0.5em;
+        border: none; 
+      }
+
+      input[type="search"]:focus, 
+      input[type="search"].focus { 
+        outline: none;
+      } 
+
+      ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      li {
+        float: left;
+        padding-right: 10px;
+        padding-left: 10px;
+      }
+
+      a {
+        color: inherit !important;
+        text-decoration: none !important;
       }
 
     </style>
@@ -60,14 +91,17 @@
             <img src="images/logo.png" alt="crea"/>
           </a>
         </li>
-        <li style="float:right; line-height: 31px">
-          <a class="fa fa-github fa-lg" href="http://github.com/markfarrell" target="_blank"></a>
+        <li class="search">
+          <span class="fa fa-search fa-lg" onclick="app.search()"></span>
+          <input type="search" onchange="app.search()"></input>
         </li>
       </ul>
     </div>
+    
+    <div id="graph-container"></div>
 
-    <div id="container">
-      <div id="graph-container"></div>
+    <div class="watermark">
+      <a class="fa fa-github" href="https://github.com/markfarrell/crea-nlp" target="_blank"></a>
     </div>
 
     <script type="text/javascript" src="../crea-www-jsdeps.js"></script>
