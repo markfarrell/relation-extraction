@@ -11,6 +11,10 @@ object WebApp extends js.JSApp {
 
   private[this] def gexfPath = "data/elastin-abstracts.gexf"
 
+  private[this] def searchInput : Option[dom.HTMLElement] = { 
+    Option(document.getElementById("search-input"))
+  } 
+
   private[this] def sigmajs = js.Dynamic.global.sigma
 
   private[this] def settings = js.Dynamic.literal(
@@ -42,8 +46,56 @@ object WebApp extends js.JSApp {
 
   private[this] lazy val sigma = newInstance(sigmajs)(config)
 
+  private[this] var maybeGraph : Option[js.Dynamic] = None
+
+  private[this] def resetGraph() : Unit = maybeGraph.map { graph => 
+
+    sigma.graph.clear()
+    sigma.graph.read(js.Dynamic.literal(nodes = graph.nodes(), edges = graph.edges()))
+    sigma.refresh() 
+
+  } 
+
+  private[this] def viewNeighborhood(id : js.Dynamic) = maybeGraph.map { graph =>
+
+    val neighborhood = graph.neighborhood(id)
+
+    if(neighborhood.edges.length > 1) {
+
+      sigma.graph.clear()
+      sigma.graph.read(neighborhood)
+      sigma.camera.goTo(js.Dynamic.literal(
+        x = 0,
+        y = 0,
+        angle = 0,
+        ratio = 1
+      ))
+      sigma.refresh()
+
+    }
+
+  } 
+
   @JSExport 
-  def search = println("Searching")
+  def search() = { 
+    
+    def findLabel = searchInput.map(_.asInstanceOf[js.Dynamic].value)
+
+    def findId(label : js.Dynamic) : Option[js.Dynamic] = maybeGraph.flatMap { graph => Option { 
+      graph.nodes().asInstanceOf[js.Array[js.Dynamic]]
+        .filter((elem : js.Dynamic) => elem.label == label)
+        .map((elem : js.Dynamic) => elem.id)
+        .pop
+    }}
+
+    for { 
+      label <- findLabel
+      id <- findId(label)
+    } { 
+      viewNeighborhood(id)
+    } 
+
+  } 
 
   def main() = {
 
@@ -51,42 +103,13 @@ object WebApp extends js.JSApp {
 
     sigmajs.parsers.gexf(gexfPath, js.Dynamic.literal(), { (gexfSig : js.Dynamic) =>
 
-      val graph : js.Object = js.Dynamic.literal(
-        nodes = gexfSig.graph.nodes(),
-        edges = gexfSig.graph.edges()
-      )
+      maybeGraph = Option(gexfSig.graph)
 
-      sigma.graph.clear()
-      sigma.graph.read(graph)
-      sigma.refresh()
+      resetGraph()
 
-      sigma.bind("doubleClickNode", { (e : js.Dynamic) =>
+      sigma.bind("doubleClickNode", (e : js.Dynamic) => viewNeighborhood(e.data.node.id))
 
-        val neighborhood = gexfSig.graph.neighborhood(e.data.node.id)
-
-        if(neighborhood.edges.length > 1) {
-
-          sigma.graph.clear()
-          sigma.graph.read(neighborhood)
-          sigma.camera.goTo(js.Dynamic.literal(
-            x = 0,
-            y = 0,
-            angle = 0,
-            ratio = 1
-          ))
-          sigma.refresh()
-
-        }
-
-      })
-
-      sigma.bind("doubleClickStage", { (e : js.Dynamic) =>
-
-        sigma.graph.clear()
-        sigma.graph.read(graph)
-        sigma.refresh()
-
-      })
+      sigma.bind("doubleClickStage", (e : js.Dynamic) => resetGraph())
 
     })
 

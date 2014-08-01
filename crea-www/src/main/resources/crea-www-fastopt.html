@@ -79,6 +79,12 @@
         text-decoration: none !important;
       }
 
+      body { 
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+      } 
+
     </style>
 
   </head>
@@ -93,7 +99,7 @@
         </li>
         <li class="search">
           <span class="fa fa-search fa-lg" onclick="app.search()"></span>
-          <input type="search" onchange="app.search()"></input>
+          <input id="search-input" type="search" onchange="app.search()"></input>
         </li>
       </ul>
     </div>
