@@ -14,7 +14,6 @@ object WebApp extends js.JSApp {
 
   private[this] def gexfPath : String = "data/elastin-abstracts.gexf"
 
-
   private[this] def autocomplete(input : String) : Regex = input.toList.mkString("""[\s\w]*""").concat("""[\s\w]*""").r
 
   private[this] def searchInput : Option[dom.HTMLElement] = {

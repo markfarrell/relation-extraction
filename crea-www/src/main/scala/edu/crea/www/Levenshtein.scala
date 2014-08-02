@@ -6,6 +6,7 @@ package edu.crea.www
 object Levenshtein {
 
   def apply(str1: String)(str2: String): Int = {
+
     val lenStr1 = str1.length
     val lenStr2 = str2.length
 
