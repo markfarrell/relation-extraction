@@ -83,13 +83,10 @@ object WebApp extends js.JSApp {
 
   }
 
-
   private[this] def viewNeighborhood(id : js.Dynamic) = findGraph.map { graph =>
 
     for(neighborhood <- findNeighborhood(id)) {
 
-      sigma.graph.clear()
-      sigma.graph.read(neighborhood)
       sigma.camera.goTo(js.Dynamic.literal(
         x = 0,
         y = 0,
@@ -97,9 +94,11 @@ object WebApp extends js.JSApp {
         ratio = 1
       ))
 
+      sigma.graph.clear()
+      sigma.graph.read(neighborhood)
       sigma.refresh()
 
-     }
+    }
 
   }
 
@@ -127,9 +126,7 @@ object WebApp extends js.JSApp {
       suggestions.removeChild(suggestions.lastChild)
     }
 
-    for {
-      label <- findLabel
-    } {
+    findLabel.map { label =>
 
       val dict = dictionary
 
@@ -144,18 +141,18 @@ object WebApp extends js.JSApp {
           items.foreach { suggestion =>
 
             val li = document.createElement("li")
-            li.onclick = ( e : dom.MouseEvent) => findId(suggestion).foreach(id => viewNeighborhood(id))
+            li.onclick = (e : dom.MouseEvent) => findId(suggestion).foreach(id => viewNeighborhood(id))
             li.appendChild(document.createTextNode(suggestion))
 
             suggestions.appendChild(li)
 
           }
 
-        suggestions.style.display = "block";
+          suggestions.style.display = "block";
 
         } else {
 
-          hideSuggestions();
+          hideSuggestions()
 
         }
 
@@ -181,6 +178,8 @@ object WebApp extends js.JSApp {
       findGraph = Option(gexfSig.graph)
 
       resetGraph()
+
+      sigmajs.plugins.dragNodes(sigma, sigma.renderers.asInstanceOf[js.Array[js.Dynamic]](0))
 
       sigma.bind("doubleClickNode", (e : js.Dynamic) => viewNeighborhood(e.data.node.id))
 
