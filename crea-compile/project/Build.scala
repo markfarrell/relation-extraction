@@ -12,7 +12,8 @@ object ProjectBuild extends Build {
       import Patterns._
       import Terms._
       import Trees._
-      implicit val parse = new Parser
+      lazy val parser = new Parser
+      def parse = parser.apply _
       def compile(sentence : String) : Option[Stream[Compound]] = {
         val tree = parse(sentence)
         println(tree.shows)
@@ -40,7 +41,8 @@ object ProjectBuild extends Build {
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1",
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models",
       "org.mapdb" % "mapdb" % "1.1.0-SNAPSHOT",
-      "org.scalaz" %% "scalaz-core" % "7.0.6"
+      "org.scalaz" %% "scalaz-core" % "7.0.6",
+      "com.chuusai" %% "shapeless" % "2.0.0"
     )
   )
 

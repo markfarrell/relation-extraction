@@ -3,6 +3,9 @@ package edu.crea.www
 import scala.util.matching.Regex
 import scala.util.{Try, Success, Failure}
 
+import scala.concurrent._
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+
 import scala.scalajs._
 import scala.scalajs.js.Dynamic.newInstance
 import js.annotation.JSExport
@@ -22,42 +25,45 @@ object WebApp extends js.JSApp {
 
   private[this] def sigmajs = js.Dynamic.global.sigma
 
-  private[this] def settings = js.Dynamic.literal(
-    font = "serif",
-    drawEdgeLabels = true,
-    edgeLabelSize = "fixed",
-    defaultEdgeLabelSize = 12,
-    defaultEdgeLabelColor = "#997F46",
-    edgeLabelThreshold = 1.0,
-    labelSize = "proportional",
-    labelThreshold = 2.5,
-    labelSizeRatio = 3.0,
-    defaultLabelSize = 32,
-    defaultLabelColor = "#FFD67D",
-    minNodeSize = 0.5,
-    maxNodeSize = 5.0,
-    minEdgeSize = 0.1,
-    maxEdgeSize = 0.4,
-    scalingMode = "outside",
-    hideEdgesOnMove = true,
-    doubleClickEnabled = false
-  )
+  private[this] lazy val sigma = {
 
-  private[this] def config = js.Dynamic.literal(
-    container = "graph-container",
-    graph = newInstance(sigmajs.classes.graph)(),
-    settings = settings
-  )
+    val settings = js.Dynamic.literal(
+      font = "serif",
+      drawEdgeLabels = true,
+      edgeLabelSize = "fixed",
+      defaultEdgeLabelSize = 12,
+      defaultEdgeLabelColor = "#997F46",
+      edgeLabelThreshold = 1.0,
+      labelSize = "proportional",
+      labelThreshold = 2.5,
+      labelSizeRatio = 3.0,
+      defaultLabelSize = 32,
+      defaultLabelColor = "#FFD67D",
+      minNodeSize = 0.5,
+      maxNodeSize = 5.0,
+      minEdgeSize = 0.1,
+      maxEdgeSize = 0.4,
+      scalingMode = "outside",
+      hideEdgesOnMove = true,
+      doubleClickEnabled = false
+    )
 
-  private[this] lazy val sigma = newInstance(sigmajs)(config)
+    val  config = js.Dynamic.literal(
+      container = "graph-container",
+      graph = newInstance(sigmajs.classes.graph)(),
+      settings = settings
+    )
+      newInstance(sigmajs)(config)
+    }
+
+  private[this] val promiseGraph : Promise[js.Dynamic] = Promise[js.Dynamic]
+  private[this] val futureGraph : Future[js.Dynamic] = promiseGraph.future
 
   private[this] def dictionary : Array[String] = {
     sigma.graph.nodes().asInstanceOf[js.Array[js.Dynamic]].map((_ : js.Dynamic).label.asInstanceOf[String])
   }
 
-  private[this] var findGraph : Option[js.Dynamic] = None
-
-  private[this] def resetGraph() : Unit = findGraph.map { graph =>
+  private[this] def resetGraph() : Future[Unit] = futureGraph.map { graph =>
 
     sigma.graph.clear()
     sigma.graph.read(js.Dynamic.literal(nodes = graph.nodes(), edges = graph.edges()))
@@ -65,38 +71,30 @@ object WebApp extends js.JSApp {
 
   }
 
-  private[this] def findNeighborhood(id : js.Dynamic) : Option[js.Dynamic] = findGraph.flatMap { graph =>
+  private[this] def viewNeighborhood(label : String) : Future[Unit] = futureGraph.map { graph =>
 
-    Try(graph.neighborhood(id)) match {
+    for (id <- findId(label)) {
 
-      case Success(neighborhood) =>
+      Try(graph.neighborhood(id)).map { neighborhood =>
 
         if(neighborhood.nodes.length > 1) {
-          Some(neighborhood)
-        } else {
-          None
+
+          sigma.camera.goTo(js.Dynamic.literal(
+            x = 0,
+            y = 0,
+            angle = 0,
+            ratio = 1
+          ))
+
+          sigma.graph.clear()
+          sigma.graph.read(neighborhood)
+          sigma.refresh()
+
+          searchInput.foreach(_.asInstanceOf[js.Dynamic].value = label)
+
         }
 
-      case Failure(_) => None
-
-    }
-
-  }
-
-  private[this] def viewNeighborhood(id : js.Dynamic) = findGraph.map { graph =>
-
-    for(neighborhood <- findNeighborhood(id)) {
-
-      sigma.camera.goTo(js.Dynamic.literal(
-        x = 0,
-        y = 0,
-        angle = 0,
-        ratio = 1
-      ))
-
-      sigma.graph.clear()
-      sigma.graph.read(neighborhood)
-      sigma.refresh()
+      }
 
     }
 
@@ -104,20 +102,15 @@ object WebApp extends js.JSApp {
 
   private[this] def findLabel : Option[String] = searchInput.map(_.asInstanceOf[js.Dynamic].value.asInstanceOf[String])
 
-  private[this] def findId(label : String) : Option[js.Dynamic] = findGraph.flatMap { graph => Option {
+  private[this] def findId(label : String) : Future[js.Dynamic] = futureGraph.map { graph =>
     graph.nodes().asInstanceOf[js.Array[js.Dynamic]]
       .filter((elem : js.Dynamic) => elem.label.asInstanceOf[String] == label)
       .map((elem : js.Dynamic) => elem.id)
       .pop
-  }}
+  }
 
   @JSExport
-  def search() = for {
-    label <- findLabel
-    id <- findId(label)
-  } {
-    viewNeighborhood(id)
-  }
+  def search() = findLabel.foreach(viewNeighborhood)
 
   @JSExport
   def showSuggestions() = Option(document.getElementById("suggestions")).map { suggestions =>
@@ -132,7 +125,7 @@ object WebApp extends js.JSApp {
 
       if(dict.size <= 500) {
 
-        val items = dictionary.filter(suggestion => autocomplete(label).pattern.matcher(suggestion).matches)
+        val items = dict.filter(suggestion => autocomplete(label).pattern.matcher(suggestion).matches)
           .sortBy(Levenshtein(label))
           .take(20)
 
@@ -141,7 +134,7 @@ object WebApp extends js.JSApp {
           items.foreach { suggestion =>
 
             val li = document.createElement("li")
-            li.onclick = (e : dom.MouseEvent) => findId(suggestion).foreach(id => viewNeighborhood(id))
+            li.onclick = (e : dom.MouseEvent) => viewNeighborhood(suggestion)
             li.appendChild(document.createTextNode(suggestion))
 
             suggestions.appendChild(li)
@@ -165,23 +158,21 @@ object WebApp extends js.JSApp {
   @JSExport
   def hideSuggestions() = {
 
-    document.getElementById("suggestions").style.display = "none";
+    document.getElementById("suggestions").style.display = "none"
 
   }
 
   def main() = {
 
-    sigmajs.renderers.`def` = sigmajs.renderers.canvas
-
     sigmajs.parsers.gexf(gexfPath, js.Dynamic.literal(), { (gexfSig : js.Dynamic) =>
 
-      findGraph = Option(gexfSig.graph)
-
-      resetGraph()
-
+      sigmajs.renderers.`def` = sigmajs.renderers.canvas
       sigmajs.plugins.dragNodes(sigma, sigma.renderers.asInstanceOf[js.Array[js.Dynamic]](0))
 
-      sigma.bind("doubleClickNode", (e : js.Dynamic) => viewNeighborhood(e.data.node.id))
+      promiseGraph.success(gexfSig.graph)
+      resetGraph()
+
+      sigma.bind("doubleClickNode", (e : js.Dynamic) => viewNeighborhood(e.data.node.label.asInstanceOf[String]))
 
       sigma.bind("doubleClickStage", (e : js.Dynamic) => resetGraph())
 

@@ -75,9 +75,10 @@ package object Patterns {
         arg1.some |+| arg2.some
 
       case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(arg), Tree.Node(_, Stream(_)))) =>
+
         arg.some
 
-        case _ => none
+      case _ => none
 
     }
 
@@ -102,7 +103,6 @@ package object Patterns {
       case PredicateArgumentExpression(arg) =>
 
         Stream(arg).some
-
 
       case Tree.Node(AtS, Stream(PredicateArgumentsExpression(args))) =>
 
@@ -245,11 +245,21 @@ package object Patterns {
 
         (Stream(), Stream()).some
 
-      case Tree.Node(NP|AtNP|S|AtS, Stream(PredicateArgumentsExpression(args1), PrepositionalPhraseExpression((args2, clauses)))) =>
+      case Tree.Node(AtS, Stream(PrepositionalPhraseExpression((arguments, clauses)))) =>
+
+        (arguments, clauses).some
+
+      case Tree.Node(ADJP|AtADJP|NP|AtNP|S|AtS, Stream(PredicateArgumentsExpression(args1), PrepositionalPhraseExpression((args2, clauses)))) =>
 
         def arguments = args2.flatMap(arg2 => args1.map(arg1 => arg2 |+| arg1))
 
         (arguments, clauses).some
+
+      case Tree.Node(ADJP|AtADJP|NP|AtNP|S|AtS, Stream(PhraseExpression((args1, clauses1)), PrepositionalPhraseExpression((args2, clauses2)))) =>
+
+        def arguments = args2.flatMap(arg2 => args1.map(arg1 => arg2 |+| arg1))
+
+        (arguments, clauses1 |+| clauses2).some
 
       case Tree.Node(NP|AtNP|S|AtS, Stream(PredicateArgumentsExpression(arguments), ClauseExpression(clauses))) =>
 
