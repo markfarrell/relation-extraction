@@ -10,7 +10,7 @@ import it.uniroma1.dis.wsngroup.gexf4j.core.impl.StaxGraphWriter
 import scalaz._
 import Scalaz._
 
-import edu.crea.nlp.{Tokenize, Parser, Compile}
+import edu.crea.nlp.{Tokenize, Parser}
 import edu.crea.nlp.Terms._
 import edu.crea.nlp.Patterns._
 
@@ -19,7 +19,7 @@ object GexfCompiler {
   private[this] lazy val parser = new Parser
   private[this] lazy val model = CreateGraphModel()
   private[this] val charset = "UTF-8"
-  private[this] val cores = 4
+  private[this] val cores = Runtime.getRuntime.availableProcessors
 
   def apply(inputStream : => InputStream, outputStream : => OutputStream) : Float = {
 
@@ -37,6 +37,7 @@ object GexfCompiler {
         case Some(clauses) =>
 
           ToGraph(clauses, model)
+
           success += 1f
 
         case None =>

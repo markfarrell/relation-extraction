@@ -1,7 +1,7 @@
 
 #### Constructing a Knowledge Base on Aging: an Automated Approach
 ###### Author: Mark Farrell, Undergraduate Student at the University of Waterloo
-###### Director: Steven A. Garan, Researcher at Lawrence Berkeley National Laboratory 
+###### Director: Steven A. Garan, Researcher at Lawrence Berkeley National Laboratory
 
 #### Abstract
 
@@ -9,9 +9,9 @@ It is the aspiration of the Center for Research and Education On Aging [(CREA)](
 
 #### Introduction
 
- Software was developed to automate the construction of CREA's knowledge base, describing the aging process. Text documents are tokenized into sentences, parsed into constituent trees that detail the phrase-structure of each sentence, and then compiled into a graph. On the graph, each edge and its connected nodes represent a binary predicate that is applied to a subject and object to form a logical proposition; the text is translated into a format that makes structured queries and analyses feasible. New software methods have been developed to find and extract predicates, subjects and objects from English sentences. A software system is being pieced together, to search for keywords related to aging, fetch journal publications that match those keywords, compile the articles into elements of a graph, store all graph elements in one large graph database, and provide a web service that users can visit to browse the knowledge base. 
+ Software was developed to automate the construction of CREA's knowledge base, describing the aging process. Text documents are tokenized into sentences, parsed into constituent trees that detail the phrase-structure of each sentence, and then compiled into a graph. On the graph, each edge and its connected nodes represent a binary predicate that is applied to a subject and object to form a logical proposition; the text is translated into a format that makes structured queries and analyses feasible. New software methods have been developed to find and extract predicates, subjects and objects from English sentences. A software system is being pieced together, to search for keywords related to aging, fetch journal publications that match those keywords, compile the articles into elements of a graph, store all graph elements in one large graph database, and provide a web service that users can visit to browse the knowledge base.
 
-#### Background Knowledge 
+#### Background Knowledge
 
 ##### Constituents
 
@@ -25,7 +25,7 @@ Phrases are constituents that group together several words, but do not form a co
 
 ##### Clauses
 
-Clauses, in constrast to phrases, are groups of several constituents that form a complete proposition; they can be simple, made up of phrases, or compounded with other clauses. A sentence contains at least one clause. 
+Clauses, in constrast to phrases, are groups of several constituents that form a complete proposition; they can be simple, made up of phrases, or compounded with other clauses. A sentence contains at leastone clause.
 
 #### Instructions
 
@@ -41,12 +41,12 @@ Compile the contents of a textbook into a [GEXF 1.2](http://gexf.net/format/inde
 
 ##### Contribute
 
- If you're interested in contributing to the project, feel free to post your questions and
- discuss your plans on the mailing list.
+If you're interested in contributing to the project, feel free to post your questions and
+discuss your plans on the mailing list.
 
  * Mailing list: <code>crea-berkeley@googlegroups.com</code>.
 
-#### Results 
+#### Results
 
  [![Results](results.png)](http://markfarrell.ca/creal)
 

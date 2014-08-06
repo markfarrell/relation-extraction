@@ -1,9 +1,7 @@
 package edu.crea.nlp
 
 import java.util.Scanner
-import java.io.{ InputStream, ByteArrayInputStream }
-
-import scala.collection.immutable.Stream
+import java.io.{InputStream, ByteArrayInputStream}
 
 object Tokenize {
 

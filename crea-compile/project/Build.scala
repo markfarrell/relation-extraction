@@ -29,6 +29,7 @@ object ProjectBuild extends Build {
     resolvers ++= Seq(
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
       "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+      "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases",
       "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
     ),
     libraryDependencies ++= Seq(
@@ -40,8 +41,8 @@ object ProjectBuild extends Build {
       "com.github.scopt" %% "scopt" % "3.2.0",
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1",
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models",
-      "org.mapdb" % "mapdb" % "1.1.0-SNAPSHOT",
       "org.scalaz" %% "scalaz-core" % "7.0.6",
+      "org.scalaz.stream" %% "scalaz-stream" % "0.4.1",
       "com.chuusai" %% "shapeless" % "2.0.0"
     )
   )
