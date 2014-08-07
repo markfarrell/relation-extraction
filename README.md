@@ -55,7 +55,6 @@ discuss your plans on the mailing list.
  *  [The Open Biological and Biomedical Ontologies](http://www.obofoundry.org/)
  *  [Semantic Parsing using Distributional Semantics and Probabilistic Logic](http://sp14.ws/pub/bem-sp14-2014.pdf)
  *  [Chinese whispers: an efficient graph clustering algorithm and its application to natural language processing problems](http://dl.acm.org/citation.cfm?id=1654774)
-
-
+ *  [Toward an Architecture for Never-Ending Language Learning](http://rtw.ml.cmu.edu/papers/carlson-aaai10.pdf)
 
 
