@@ -23,9 +23,10 @@ object ProjectBuild extends Build {
     name := "crea-compile",
     version := "1.0",
     scalaVersion := "2.11.1",
+    javaOptions += "-Xmx8G -Xss1M -Xms512M",
     maintainer in Debian := "Mark Farrell",
     mainClass in (Compile) := Some("edu.crea.gexf.GexfCompiler"),
-    packageDescription in Debian := "Compiles textbooks into text-networks.",
+    packageDescription in Debian := "Compiles text into text-networks.",
     resolvers ++= Seq(
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
       "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",

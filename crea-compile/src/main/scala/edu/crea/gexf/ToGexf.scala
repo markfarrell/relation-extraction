@@ -1,7 +1,6 @@
 package edu.crea.gexf
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.HashMap
 
 import it.uniroma1.dis.wsngroup.gexf4j.core.{
   EdgeType, Gexf, Graph, Mode, Node, Edge
@@ -27,6 +26,8 @@ import org.gephi.graph.api.GraphModel
 object ToGexf {
 
   def apply(model : GraphModel) : Gexf = {
+
+    import scala.collection.mutable.HashMap
 
     val gexf : Gexf = new GexfImpl()
 

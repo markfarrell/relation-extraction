@@ -155,7 +155,7 @@ package object Patterns {
 
         def newPredicates = predicates.flatMap { compound =>
 
-          arguments.map(arg => Compound(args=Stream(arg)) |+| compound)
+          arguments.map(arg => Compound(args = List(arg)) |+| compound)
 
         }
 
@@ -177,7 +177,7 @@ package object Patterns {
 
         def newPredicates = predicates.flatMap { compound =>
 
-          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+          arguments.map(arg => Compound(args = List(arg)) |+| compound)
 
         }
 
@@ -187,7 +187,7 @@ package object Patterns {
 
         def newPredicates = predicates.flatMap { compound =>
 
-          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+          arguments.map(arg => Compound(args = List(arg)) |+| compound)
 
         }
 
@@ -291,7 +291,7 @@ package object Patterns {
 
         def newPredicates = predicates.flatMap { compound =>
 
-          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+          arguments.map(arg => Compound(args = List(arg)) |+| compound)
 
         }
 
@@ -301,7 +301,7 @@ package object Patterns {
 
         def newPredicates = predicates.flatMap { compound =>
 
-          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+          arguments.map(arg => Compound(args = List(arg)) |+| compound)
 
         }
 
@@ -339,7 +339,7 @@ package object Patterns {
 
         clauses.some |+| predicates.flatMap { compound =>
 
-          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+          arguments.map(arg => Compound(args = List(arg)) |+| compound)
 
         }.some
 
@@ -347,7 +347,7 @@ package object Patterns {
 
         predicates.flatMap { compound =>
 
-          arguments.map(arg =>Compound(args=Stream(arg)) |+| compound)
+          arguments.map(arg => Compound(args = List(arg)) |+| compound)
 
         }.some
 
@@ -367,10 +367,18 @@ package object Patterns {
 
   }
 
+
   object RootExpression extends ConstituentPattern {
 
     def apply(tree : Tree[String]) : Option[Stream[Compound]] = tree match {
-      case Tree.Node(ROOT, Stream(ClauseExpression(stream))) => stream.some
+      case Tree.Node(ROOT, Stream(ClauseExpression(compounds))) =>
+
+        val stream = compounds.force
+
+        Runtime.gc()
+
+        stream.some
+
       case _ => none
     }
 

@@ -9,7 +9,7 @@ package object Terms {
 
   case class Atom(id : String) extends Term
 
-  case class Compound(atom : Atom = Monoid[Atom].zero, args : Stream[Atom] = Monoid[Stream[Atom]].zero) extends Term
+  case class Compound(atom : Atom = Monoid[Atom].zero, args : List[Atom] = Monoid[List[Atom]].zero) extends Term
 
   implicit val equalAtom : Equal[Atom] = Equal.equal(_.id === _.id)
 
@@ -21,13 +21,13 @@ package object Terms {
 
     def zero : Atom = Atom(Monoid[String].zero)
 
-    def append(a1 : Atom, a2: => Atom) : Atom = Atom(Stream(a1.id, a2.id).distinct.mkString(" ").trim)
+    def append(a1 : Atom, a2: => Atom) : Atom = Atom(List(a1.id, a2.id).distinct.mkString(" ").trim)
 
   }
 
   implicit val monoidCompound : Monoid[Compound] = new Monoid[Compound] {
 
-    def zero : Compound = Compound(Monoid[Atom].zero, Monoid[Stream[Atom]].zero)
+    def zero : Compound = Compound(Monoid[Atom].zero, Monoid[List[Atom]].zero)
 
     def append(a1 : Compound, a2 : => Compound) : Compound = {
       Compound(a1.atom |+| a2.atom, (a1.args |+| a2.args).filterNot(_ === Monoid[Atom].zero).distinct)
@@ -49,7 +49,7 @@ package object Terms {
 
   implicit val showCompoundStream : Show[Stream[Compound]] = new Show[Stream[Compound]] {
 
-    override def shows(stream : Stream[Compound]) : String = stream.iterator.map(_.shows).mkString("\n")
+    override def shows(compounds : Stream[Compound]) : String = compounds.iterator.map(_.shows).mkString("\n")
 
   }
 
