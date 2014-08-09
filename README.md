@@ -1,5 +1,8 @@
 
+![travis-ci](https://travis-ci.org/markfarrell/crea-nlp.svg?branch=master)
+
 #### Constructing a Knowledge Base on Aging: an Automated Approach
+
 ###### Author: Mark Farrell, Undergraduate Student at the University of Waterloo
 ###### Director: Steven A. Garan, Researcher at Lawrence Berkeley National Laboratory
 
