@@ -16,7 +16,7 @@ class CompileSuite extends FunSuite {
 
   test("Noun forms.") {
 
-    val expect = Stream(Compound(Atom("walk"),Stream(Atom("toronto monkey")))).some
+    val expect = Stream(Compound(Atom("walk"),List(Atom("toronto monkey")))).some
 
     expect assert_=== compile("The Toronto monkey can walk.")
     expect assert_=== compile("The Toronto monkeys can walk.")
@@ -26,7 +26,7 @@ class CompileSuite extends FunSuite {
 
   test("Verb tense and adverbs.") {
 
-    val expect = Stream(Compound(Atom("sleep"), Stream(Atom("man")))).some
+    val expect = Stream(Compound(Atom("sleep"), List(Atom("man")))).some
 
     expect assert_=== compile("The man sleeps.")
     expect assert_=== compile("The man is sleeping.")
@@ -42,7 +42,7 @@ class CompileSuite extends FunSuite {
 
   test("Phrasal verbs.") {
 
-    val expect = Stream(Compound(Atom("take off"), Stream(Atom("man")))).some
+    val expect = Stream(Compound(Atom("take off"), List(Atom("man")))).some
 
     expect assert_=== compile("The man takes off.")
     expect assert_=== compile("The man has taken off.")
@@ -54,7 +54,7 @@ class CompileSuite extends FunSuite {
 
   test("Prepositional phrases as noun adjectives.") {
 
-    val expect = Stream(Compound(Atom("take"),Stream(Atom("man type"), Atom("dog")))).some
+    val expect = Stream(Compound(Atom("take"),List(Atom("man type"), Atom("dog")))).some
 
     expect assert_=== compile("That type of man took the dog.")
     expect assert_=== compile("That type of man has taken the dog.")
@@ -63,7 +63,7 @@ class CompileSuite extends FunSuite {
 
   test("Coordinated declarative clauses.") {
 
-    val expect = Stream(Compound(Atom("walk"),Stream(Atom("man"), Atom("dog"))), Compound(Atom("eat"),Stream(Atom("man")))).some
+    val expect = Stream(Compound(Atom("walk"),List(Atom("man"), Atom("dog"))), Compound(Atom("eat"),List(Atom("man")))).some
 
     expect assert_=== compile("The man can walk the dog and can eat.")
 
@@ -71,7 +71,7 @@ class CompileSuite extends FunSuite {
 
   test("Single adjunction.") {
 
-    val expect = Stream(Compound(Atom("see"),Stream(Atom("man"))), Compound(Atom("walk"),Stream(Atom("man"), Atom("dog")))).some
+    val expect = Stream(Compound(Atom("see"),List(Atom("man"))), Compound(Atom("walk"),List(Atom("man"), Atom("dog")))).some
 
     expect assert_=== compile("The man if the man can see walked the dog.")
     expect assert_=== compile("The man, if the man can see, can walk the dog.")
@@ -80,7 +80,7 @@ class CompileSuite extends FunSuite {
 
   test("Multiple adjunctions.") {
 
-    val expect = Stream(Compound(Atom("see"), Stream(Atom("man"))), Compound(Atom("walk"), Stream(Atom("man"))), Compound(Atom("walk"), Stream(Atom("man"), Atom("dog")))).some
+    val expect = Stream(Compound(Atom("see"), List(Atom("man"))), Compound(Atom("walk"), List(Atom("man"))), Compound(Atom("walk"), List(Atom("man"), Atom("dog")))).some
 
     expect assert_=== compile("The man, if the man can see, and if the man can walk, can walk the dog.")
 
@@ -88,7 +88,7 @@ class CompileSuite extends FunSuite {
 
   test("Inverted adjunction.") {
 
-    val expect = Stream(Compound(Atom("walk"), Stream(Atom("man"))), Compound(Atom("walk"), Stream(Atom("dog")))).some
+    val expect = Stream(Compound(Atom("walk"), List(Atom("man"))), Compound(Atom("walk"), List(Atom("dog")))).some
 
     expect assert_=== compile("If the man can walk the dog can walk.")
     expect assert_=== compile("If the man can walk, the dog can walk.")
@@ -98,7 +98,7 @@ class CompileSuite extends FunSuite {
 
   test("ADJP and VP + PP.") {
 
-    val expect = Stream(Compound(Atom("depend"), Stream(Atom("age disease progression"), Atom("health balance")))).some
+    val expect = Stream(Compound(Atom("depend"), List(Atom("age disease progression"), Atom("health balance")))).some
 
     expect assert_=== compile("Age disease progression has depended on the critical and crucial health balance.")
     expect assert_=== compile("Age disease progression depends on the critical and crucial health balance.")
@@ -111,7 +111,7 @@ class CompileSuite extends FunSuite {
 
   test("VP + PP") {
 
-    val expect = Stream(Compound(Atom("talk"), Stream(Atom("man"), Atom("cat")))).some
+    val expect = Stream(Compound(Atom("talk"), List(Atom("man"), Atom("cat")))).some
 
     expect assert_=== compile("The man can talk about the cat.")
 
@@ -119,7 +119,7 @@ class CompileSuite extends FunSuite {
 
   test("NP + PP and VP + PP.") {
 
-    val expect = Stream(Compound(Atom("depend"), Stream(Atom("age progression"), Atom("health balance")))).some
+    val expect = Stream(Compound(Atom("depend"), List(Atom("age progression"), Atom("health balance")))).some
 
     expect assert_=== compile("Disease progression with aging undoubtedly depends on the critical and crucial health balance.")
     expect assert_=== compile("Disease progression with aging depends undoubtedly on the critical and crucial health balance.")
@@ -129,8 +129,8 @@ class CompileSuite extends FunSuite {
   test("Also.") {
 
     val expect = Stream(
-      Compound(Atom("worsen"), Stream(Atom("age disease progression"))),
-      Compound(Atom("depend"), Stream(Atom("age disease progression"), Atom("health balance")))
+      Compound(Atom("worsen"), List(Atom("age disease progression"))),
+      Compound(Atom("depend"), List(Atom("age disease progression"), Atom("health balance")))
     ).some
 
     expect assert_=== compile("Age disease progression that can worsen also depends on the critical, highly crucial health balance.")
@@ -140,8 +140,8 @@ class CompileSuite extends FunSuite {
   test("Which.") {
 
     val expect = Stream(
-      Compound(Atom("be"), Stream(Atom("age disease progression"))),
-      Compound(Atom("depend"), Stream(Atom("age disease progression"), Atom("health balance")))
+      Compound(Atom("be"), List(Atom("age disease progression"))),
+      Compound(Atom("depend"), List(Atom("age disease progression"), Atom("health balance")))
     ).some
 
     expect assert_=== compile("Age disease progression, which is unfortunate, also depends on the critical, highly crucial health balance.")
@@ -152,18 +152,18 @@ class CompileSuite extends FunSuite {
   test("Subject & Object lists.") {
 
     val expect = Stream(
-      Compound(Atom("walk"), Stream(Atom("type"), Atom("cat"))),
-      Compound(Atom("walk"), Stream(Atom("kind"), Atom("cat"))),
-      Compound(Atom("walk"), Stream(Atom("man class"), Atom("cat"))),
-      Compound(Atom("walk"), Stream(Atom("dog class"), Atom("cat"))),
-      Compound(Atom("walk"), Stream(Atom("type"), Atom("elephant"))),
-      Compound(Atom("walk"), Stream(Atom("kind"), Atom("elephant"))),
-      Compound(Atom("walk"), Stream(Atom("man class"), Atom("elephant"))),
-      Compound(Atom("walk"), Stream(Atom("dog class"), Atom("elephant"))),
-      Compound(Atom("walk"), Stream(Atom("type"), Atom("fox"))),
-      Compound(Atom("walk"), Stream(Atom("kind"), Atom("fox"))),
-      Compound(Atom("walk"), Stream(Atom("man class"), Atom("fox"))),
-      Compound(Atom("walk"), Stream(Atom("dog class"), Atom("fox")))
+      Compound(Atom("walk"), List(Atom("type"), Atom("cat"))),
+      Compound(Atom("walk"), List(Atom("kind"), Atom("cat"))),
+      Compound(Atom("walk"), List(Atom("man class"), Atom("cat"))),
+      Compound(Atom("walk"), List(Atom("dog class"), Atom("cat"))),
+      Compound(Atom("walk"), List(Atom("type"), Atom("elephant"))),
+      Compound(Atom("walk"), List(Atom("kind"), Atom("elephant"))),
+      Compound(Atom("walk"), List(Atom("man class"), Atom("elephant"))),
+      Compound(Atom("walk"), List(Atom("dog class"), Atom("elephant"))),
+      Compound(Atom("walk"), List(Atom("type"), Atom("fox"))),
+      Compound(Atom("walk"), List(Atom("kind"), Atom("fox"))),
+      Compound(Atom("walk"), List(Atom("man class"), Atom("fox"))),
+      Compound(Atom("walk"), List(Atom("dog class"), Atom("fox")))
     ).some
 
     expect assert_=== compile("That type, kind, and class of man and dog can walk the cat, the elephant and the fox.")

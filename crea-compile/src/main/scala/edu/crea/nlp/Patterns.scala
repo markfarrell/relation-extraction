@@ -371,14 +371,7 @@ package object Patterns {
   object RootExpression extends ConstituentPattern {
 
     def apply(tree : Tree[String]) : Option[Stream[Compound]] = tree match {
-      case Tree.Node(ROOT, Stream(ClauseExpression(compounds))) =>
-
-        val stream = compounds.force
-
-        Runtime.gc()
-
-        stream.some
-
+      case Tree.Node(ROOT, Stream(ClauseExpression(compounds))) => compounds.some
       case _ => none
     }
 
