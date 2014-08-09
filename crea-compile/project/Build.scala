@@ -12,13 +12,6 @@ object ProjectBuild extends Build {
       import Patterns._
       import Terms._
       import Trees._
-      lazy val parser = new Parser
-      def parse = parser.apply _
-      def compile(sentence : String) : Option[Stream[Compound]] = {
-        val tree = parse(sentence)
-        println(tree.shows)
-        RootExpression(tree)
-      }
     """,
     name := "crea-compile",
     version := "1.0",

@@ -1,6 +1,6 @@
 package edu.crea.nlp
 
-import java.io.{InputStream, File, FileInputStream, FileOutputStream, PrintStream}
+import java.io.{ByteArrayInputStream, InputStream, File, FileInputStream, FileOutputStream, PrintStream}
 
 import edu.berkeley.nlp.syntax.Trees.PennTreeReader
 
@@ -19,12 +19,12 @@ import Trees._
 class Document(src : InputStream) {
 
   private[this] lazy val parser = new Parser
-  private[this] val bufSize = math.max(20, Runtime.getRuntime.availableProcessors)
+  private[this] val bufSize = Runtime.getRuntime.availableProcessors
 
   private[this] def parse(token : String) : Tree[String] = parser(token)
 
-  private[this] def compile(tree : Tree[String]) : Tree[String] \/ Stream[Compound] = RootExpression(tree) match {
-    case Some(compounds) => compounds.right
+  private[this] def compile(tree : Tree[String]) : Tree[String] \/ List[Compound] = RootExpression(tree) match {
+    case Some(compounds) => compounds.toList.right
     case None => tree.left
   }
 
@@ -32,14 +32,11 @@ class Document(src : InputStream) {
 
     def removeParens = (_ : String).replaceAll("""\s{0,1}\(.*?\)""", "")
 
-    io.resource(Task.delay(src))(src => Task.delay(src.close)) { src =>
-      val it = Tokenize(src).map(removeParens).iterator
-      Task.delay(if (it.hasNext) it.next else throw Process.End)
-    }
+    Process.emitSeq(Tokenize(src).map(removeParens).toSeq)
 
   }
 
-  lazy val compiles : Process[Task, Tree[String] \/ Stream[Compound]] = tokens.gatherMap(bufSize)(tree => Task.delay(compile(parse(tree))))
+  lazy val compiles : Process[Task, Tree[String] \/ List[Compound]] = tokens.gatherMap(bufSize)(token => Task.delay(compile(parse(token))))
 
   lazy val log : Process[Task, Unit] = compiles.gatherMap(bufSize)(res => Task.delay(res.shows)).to(io.stdOutLines)
 
@@ -49,9 +46,11 @@ object Document {
 
   private[this] def channel[A,B](f : A => Task[B]) : Channel[Task, A, B] = Process.constant(f)
 
+  def fromString(str : String) : Document = new Document(new ByteArrayInputStream(str.getBytes))
+
   def fromFile(path : String) : Document = new Document(new FileInputStream(path))
 
-  def gexf : Sink[Task, Tree[String] \/ Stream[Compound]] = {
+  def gexf : Sink[Task, Tree[String] \/ List[Compound]] = {
 
     import it.uniroma1.dis.wsngroup.gexf4j.core.impl.GexfImpl
     import it.uniroma1.dis.wsngroup.gexf4j.core.{EdgeType, Mode, Node}
@@ -90,7 +89,6 @@ object Document {
       }
 
     }}}
-
 
   }
 

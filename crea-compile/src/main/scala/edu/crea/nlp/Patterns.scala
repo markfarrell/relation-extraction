@@ -245,7 +245,7 @@ package object Patterns {
 
         (Stream(), Stream()).some
 
-      case Tree.Node(AtS, Stream(PrepositionalPhraseExpression((arguments, clauses)))) =>
+      case PrepositionalPhraseExpression((arguments, clauses)) =>
 
         (arguments, clauses).some
 
