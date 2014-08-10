@@ -3,4 +3,10 @@ target/
 log/
 textbooks/
 *.swp
-database*
+*.aux
+*.log
+*.pdf
+*.nav
+*.snm
+*.toc
+*.out

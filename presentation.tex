@@ -1,0 +1,200 @@
+\documentclass[mathserif]{beamer}
+\usetheme{Berkeley}
+\usecolortheme{albatross}
+
+\title{Constructing a Knowledge Base on Aging}
+\subtitle{An Automated Approach}
+\author{Mark Farrell}
+\institute[UWaterloo and UC Berkeley]
+{
+  \inst{}%
+  Computer Science Club \\
+  University of Waterloo \and
+
+  \inst{}%
+  Center for Research and Education on Aging \\
+  Lawrence Berkeley National Laboratory \\
+  University of California, Berkeley
+
+}
+
+\date{September 4th, 2014}
+\subject{Natural Language Processing}
+
+\AtBeginSection[]
+{
+  \begin{frame}
+    \frametitle{Outline}
+    \tableofcontents[currentsection]
+  \end{frame}
+}
+
+\begin{document}
+
+  \frame{\titlepage}
+
+  \section{Automatically Constructing Knowledge Bases}
+  \begin{frame}
+
+    \frametitle{Overview}
+
+    \begin{itemize}[<+->]
+
+      \item CREA is constructing a knowledge base to study and
+      understand the human aging process.
+      \item New discoveries are published quickly and in large
+      volume.
+      \item It is infeasible to construct the knowledge base by
+      hand.
+      \item Working on software to construct the knowledge base
+      automatically.
+
+    \end{itemize}
+
+  \end{frame}
+
+  \begin{frame}
+
+    \frametitle{Introduction}
+    \framesubtitle{How to Automatically Construct the Knowledge Base}
+
+    \begin{itemize}[<+->]
+
+      \item Routinely search for keywords related to aging, dowloading
+      text articles from sources like PubMed and WebMD.
+      \item Build a spam filter to get rid of non-scientific sentences.
+      \item Extract scientific facts from the sentences and save them
+      in a structured format.
+      \item Provide a graphical interface that allows users to search
+      and otherwise explore the knowledge base.
+
+    \end{itemize}
+
+  \end{frame}
+
+  \begin{frame}
+
+    \frametitle{Summary of Progress}
+
+    \begin{itemize}[<+->]
+
+      \item Devised and implemented the method for finding simple facts
+      in sentences, extracting them in a structured format.
+
+      % Projects like Carnegie Mellon's "Read The Web" appear to be able
+      % to extract simple facts from sentences, but their software is
+      % neither open-source nor downloadable.
+
+      \item Began work on a web viewer for the knowledge base.
+
+    \end{itemize}
+
+  \end{frame}
+
+  \section{Extracting Facts in a Structured Format}
+  \begin{frame}
+
+    \frametitle{Tokenization}
+
+    \begin{itemize}[<+->]
+
+      \item Input a text document and read it, one sentence at a time.
+
+    \end{itemize}
+
+  \end{frame}
+
+  \begin{frame}
+
+    \frametitle{Parsing}
+
+    \begin{itemize}[<+->]
+
+      \item For each sentence, generate a constituent tree that describes its phrase structure.
+
+      \item The University of Pennsylvania Treebank Project:
+      \begin{itemize}[<+->]
+        \item Defines notation for constituent trees.
+        \item Parses sentences from the Wall Street Journal by hand.
+      \end{itemize}
+
+      \item The Berkeley Parser is software that guesses how to parse a sentence from that notation
+      and examples specified by the Penn Treebank.
+
+    \end{itemize}
+
+  \end{frame}
+
+  \begin{frame}
+
+    \frametitle{Compilation}
+
+    \begin{itemize}[<+->]
+
+      \item Construct facts from each constituent tree. Start at the bottom:
+      \begin{itemize}[<+->]
+
+        \item First look for nouns.
+        \item Then look for predicates, an action being performed on
+        one or more nouns.
+        \item Output the facts, describing the actions found in each
+        sentence and the nouns that they are performed on.
+
+      \end{itemize}
+
+    \end{itemize}
+
+  \end{frame}
+
+  \section{Results}
+
+  \begin{frame}
+
+    \frametitle{Parallelization}
+
+    \begin{itemize}[<+->]
+
+      \item It is possible to extract facts from many sentences at the same time.
+
+    \end{itemize}
+
+  \end{frame}
+
+  \section{Discussion}
+
+  \begin{frame}
+
+    \frametitle{Discussion}
+
+    \begin{itemize}[<+->]
+
+       \item Define more patterns for extracting facts:
+       \begin{itemize}[<+->]
+
+          \item The software succeeds around 50\% of the time.
+
+       \end{itemize}
+
+       \item The accuracy of the parser could be optimized:
+       \begin{itemize}[<+->]
+
+          \item Should be trained to identify more nouns from the biomedical
+          domain.
+
+       \end{itemize}
+
+       \item Support negated clauses and conditional logic.
+
+       \item Facts can contradict each other: store the probability that
+       is true as the weight of its edge on the knowledge base's graph.
+
+       \item Filter spam sentences from documents.
+
+       \item Scale and launch the software service, automatically
+       constructing CREA's knowledge base on aging.
+
+    \end{itemize}
+
+  \end{frame}
+
+\end{document}
