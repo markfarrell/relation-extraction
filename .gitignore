@@ -5,8 +5,8 @@ textbooks/
 *.swp
 *.aux
 *.log
-*.pdf
 *.nav
 *.snm
+*.vrb
 *.toc
 *.out
