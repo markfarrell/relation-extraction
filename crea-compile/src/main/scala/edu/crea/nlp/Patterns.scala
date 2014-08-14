@@ -169,10 +169,6 @@ package object Patterns {
 
         stream.some
 
-      case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream), Tree.Node(_, Stream(_)))) =>
-
-        stream.some
-
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PrepositionalPhraseExpression((arguments, clauses)))) =>
 
         def newPredicates = predicates.flatMap { compound =>
@@ -200,6 +196,10 @@ package object Patterns {
       case Tree.Node(S|AtS, Stream(PredicateExpression(predicates))) =>
 
         predicates.some
+
+      case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream), Tree.Node(_, Stream(_)))) =>
+
+        stream.some
 
       case _ => none
 

@@ -1,6 +1,6 @@
 package edu.crea.nlp
 
-import java.io.{ByteArrayInputStream, InputStream, File, FileInputStream, FileOutputStream, PrintStream}
+import java.io.{ByteArrayInputStream, OutputStream, InputStream, File, FileInputStream, FileOutputStream, PrintStream}
 
 import edu.berkeley.nlp.syntax.Trees.PennTreeReader
 
@@ -38,7 +38,7 @@ class Document(src : InputStream) {
 
   lazy val compiles : Process[Task, Tree[String] \/ List[Compound]] = tokens.gatherMap(bufSize)(token => Task.delay(compile(parse(token))))
 
-  lazy val log : Process[Task, Unit] = compiles.gatherMap(bufSize)(res => Task.delay(res.shows)).to(io.stdOutLines)
+  lazy val log : Task[Unit] = compiles.gatherMap(bufSize)(res => Task.delay(res.shows)).to(io.stdOutLines).run
 
 }
 
@@ -46,18 +46,24 @@ object Document {
 
   private[this] def channel[A,B](f : A => Task[B]) : Channel[Task, A, B] = Process.constant(f)
 
-  def fromString(str : String) : Document = new Document(new ByteArrayInputStream(str.getBytes))
+  def fromText(text : String) : Document = new Document(new ByteArrayInputStream(text.getBytes))
 
   def fromFile(path : String) : Document = new Document(new FileInputStream(path))
 
-  def gexf : Sink[Task, Tree[String] \/ List[Compound]] = {
+  def stdGexf : Sink[Task, Tree[String] \/ List[Compound]] = gexf(System.out)
 
-    import it.uniroma1.dis.wsngroup.gexf4j.core.impl.GexfImpl
+  def gexf(dest : OutputStream) : Sink[Task, Tree[String] \/ List[Compound]] = {
+
+    import it.uniroma1.dis.wsngroup.gexf4j.core.impl.{StaxGraphWriter, GexfImpl}
     import it.uniroma1.dis.wsngroup.gexf4j.core.{EdgeType, Mode, Node}
     import scala.collection.mutable.HashMap
 
+    val charset = "UTF-8"
+
     val gexf = new GexfImpl
     val graph = gexf.getGraph
+
+    val writer = new StaxGraphWriter
 
     graph.setDefaultEdgeType(EdgeType.DIRECTED).setMode(Mode.STATIC)
 
@@ -82,11 +88,11 @@ object Document {
           nodeTable(target.id)
         }
 
-        val edge = \/.fromTryCatch(sourceNode.connectTo(targetNode).setLabel(compound.atom.id))
-
-        println(s"(${source.id}) |--(${compound.atom.id})--> (${target.id})")
+        \/.fromTryCatch(sourceNode.connectTo(targetNode).setLabel(compound.atom.id))
 
       }
+
+      writer.writeToStream(gexf, dest, charset)
 
     }}}
 
