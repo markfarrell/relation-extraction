@@ -1,4 +1,4 @@
-package edu.crea.nlp
+package crea.nlp
 
 package object Constituents {
 

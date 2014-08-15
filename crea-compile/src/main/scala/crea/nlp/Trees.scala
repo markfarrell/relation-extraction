@@ -1,4 +1,4 @@
-package edu.crea.nlp
+package crea.nlp
 
 import scala.collection.JavaConverters._
 import scala.collection.JavaConversions._

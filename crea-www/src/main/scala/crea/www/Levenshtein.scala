@@ -1,7 +1,7 @@
 /**
   * Taken from : http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Scala
  **/
-package edu.crea.www
+package crea.www
 
 object Levenshtein {
 

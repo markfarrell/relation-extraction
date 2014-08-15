@@ -1,4 +1,4 @@
-package edu.crea.www
+package crea.www
 
 import scala.util.matching.Regex
 import scala.util.{Try, Success, Failure}

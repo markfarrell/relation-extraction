@@ -1,4 +1,4 @@
-package edu.crea.nlp
+package crea.nlp
 
 import scalaz._
 import Scalaz._
@@ -16,6 +16,10 @@ package object Patterns {
       case _ => none
     }
 
+  }
+
+  private[this] def applyArguments(arguments : => Stream[Atom])(compound : Compound) : Stream[Compound] = {
+    arguments.map(arg => Compound(args = List(arg)) |+| compound)
   }
 
   sealed trait ConstituentPattern
@@ -153,13 +157,7 @@ package object Patterns {
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PredicateArgumentsExpression(arguments))) =>
 
-        def newPredicates = predicates.flatMap { compound =>
-
-          arguments.map(arg => Compound(args = List(arg)) |+| compound)
-
-        }
-
-        newPredicates.some
+        (predicates >>= applyArguments(arguments)).some
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(stream))) =>
 
@@ -171,23 +169,11 @@ package object Patterns {
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PrepositionalPhraseExpression((arguments, clauses)))) =>
 
-        def newPredicates = predicates.flatMap { compound =>
-
-          arguments.map(arg => Compound(args = List(arg)) |+| compound)
-
-        }
-
-        newPredicates.some |+| clauses.some
+        (predicates >>= applyArguments(arguments)).some |+| clauses.some
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PhraseExpression((arguments, clauses)))) =>
 
-        def newPredicates = predicates.flatMap { compound =>
-
-          arguments.map(arg => Compound(args = List(arg)) |+| compound)
-
-        }
-
-        newPredicates.some |+| clauses.some
+        (predicates >>= applyArguments(arguments)).some |+| clauses.some
 
       case Tree.Node(ADJP, Stream(_, PredicateExpression(predicates))) =>
 
@@ -269,7 +255,6 @@ package object Patterns {
 
         (args1 |+| args2, clauses).some
 
-
       case Tree.Node(NP|AtNP|S|AtS, Stream(ClauseExpression(clauses), PredicateArgumentsExpression(arguments))) =>
 
         (arguments, clauses).some
@@ -289,23 +274,11 @@ package object Patterns {
         ))
       )) =>
 
-        def newPredicates = predicates.flatMap { compound =>
-
-          arguments.map(arg => Compound(args = List(arg)) |+| compound)
-
-        }
-
-        (arguments, newPredicates).some
+        (arguments, (predicates >>= applyArguments(arguments))).some
 
       case Tree.Node(NP|AtNP, Stream(PredicateArgumentsExpression(arguments), PredicateExpression(predicates))) =>
 
-        def newPredicates = predicates.flatMap { compound =>
-
-          arguments.map(arg => Compound(args = List(arg)) |+| compound)
-
-        }
-
-        (arguments, newPredicates).some
+        (arguments, (predicates >>= applyArguments(arguments))).some
 
       case Tree.Node(S|AtS, Stream(PhraseExpression((arguments, clauses)))) =>
 
@@ -327,6 +300,16 @@ package object Patterns {
 
     def apply(tree : Tree[String]) : Option[Stream[Compound]] = tree match {
 
+      case Tree.Node(AtS, Stream(
+        PredicateArgumentsExpression(arguments),
+        Tree.Node(VP, Stream(
+          PredicateExpression(predicates),
+          ClauseExpression(clauses)
+        ))
+      )) =>
+
+        (predicates >>= applyArguments(arguments)).some |+| clauses.some
+
       case Tree.Node(S|AtS|SBAR|AtSBAR, Stream(ClauseExpression(clauses1), ClauseExpression(clauses2))) =>
 
         clauses1.some |+| clauses2.some
@@ -337,25 +320,21 @@ package object Patterns {
 
       case Tree.Node(S|AtS, Stream(PhraseExpression((arguments, clauses)), PredicateExpression(predicates))) =>
 
-        clauses.some |+| predicates.flatMap { compound =>
-
-          arguments.map(arg => Compound(args = List(arg)) |+| compound)
-
-        }.some
+        clauses.some |+| (predicates >>= applyArguments(arguments)).some
 
       case Tree.Node(S|AtS, Stream(PredicateArgumentsExpression(arguments), PredicateExpression(predicates))) =>
 
-        predicates.flatMap { compound =>
+        (predicates >>= applyArguments(arguments)).some
 
-          arguments.map(arg => Compound(args = List(arg)) |+| compound)
-
-        }.some
-
-      case Tree.Node(AtSBAR, Stream(ClauseExpression(clauses), Tree.Node(_, Stream(_)))) =>
+      case Tree.Node(SBAR|AtSBAR, Stream(ClauseExpression(clauses), Tree.Node(_, Stream(_)))) =>
 
         clauses.some
 
-      case Tree.Node(SBAR, Stream(Tree.Node(IN, Stream(_)), ClauseExpression(clauses))) =>
+      case Tree.Node(SBAR|AtSBAR, Stream(ClauseExpression(clauses))) =>
+
+        clauses.some
+
+      case Tree.Node(SBAR|AtSBAR, Stream(Tree.Node(IN, Stream(_)), ClauseExpression(clauses))) =>
 
         clauses.some
 

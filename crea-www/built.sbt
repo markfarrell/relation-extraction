@@ -6,7 +6,7 @@ name := "crea-www"
 
 scalaVersion := "2.11.1"
 
-bootSnippet := "edu.crea.www.WebApp.main();"
+bootSnippet := "crea.www.WebApp.main();"
 
 libraryDependencies += "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6"
 

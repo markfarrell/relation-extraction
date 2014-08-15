@@ -1,4 +1,4 @@
-package edu.crea.nlp
+package crea.nlp
 
 import java.io.{ByteArrayInputStream, OutputStream, InputStream, File, FileInputStream, FileOutputStream, PrintStream}
 
@@ -12,7 +12,6 @@ import Scalaz._
 import scalaz.concurrent._
 import scalaz.stream._
 
-import Patterns._
 import Terms._
 import Trees._
 
@@ -23,11 +22,6 @@ class Document(src : InputStream) {
 
   private[this] def parse(token : String) : Tree[String] = parser(token)
 
-  private[this] def compile(tree : Tree[String]) : Tree[String] \/ List[Compound] = RootExpression(tree) match {
-    case Some(compounds) => compounds.toList.right
-    case None => tree.left
-  }
-
   lazy val tokens : Process[Task, String] = {
 
     def removeParens = (_ : String).replaceAll("""\s{0,1}\(.*?\)""", "")
@@ -36,7 +30,7 @@ class Document(src : InputStream) {
 
   }
 
-  lazy val compiles : Process[Task, Tree[String] \/ List[Compound]] = tokens.gatherMap(bufSize)(token => Task.delay(compile(parse(token))))
+  lazy val compiles : Process[Task, Tree[String] \/ List[Compound]] = tokens.gatherMap(bufSize)(token => Task.delay(Compile(parse(token))))
 
   lazy val log : Task[Unit] = compiles.gatherMap(bufSize)(res => Task.delay(res.shows)).to(io.stdOutLines).run
 

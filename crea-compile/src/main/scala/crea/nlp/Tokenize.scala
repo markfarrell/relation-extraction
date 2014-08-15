@@ -1,4 +1,4 @@
-package edu.crea.nlp
+package crea.nlp
 
 import java.util.Scanner
 import java.io.{InputStream, ByteArrayInputStream}

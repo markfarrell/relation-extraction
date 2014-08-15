@@ -1,4 +1,4 @@
-package edu.crea.nlp
+package crea.nlp
 
 import org.scalatest.FunSuite
 
@@ -167,6 +167,18 @@ class CompileSuite extends FunSuite {
     ).some
 
     expect assert_=== compile("That type, kind, and class of man and dog can walk the cat, the elephant and the fox.")
+
+  }
+
+  test("Reporting verb + that clause") {
+
+    val expect = Stream(
+      Compound(Atom("suggest"), List(Atom("study"))),
+      Compound(Atom("walk"), List(Atom("man"), Atom("dog")))
+    ).some
+
+    expect assert_=== compile("The study suggests the man can walk the dog.")
+    expect assert_=== compile("The study suggests that the man can walk the dog.")
 
   }
 

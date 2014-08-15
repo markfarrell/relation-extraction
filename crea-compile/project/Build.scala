@@ -6,7 +6,7 @@ import Keys._
 object ProjectBuild extends Build {
 
   def standardSettings = Defaults.defaultSettings ++ Seq(
-    initialCommands in console := """import edu.crea.nlp._
+    initialCommands in console := """import crea.nlp._
       import scalaz._
       import Scalaz._
       import Patterns._
@@ -19,7 +19,7 @@ object ProjectBuild extends Build {
     fork in run := true,
     javaOptions += "-Xmx8G -Xss128M -Xms1G -XX:SurvivorRatio=16 -XX:NewRatio=5 -XX:+UseConcMarkSweepGC",
     maintainer in Debian := "Mark Farrell",
-    mainClass in (Compile) := Some("edu.crea.nlp.GexfCompiler"),
+    mainClass in (Compile) := Some("crea.nlp.GexfCompiler"),
     packageDescription in Debian := "Compiles text into text-networks.",
     resolvers ++= Seq(
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
