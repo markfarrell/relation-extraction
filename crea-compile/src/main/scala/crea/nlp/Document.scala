@@ -92,4 +92,30 @@ object Document {
 
   }
 
+  def stdCypher : Sink[Task, Tree[String] \/ List[Compound]] = {
+
+    channel { res => Task.delay { res.foreach { compounds =>
+
+      for {
+
+        compound <- compounds
+        (source, target) <- compound.args.sliding(2).map(s => (s.head, s.last))
+
+      } {
+
+        val sourceId = source.id.replaceAll("""\s""", "_")
+        val targetId = target.id.replaceAll("""\s""", "_")
+        val edgeId = compound.atom.id.replaceAll("""\s""", "_").toUpperCase
+
+        println(s"""MERGE (${sourceId}:Atom {label: "${source.id}"})""")
+        println(s"""MERGE (${targetId}:Atom {label: "${target.id}"})""")
+        println(s"""CREATE UNIQUE (${sourceId})-[:${edgeId}]->(${targetId});""")
+        println()
+
+      }
+
+    }}}
+
+  }
+
 }
