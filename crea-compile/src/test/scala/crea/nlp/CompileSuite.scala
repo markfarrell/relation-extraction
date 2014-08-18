@@ -182,5 +182,19 @@ class CompileSuite extends FunSuite {
 
   }
 
+  test("Nouns & Conjunction Phrases") {
+
+    val expect = Stream(
+      Compound(Atom("walk"), List(Atom("man"))),
+      Compound(Atom("walk"), List(Atom("dog"))),
+      Compound(Atom("walk"), List(Atom("cat")))
+    ).some
+
+    expect assert_=== compile("The man, as well as the dog and the cat can walk.")
+    expect assert_=== compile("The man, the dog and the cat can walk.")
+    expect assert_=== compile("The man, the dog as well as the cat can walk.")
+
+  }
+
 }
 

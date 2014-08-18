@@ -78,7 +78,7 @@ package object Patterns {
 
         arg1.some |+| arg2.some
 
-      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(arg), Tree.Node(_, Stream(_)))) =>
+      case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(arg), Tree.Node(CC|COMMA, Stream(_)))) =>
 
         arg.some
 
@@ -97,7 +97,7 @@ package object Patterns {
       case Tree.Node(NP|AtNP, Stream(
         Tree.Node(AtNP, Stream(
           PredicateArgumentsExpression(args1),
-          Tree.Node(CC|COMMA, Stream(_))
+          Tree.Node(CC|COMMA|CONJP, _)
         )),
         PredicateArgumentsExpression(args2)
       )) =>
@@ -108,13 +108,17 @@ package object Patterns {
 
         Stream(arg).some
 
-      case Tree.Node(AtS, Stream(PredicateArgumentsExpression(args))) =>
+      case Tree.Node(S|AtS|NP|AtNP, Stream(PredicateArgumentsExpression(args))) =>
 
         args.some
 
-      case Tree.Node(S|AtS, Stream(PredicateArgumentsExpression(arguments), Tree.Node(_, Stream(_)))) =>
+      case Tree.Node(S|AtS, Stream(PredicateArgumentsExpression(args), Tree.Node(_, Stream(_)))) =>
 
-        arguments.some
+        args.some
+
+      case Tree.Node(S|AtS|NP|AtNP, Stream(PredicateArgumentsExpression(args1), PredicateArgumentsExpression(args2))) =>
+
+        args1.some |+| args2.some
 
       case _ => none
 
@@ -266,7 +270,7 @@ package object Patterns {
       case Tree.Node(NP|AtNP, Stream(
         PredicateArgumentsExpression(arguments),
         Tree.Node(SBAR, Stream(
-          Tree.Node(WHNP, Stream(
+          Tree.Node(WHNP|IN, Stream(
             Tree.Node(_, Stream(_)))),
             Tree.Node(S|AtS, Stream(
               PredicateExpression(predicates)

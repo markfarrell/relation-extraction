@@ -1,6 +1,6 @@
 package crea.nlp
 
-import java.io.{ByteArrayInputStream, OutputStream, InputStream, File, FileInputStream, FileOutputStream, PrintStream}
+import java.io.{ByteArrayInputStream, OutputStream, InputStream, File, FileInputStream, FileOutputStream, PrintStream, PrintWriter}
 
 import edu.berkeley.nlp.syntax.Trees.PennTreeReader
 
@@ -92,7 +92,11 @@ object Document {
 
   }
 
-  def stdCypher : Sink[Task, Tree[String] \/ List[Compound]] = {
+  def stdCypher : Sink[Task, Tree[String] \/ List[Compound]] = cypher(System.out)
+
+  def cypher(out : OutputStream) : Sink[Task, Tree[String] \/ List[Compound]] = {
+
+    val pw = new PrintWriter(out)
 
     channel { res => Task.delay { res.foreach { compounds =>
 
@@ -103,14 +107,16 @@ object Document {
 
       } {
 
-        val sourceId = source.id.replaceAll("""\s""", "_")
-        val targetId = target.id.replaceAll("""\s""", "_")
+        val pattern = """\s|\p{Punct}"""
+        val sourceId = source.id.replaceAll(pattern, "_")
+        val targetId = target.id.replaceAll(pattern, "_")
         val edgeId = compound.atom.id.replaceAll("""\s""", "_").toUpperCase
 
-        println(s"""MERGE (${sourceId}:Atom {label: "${source.id}"})""")
-        println(s"""MERGE (${targetId}:Atom {label: "${target.id}"})""")
-        println(s"""CREATE UNIQUE (${sourceId})-[:${edgeId}]->(${targetId});""")
-        println()
+        pw.println(s"""MERGE (${sourceId}:Atom {label: "${source.id}"})""")
+        pw.println(s"""MERGE (${targetId}:Atom {label: "${target.id}"})""")
+        pw.println(s"""CREATE UNIQUE (${sourceId})-[:${edgeId}]->(${targetId});""")
+        pw.println()
+        pw.flush()
 
       }
 
