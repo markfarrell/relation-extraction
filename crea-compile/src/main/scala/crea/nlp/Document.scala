@@ -113,7 +113,13 @@ object Document {
         val edgeId = compound.atom.id.replaceAll("""\s""", "_").toUpperCase
 
         pw.println(s"""MERGE (${sourceId}:Atom {label: "${source.id}"})""")
-        pw.println(s"""MERGE (${targetId}:Atom {label: "${target.id}"})""")
+
+        if(!(source.id === target.id)) {
+
+          pw.println(s"""MERGE (${targetId}:Atom {label: "${target.id}"})""")
+
+        }
+
         pw.println(s"""CREATE UNIQUE (${sourceId})-[:${edgeId}]->(${targetId});""")
         pw.println()
         pw.flush()
