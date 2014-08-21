@@ -7,9 +7,9 @@ package object Terms {
 
   sealed trait Term
 
-  case class Atom(id : String) extends Term
+  final case class Atom(id : String) extends Term
 
-  case class Compound(atom : Atom = Monoid[Atom].zero, args : List[Atom] = Monoid[List[Atom]].zero) extends Term
+  final case class Compound(atom : Atom = Monoid[Atom].zero, args : List[Atom] = Monoid[List[Atom]].zero) extends Term
 
   implicit val equalAtom : Equal[Atom] = Equal.equal(_.id === _.id)
 

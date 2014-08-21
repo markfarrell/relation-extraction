@@ -39,7 +39,8 @@ object ProjectBuild extends Build {
       "org.scalaz" %% "scalaz-core" % "7.0.6",
       "org.scalaz.stream" %% "scalaz-stream" % "0.4.1",
       "com.chuusai" %% "shapeless" % "2.0.0",
-      "com.bizo" % "mighty-csv_2.11" % "0.2"
+      "com.bizo" % "mighty-csv_2.11" % "0.2",
+      "net.sourceforge.owlapi" % "owlapi-distribution" % "3.4.10"
     )
   )
 
