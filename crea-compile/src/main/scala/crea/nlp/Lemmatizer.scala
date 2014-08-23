@@ -25,14 +25,17 @@ object Lemmatizer {
     }))
 
     val tmp = new StanfordCoreNLP({
+
       val props : Properties = new Properties
       props.put("annotators", "tokenize, ssplit, pos, lemma")
       props
+
     })
 
     System.setErr(errStream)
 
     tmp
+
   }
 
   def apply(str : String) : String = {

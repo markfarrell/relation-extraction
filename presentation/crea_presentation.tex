@@ -2,6 +2,7 @@
 \usetheme{Berkeley}
 \usecolortheme{albatross}
 \usepackage{listings}
+\usepackage{pgf}
 
 \title{Constructing a Knowledge Base on Aging}
 \subtitle{An Automated Approach}
@@ -17,6 +18,8 @@ Lawrence Berkeley National Laboratory \\
 University of California, Berkeley
 
 }
+
+%\logo{\includegraphics[width=30px]{logo.png}}
 
 \date{September 4th, 2014}
 \subject{Natural Language Processing}
@@ -38,6 +41,81 @@ showstringspaces=false
 \begin{document}
 
 \frame{\titlepage}
+
+\section{About Me}
+
+\begin{frame}
+
+\frametitle{Who I am}
+\framesubtitle{Mark Farrell}
+
+\centering
+
+\begin{tabular}{c c}
+\includegraphics[width=0.30\linewidth]{starfall.png}&
+\includegraphics[width=0.30\linewidth]{rink.jpg} \\
+\includegraphics[angle=270, origin=c, width=0.30\linewidth]{alfie.jpg}&
+\includegraphics[angle=270, origin=c, width=0.30\linewidth]{camping.jpg}\\
+\end{tabular}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Where I'm from}
+\framesubtitle{Atlantic Canada}
+\includegraphics[width=1.0\linewidth]{map.png}
+\end{frame}
+
+\begin{frame}
+
+\frametitle{What I'm Studying}
+
+\begin{columns}[l]
+\begin{column}{.7\textwidth}
+\begin{description}
+\item[Year] 2
+\item[Program] Bachelor of Computer Science
+\item[Faculty] Mathematics
+\item[Institution] University of Waterloo
+\item[Location] Waterloo, Ontario, Canada
+\end{description}
+\end{column}
+\begin{column}{.3\textwidth}
+\includegraphics[width=1.0\linewidth]{campus.jpg}
+\end{column}
+\end{columns}
+
+\end{frame}
+
+\begin{frame}
+
+\frametitle{How I Became a Researcher at CREA}
+\framesubtitle{Prof. Garan Emailed the University of Waterloo Computer Science Club}
+
+\centering
+\begin{tabular}{c c}
+\includegraphics[width=0.40\linewidth]{malto_webcam.png} &
+\includegraphics[width=0.40\linewidth]{bitshift_webcam.png}\\
+\includegraphics[width=0.40\linewidth]{csc.png} &
+\includegraphics[width=0.40\linewidth]{steve_garan.jpg}\\
+\end{tabular}
+
+\end{frame}
+
+\begin{frame}
+
+\frametitle{Why was I Interested in Research at CREA?}
+
+\centering
+\begin{tabular}{ c | c }
+Hobby & CREA Research \\
+\hline
+Reverse Engineering & Natural Language Processing\\
+Game Development & Artificial Intelligence\\
+Health & Bioinformatics\\
+\end{tabular}
+
+\end{frame}
 
 \section{Automatically Constructing Knowledge Bases}
 
@@ -68,7 +146,7 @@ automatically.
 \begin{itemize}[<+->]
 
 \item Routinely search for keywords related to aging, dowloading
-text articles from sources like PubMed and WebMD.
+text articles from sources like PubMed.
 \item Build a spam filter to get rid of non-scientific sentences.
 \item Extract scientific facts from the sentences and save them
 in a structured format.
