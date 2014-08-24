@@ -3,6 +3,8 @@
 \usecolortheme{albatross}
 \usepackage{listings}
 \usepackage{pgf}
+\usepackage{qtree}
+\usepackage{gb4e}
 
 \title{Constructing a Knowledge Base on Aging}
 \subtitle{An Automated Approach}
@@ -19,7 +21,7 @@ University of California, Berkeley
 
 }
 
-%\logo{\includegraphics[width=30px]{logo.png}}
+%\logo{\includegraphics[width=30px]{images/logo.png}}
 
 \date{September 4th, 2014}
 \subject{Natural Language Processing}
@@ -38,9 +40,13 @@ columns=fullflexible,
 showstringspaces=false
 }
 
+\noautomath
+
 \begin{document}
 
-\frame{\titlepage}
+\begin{frame}
+\titlepage
+\end{frame}
 
 \section{About Me}
 
@@ -52,10 +58,10 @@ showstringspaces=false
 \centering
 
 \begin{tabular}{c c}
-\includegraphics[width=0.30\linewidth]{starfall.png}&
-\includegraphics[width=0.30\linewidth]{rink.jpg} \\
-\includegraphics[angle=270, origin=c, width=0.30\linewidth]{alfie.jpg}&
-\includegraphics[angle=270, origin=c, width=0.30\linewidth]{camping.jpg}\\
+\includegraphics[width=0.30\linewidth]{images/starfall.png}&
+\includegraphics[width=0.30\linewidth]{images/rink.jpg} \\
+\includegraphics[angle=270, origin=c, width=0.30\linewidth]{images/alfie.jpg}&
+\includegraphics[angle=270, origin=c, width=0.30\linewidth]{images/camping.jpg}\\
 \end{tabular}
 
 \end{frame}
@@ -63,7 +69,7 @@ showstringspaces=false
 \begin{frame}
 \frametitle{Where I'm from}
 \framesubtitle{Atlantic Canada}
-\includegraphics[width=1.0\linewidth]{map.png}
+\includegraphics[width=1.0\linewidth]{images/map.png}
 \end{frame}
 
 \begin{frame}
@@ -81,7 +87,7 @@ showstringspaces=false
 \end{description}
 \end{column}
 \begin{column}{.3\textwidth}
-\includegraphics[width=1.0\linewidth]{campus.jpg}
+\includegraphics[width=1.0\linewidth]{images/campus.jpg}
 \end{column}
 \end{columns}
 
@@ -94,10 +100,10 @@ showstringspaces=false
 
 \centering
 \begin{tabular}{c c}
-\includegraphics[width=0.40\linewidth]{malto_webcam.png} &
-\includegraphics[width=0.40\linewidth]{bitshift_webcam.png}\\
-\includegraphics[width=0.40\linewidth]{csc.png} &
-\includegraphics[width=0.40\linewidth]{steve_garan.jpg}\\
+\includegraphics[width=0.40\linewidth]{images/malto_webcam.png} &
+\includegraphics[width=0.40\linewidth]{images/bitshift_webcam.png}\\
+\includegraphics[width=0.40\linewidth]{images/csc.png} &
+\includegraphics[width=0.40\linewidth]{images/steve_garan.jpg}\\
 \end{tabular}
 
 \end{frame}
@@ -180,118 +186,124 @@ in sentences, extracting them in a structured format.
 
 \begin{frame}
 
-\frametitle{Tokenization}
+\frametitle{Extracting Facts in a Structured Format}
 
-\begin{itemize}[<+->]
+\begin{description}[<+->]
 
-\item Input a text document and read it, one sentence at a time.
+\item[Tokenization] Input a text document and read it, one sentence at a time.
+\item[Parsing] For each sentence, generate a constituent tree that describes its phrase structure.
+\item[Compilation] Extract facts by pattern matching on each constituent tree.
 
-\end{itemize}
+\end{description}
 
 \end{frame}
 
-\begin{frame}[fragile]
+\begin{frame}
+
+\frametitle{Constituent Tree Tags}
+\framesubtitle{Word Level}
+
+\centering
+
+\begin{tabular}{c | c | c}
+Tag & Meaning & Example \\
+\hline
+DT & Determiner & the \\
+IN & Preposition & of\\
+JJ & Adjective & blue\\
+RB & Adverb & quickly\\
+CC & Coordinating Conjunction & and \\
+NN & Singular Noun & monkey\\
+NNS & Plural Noun & monkeys\\
+VB & Base Verb & fall\\
+VBZ & Singular Present Verb & falls\\
+VBD & Past Tense Verb & fell\\
+VBN & Past Participle Verb & fallen\\
+VBG & Gerund Verb & falling\\
+... & ... & ...\\
+\end{tabular}
+
+\end{frame}
+
+\begin{frame}
+
+\frametitle{Constituent Tree Tags}
+\framesubtitle{Phrase Level}
+
+\centering
+
+\begin{tabular}{c | c | c}
+Tag & Meaning & Example \\
+\hline
+NP & Noun Phrase & the woman \\
+VP & Verb Phrase & calls the man \\
+PP & Prepositional Phrase & from the store \\
+ADVP & Adverb Phrase & quickly and quietly \\
+ADJP & Adjective Phrase & blue and red \\
+CONJP & Conjunctive Phrase & as well as \\
+... & ... & ...\\
+\end{tabular}
+
+\end{frame}
 
 
-\begin{block}{Example: Tokenization}
-\begin{lstlisting}
-scala> tokens("The man walks. The dog eats.")
-res0: List[String] = List(The man walks., The dog eats.)
-\end{lstlisting}
+\begin{frame}
+
+\frametitle{Constituent Tree Tags}
+\framesubtitle{Clause Level}
+
+\centering
+
+\begin{tabular}{c | c | c}
+Tag & Meaning & Example \\
+\hline
+S & Declarative Clause & the dog walks\\
+SBAR & Conjunction + Clause & that the dog walks\\
+... & ... & ...\\
+\end{tabular}
+
+\end{frame}
+
+\begin{frame}
+
+\frametitle{Information Extraction}
+\framesubtitle{Example}
+
+\only<1>{
+\begin{block}{Input Token}
+The man walks the dog.
 \end{block}
+}
 
-\end{frame}
-
-\begin{frame}
-
-\frametitle{Parsing}
-
-\begin{itemize}[<+->]
-
-\item For each sentence, generate a constituent tree that describes its phrase structure.
-
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}[fragile]
-
-\begin{block}{Example: Parsing}
-\begin{lstlisting}
-scala> parse("The man walks the dog.")
-res0: Tree[String] = (ROOT
-  (S
-    (@S
-      (NP (DT The) (NN man))
-      (VP (VBZ walks)
-        (NP (DT the) (NN dog))))
-    (. .)))
-\end{lstlisting}
+\only<2>{
+\begin{block}{Parse Token}
+\Tree [.ROOT [.S [.@S [.NP [.DT The ] [.NN man ] ] [.VP [.VBZ walks ] [.NP [.DT the ] [.NN dog ] ] ] ] [.. ] ] ]
 \end{block}
+}
 
-\end{frame}
-
-\begin{frame}
-
-\frametitle{Parsing Method}
-
-\begin{itemize}[<+->]
-
-\item The University of Pennsylvania Treebank Project:
-\begin{itemize}[<+->]
-
-\item Defines notation for constituent trees.
-\item Parses sentences from the Wall Street Journal by hand.
-
-\end{itemize}
-
-\item The Berkeley Parser is software that guesses how to parse a sentence from the notation and examples specified by the Penn Treebank.
-
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}
-
-\frametitle{Compilation}
-
-\begin{itemize}[<+->]
-
-\item Extract facts from each constituent tree.
-
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}[fragile]
-
-% In this example, the man is the subject and the dog is the object.
-\begin{block}{Example: Compilation}
-\begin{lstlisting}
-scala> compile("The man walks the dog.").shows
-res0: String = [<compound:walk(<atom:man>, <atom:dog>)>]
-\end{lstlisting}
+\only<3>{
+\begin{block}{Compile Token}
+\Tree [.ROOT [.S [.@S [.NP [.DT The ] [.NN man ] ] [.$\langle$predicate:walk$\rangle$ [.NP [.DT the ] [.NN dog ] ] ] ] [.. ] ] ]
 \end{block}
+}
+
+\only<4>{
+\begin{block}{Compile Token}
+\Tree [.ROOT [.$\langle$predicate:walk$\rangle$ [.NP [.DT The ] [.NN man ] ] [.NP [.DT the ] [.NN dog ] ] ] ]
+\end{block}
+}
+
+\only<5>{
+\begin{block}{Compile Token}
+\Tree [.ROOT [.$\langle$predicate:walk$\rangle$ $\langle$argument:man$\rangle$ $\langle$argument:dog$\rangle$ ] ]
+\end{block}
+}
+
+\only<6>{
+\begin{block}{Output Fact} walk(man, dog).\end{block}
+}
 
 \end{frame}
-
-\begin{frame}
-
-\frametitle{Compilation Method}
-
-Pattern match on the constituent trees. Define patterns for:
-
-\begin{enumerate}[<+->]
-
-\item Extracting nouns from noun phrases (NP).
-\item Extracting predicates and nouns from verb phrases (VP).
-\item Extracting facts from complete clauses (S), making logical
-assertions with nouns and predicates.
-
-\end{enumerate}
-
-\end{frame}
-
 
 \section{Results \& Discussion}
 
@@ -301,7 +313,7 @@ assertions with nouns and predicates.
 \framesubtitle{A preview of CREA's knowledge base, compiled from
 PubMed abstracts.}
 
-\href{http://markfarrell.ca/creal}{\includegraphics[width=1.0\linewidth]{results.png}}
+\href{http://markfarrell.ca/creal}{\includegraphics[width=1.0\linewidth]{images/results.png}}
 
 \end{frame}
 
