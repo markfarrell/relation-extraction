@@ -163,30 +163,33 @@ and otherwise explore the knowledge base.
 
 \end{frame}
 
-\begin{frame}
-
-\frametitle{Summary of Progress}
-
-\begin{itemize}[<+->]
-
-\item Devised and implemented the method for finding simple facts
-in sentences, extracting them in a structured format.
-
-% Projects like Carnegie Mellon's "Read The Web" appear to be able
-% to extract simple facts from sentences, but their software is
-% neither open-source nor downloadable.
-
-\item Began work on a web viewer for the knowledge base.
-
-\end{itemize}
-
-\end{frame}
-
 \section{Extracting Facts in a Structured Format}
 
 \begin{frame}
 
-\frametitle{Extracting Facts in a Structured Format}
+\frametitle{Information Extraction and Visualization}
+\framesubtitle{Overview of Progress}
+
+\centering
+
+\begin{block}{Input}
+... The enzymatic cross-links \textcolor{orange}{pyridinoline} and \textcolor{orange}{desmosine} were \textcolor{pink}{examined}
+as \textcolor{orange}{candidate sensitizer chromophores} \textcolor{pink}{contained} in \textcolor{orange}{collagen} and \textcolor{orange}{elastin},
+respectively. ...
+\end{block}
+
+\begin{block}{Output}
+\centering
+\includegraphics[width=0.5\linewidth]{images/elastinneighborhood.png}
+\end{block}
+
+\end{frame}
+
+
+\begin{frame}
+
+\frametitle{Information Extraction}
+\framesubtitle{Method}
 
 \begin{description}[<+->]
 
@@ -303,6 +306,13 @@ The man walks the dog.
 \begin{block}{Output Fact} walk(man, dog).\end{block}
 }
 
+\only<7>{
+\begin{block}{Output Fact}
+\centering
+\includegraphics[width=.5\linewidth]{images/manwalkdog.png}
+\end{block}
+}
+
 \end{frame}
 
 \section{Results \& Discussion}
@@ -319,14 +329,11 @@ PubMed abstracts.}
 
 \begin{frame}
 
-\frametitle{Performance}
-\framesubtitle{Parallelization}
+\frametitle{High Performance}
+\framesubtitle{Facts can be extracted from many sentences at the same time.}
+% It is possible to extract facts from many sentences at the same time.
 
-\begin{itemize}[<+->]
-
-\item It is possible to extract facts from many sentences at the same time.
-
-\end{itemize}
+\includegraphics[width=1.0\linewidth]{images/parallel.jpg}
 
 \end{frame}
 
