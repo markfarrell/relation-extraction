@@ -203,7 +203,7 @@ minimum height=2em]
 
 \begin{frame}
 
-\frametitle{Knowledge Extraction and Visualization}
+\frametitle{Knowledge Extraction}
 \framesubtitle{Overview of Progress}
 
 \centering
@@ -369,81 +369,43 @@ The man walks the dog.
 
 \begin{frame}
 
-\frametitle{Accuracy}
+\frametitle{What Next?}
 
-\begin{itemize}[<+->]
+\centering
 
-\item Filter spam sentences from documents.
+\begin{tabular}{c | c}
+Task &  Assignees\\
+\hline
+\textcolor{green}{Research Direction} & \textcolor{green}{Steve Garan} \\
+\textcolor{yellow}{Knowledge Extraction} & \textcolor{yellow}{Mark Farrell} \\
+\textcolor{yellow}{Text Article Retrieval} & \textcolor{yellow}{Grace Park, Jeremy Wan} \\
+\textcolor{yellow}{Knowledge Visualization} & \textcolor{yellow}{Mark Farrell} \\
+\textcolor{orange}{Graphical User Interface} & \textcolor{orange}{Mark Farrell} \\
+\textcolor{red}{Biomedical Spam Filtering} & \textcolor{red}{---} \\
+\textcolor{red}{Automated Reasoning} & \textcolor{red}{---} \\
+\end{tabular}
 
-\item The accuracy of the parser could be optimized:
-\begin{itemize}[<+->]
 
-\item Should be trained to identify more nouns from the biomedical
-domain.
+% Filter spam sentences from documents.
+% The accuracy of the parser could be optimized:
+% Should be trained to identify more nouns from the biomedical domain.
+% Define more patterns for extracting facts: The software succeeds around 50\% of the time.
 
-\end{itemize}
 
-\item Define more patterns for extracting facts:
-\begin{itemize}[<+->]
+% Support negated clauses and conditional logic.
+% Facts can contradict each other:
+% Store the probability that is true as the weight of its edge on the
+% knowledge base's graph.
+% Scale and launch the software service.
 
-\item The software succeeds around 50\% of the time.
-
-\end{itemize}
-
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}
-
-\frametitle{Missing Features}
-
-\begin{itemize}[<+->]
-
-\item Support negated clauses and conditional logic.
-
-\item Facts can contradict each other:
-\begin{itemize}[<+->]
-\item Store the probability that is true as the weight of its edge on the
-knowledge base's graph.
-\end{itemize}
-
-\item Scale and launch the software service.
-
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}
-
-\frametitle{Conclusion}
-
-\begin{itemize}[<+->]
-
-\item Demonstrated a method for automatically constructing CREA's
-knowledge base on aging.
-\item Showed how to extract facts from English text in the knowledge
-base's structured format.
-\item Discussed the need to improve software accuracy by lensing in on
-the biomedical domain.
-\item Suggested how the software implementation can be scaled for
-production usage.
-
-\end{itemize}
-
-\end{frame}
-
-\begin{frame}
-
-\frametitle{Acknowledgements}
-
-\begin{description}
-
-\item[Steve Garan] Bioinformatics Research Director
-\item[Jeremy Wan] Text Aggregation Development
-\item[Grace Park] Text Aggregation Development
-
-\end{description}
+% Demonstrated a method for automatically constructing CREA's
+% knowledge base on aging.
+% Showed how to extract facts from English text in the knowledge
+% base's structured format.
+% Discussed the need to improve software accuracy by lensing in on
+% the biomedical domain.
+% Suggested how the software implementation can be scaled for
+% production usage.
 
 \end{frame}
 
