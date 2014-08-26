@@ -4,6 +4,8 @@
 \usepackage{listings}
 \usepackage{pgf}
 \usepackage{qtree}
+\usepackage{tikz}
+\usetikzlibrary{shapes, arrows}
 \usepackage{gb4e}
 
 \title{Constructing a Knowledge Base on Aging}
@@ -24,7 +26,7 @@ University of California, Berkeley
 %\logo{\includegraphics[width=30px]{images/logo.png}}
 
 \date{September 4th, 2014}
-\subject{Natural Language Processing}
+\subject{Bioinformatics}
 
 \AtBeginSection[]
 {
@@ -99,6 +101,7 @@ showstringspaces=false
 \framesubtitle{Prof. Garan Emailed the University of Waterloo Computer Science Club}
 
 \centering
+
 \begin{tabular}{c c}
 \includegraphics[width=0.40\linewidth]{images/malto_webcam.png} &
 \includegraphics[width=0.40\linewidth]{images/bitshift_webcam.png}\\
@@ -123,58 +126,92 @@ Health & Bioinformatics\\
 
 \end{frame}
 
-\section{Automatically Constructing Knowledge Bases}
+\section{Understanding Aging}
 
 \begin{frame}
 
-\frametitle{Overview}
+\frametitle{What does CREA want to do?}
+\framesubtitle{CREA Wants to Understand Aging and Increase Human Lifespan}
 
-\begin{itemize}[<+->]
+\centering
 
-\item CREA is constructing a knowledge base to study and
-understand the human aging process.
-\item New discoveries are published quickly and in large
-volume.
-\item It is infeasible to construct the knowledge base by
-hand.
-\item Working on software to construct the knowledge base
-automatically.
+\includegraphics[width=0.75\linewidth]{images/aging.jpg}
 
-\end{itemize}
+% New discoveries are published quickly and in large volume.
+% It is infeasible to construct the knowledge base by hand.
+% Working on software to construct the knowledge base automatically.
 
 \end{frame}
 
 \begin{frame}
 
-\frametitle{Introduction}
-\framesubtitle{How to Automatically Construct the Knowledge Base}
+\frametitle{Why is it Difficult to Understand Aging?}
 
-\begin{itemize}[<+->]
-
-\item Routinely search for keywords related to aging, dowloading
-text articles from sources like PubMed.
-\item Build a spam filter to get rid of non-scientific sentences.
-\item Extract scientific facts from the sentences and save them
-in a structured format.
-\item Provide a graphical interface that allows users to search
-and otherwise explore the knowledge base.
-
-\end{itemize}
+\centering
+\only<1>{\includegraphics[width=.75\linewidth]{images/pubmed.png}}
+\only<2>{\includegraphics[width=.5\linewidth]{images/cascadeofbooks.jpg}}
 
 \end{frame}
 
-\section{Extracting Facts in a Structured Format}
+\begin{frame}
+
+\frametitle{How can CREA Understand Aging?}
+\framesubtitle{Build a Knowledge Base that Describes and Reasons about Aging}
+
+\centering
+\only<1>{\includegraphics[width=1.0\linewidth]{images/knowledgebase.jpg}}
+\only<2>{
+
+\tikzstyle{decision} = [diamond, draw, fill=blue!60,
+text width=4.5em, text badly centered, node distance=3cm, inner sep=0pt]
+\tikzstyle{block} = [rectangle, draw, fill=blue!60,
+text width=5em, text centered, rounded corners, minimum height=4em]
+\tikzstyle{line} = [draw, -latex']
+\tikzstyle{cloud} = [draw, ellipse,fill=red!60, node distance=3cm,
+minimum height=2em]
+
+\begin{tikzpicture}[scale=1, node distance = 2cm, auto]
+\node [block] (acquire) {Acquire Biomedical Articles};
+\node [block, below of=acquire] (extract) {Extract Knowledge};
+\node [cloud, right of=acquire] (machine) {Machine};
+\node [cloud, left of=acquire, node distance=4cm] (human) {Human};
+\node [block, below of=human] (gui) {Graphical User Interface};
+\node [decision, below of=extract] (belongs) {Is about Aging?};
+\node [block, left of=belongs, node distance=4cm] (update) {Update Aging Theory};
+\node [block, right of=belongs, node distance=4cm] (discard) {Discard};
+\path [line] (acquire) -- (extract);
+\path [line, dashed] (machine) -- (acquire);
+\path [line, dashed] (extract) -| (machine);
+\path [line] (extract) -- (belongs);
+\path [line] (belongs) -- node{yes}(update);
+\path [line] (belongs) -- node{no}(discard);
+\path [line, dashed] (human) -- (acquire);
+\path [line, dashed] (human) -- (gui);
+\path [line] (gui) -- (update);
+\end{tikzpicture}
+
+}
+
+% Routinely search for keywords related to aging, dowloading text articles from sources like PubMed.
+% Build a spam filter to get rid of non-scientific sentences.
+% Extract scientific facts from the sentences and save them in a structured format.
+% Provide a graphical interface that allows users to search and explore the knowledge base.
+
+\end{frame}
+
+\section{Knowledge Extraction}
 
 \begin{frame}
 
-\frametitle{Information Extraction and Visualization}
+\frametitle{Knowledge Extraction and Visualization}
 \framesubtitle{Overview of Progress}
 
 \centering
 
 \begin{block}{Input}
-... The enzymatic cross-links \textcolor{orange}{pyridinoline} and \textcolor{orange}{desmosine} were \textcolor{pink}{examined}
-as \textcolor{orange}{candidate sensitizer chromophores} \textcolor{pink}{contained} in \textcolor{orange}{collagen} and \textcolor{orange}{elastin},
+... The \textcolor{orange}{pyridinoline} and \textcolor{orange}{desmosine}
+were \textcolor{pink}{examined} as \textcolor{orange}{candidate sensitizer chromophores}
+\textcolor{pink}{contained} in \textcolor{orange}{collagen} and \textcolor{orange}{elastin},
 respectively. ...
 \end{block}
 
@@ -185,10 +222,9 @@ respectively. ...
 
 \end{frame}
 
-
 \begin{frame}
 
-\frametitle{Information Extraction}
+\frametitle{Knowledge Extraction}
 \framesubtitle{Method}
 
 \begin{description}[<+->]
@@ -269,7 +305,7 @@ SBAR & Conjunction + Clause & that the dog walks\\
 
 \begin{frame}
 
-\frametitle{Information Extraction}
+\frametitle{Knowledge Extraction}
 \framesubtitle{Example}
 
 \only<1>{
@@ -303,10 +339,6 @@ The man walks the dog.
 }
 
 \only<6>{
-\begin{block}{Output Fact} walk(man, dog).\end{block}
-}
-
-\only<7>{
 \begin{block}{Output Fact}
 \centering
 \includegraphics[width=.5\linewidth]{images/manwalkdog.png}
@@ -315,13 +347,10 @@ The man walks the dog.
 
 \end{frame}
 
-\section{Results \& Discussion}
-
 \begin{frame}
 
 \frametitle{Software Demonstration}
-\framesubtitle{A preview of CREA's knowledge base, compiled from
-PubMed abstracts.}
+\framesubtitle{A preview of CREA's knowledge base, compiled from PubMed abstracts.}
 
 \href{http://markfarrell.ca/creal}{\includegraphics[width=1.0\linewidth]{images/results.png}}
 
@@ -330,12 +359,13 @@ PubMed abstracts.}
 \begin{frame}
 
 \frametitle{High Performance}
-\framesubtitle{Facts can be extracted from many sentences at the same time.}
-% It is possible to extract facts from many sentences at the same time.
+\framesubtitle{Knowledge can be extracted from many sentences at the same time.}
 
 \includegraphics[width=1.0\linewidth]{images/parallel.jpg}
 
 \end{frame}
+
+\section{What Next?}
 
 \begin{frame}
 
@@ -400,6 +430,32 @@ the biomedical domain.
 production usage.
 
 \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+
+\frametitle{Acknowledgements}
+
+\begin{description}
+
+\item[Steve Garan] Bioinformatics Research Director
+\item[Jeremy Wan] Text Aggregation Development
+\item[Grace Park] Text Aggregation Development
+
+\end{description}
+
+\end{frame}
+
+\begin{frame}
+
+\frametitle{Get Involved}
+\framesubtitle{Contact Me for More Information}
+
+\begin{description}
+\item[Email] m4farrel@csclub.uwaterloo.ca
+\item[Website] markfarrell.ca
+\end{description}
 
 \end{frame}
 
