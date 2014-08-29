@@ -50,7 +50,9 @@ showstringspaces=false
 
 \noautomath
 
-%\setbeameroption{show notes}
+\setbeameroption{show notes}
+\setbeamercolor{note page}{bg=white!90!black, fg=black}
+
 
 \begin{document}
 
@@ -160,7 +162,19 @@ Health & Bioinformatics\\
 
 \end{frame}
 
+\note{
+So, why was I interested in research at CREA? I've worked on some
+software projects involving reverse engineering network protocols and
+game development in spare time. And, I felt that CREA was offering me an
+opportunity to hone my interests, allowing me to deepen knowledge of computing
+beyond what I would likely accomplish on my own.
+}
+
 \section{Understanding Aging}
+
+\note{
+Ok, so let's talk about 'Understanding Aging' and where I come in.
+}
 
 \begin{frame}
 
@@ -171,19 +185,42 @@ Health & Bioinformatics\\
 
 \includegraphics[width=0.75\linewidth]{images/aging.jpg}
 
-% New discoveries are published quickly and in large volume.
-% It is infeasible to construct the knowledge base by hand.
-% Working on software to construct the knowledge base automatically.
-
 \end{frame}
+
+\note{
+As you might already know, CREA wants to understand aging and increase
+human lifespan.
+}
 
 \begin{frame}
 
 \frametitle{Why is it Difficult to Understand Aging?}
 
 \centering
-\only<1>{\includegraphics[width=.75\linewidth]{images/pubmed.png}}
-\only<2>{\includegraphics[width=.5\linewidth]{images/cascadeofbooks.jpg}}
+\only<1>{
+
+\includegraphics[width=.75\linewidth]{images/pubmed.png}
+
+\note{
+But, Why is it Difficult to Understand Aging?
+If you look at this figure here, you can see that not only is there a large
+volume of publications made on the subject (on the order of ~300 000), but also the
+rate at which new publications are being made has been doubling over the past few
+decades.
+}
+
+}
+
+\only<2>{
+
+\includegraphics[width=.5\linewidth]{images/cascadeofbooks.jpg}
+
+\note{
+So, we need a better way to manage past and future knowledge that will help us understand
+aging; this is a problem.
+}
+
+}
 
 \end{frame}
 
@@ -193,7 +230,19 @@ Health & Bioinformatics\\
 \framesubtitle{Build a Knowledge Base that Describes and Reasons about Aging}
 
 \centering
-\only<1>{\includegraphics[width=1.0\linewidth]{images/knowledgebase.jpg}}
+
+\only<1>{
+
+\includegraphics[width=1.0\linewidth]{images/knowledgebase.jpg}
+
+\note{
+And that's where I come in. I've been trying to work on a solution to this problem, which
+involves building a knowledge base, software, that can assist humans in order to understand
+aging and develop theories about it.
+}
+
+}
+
 \only<2>{
 
 \tikzstyle{decision} = [diamond, draw, fill=blue!60,
@@ -224,16 +273,25 @@ minimum height=2em]
 \path [line] (gui) -- (update);
 \end{tikzpicture}
 
+\note{
+Have a look at this figure: the idea behind the software project I'm working on is to get a machine
+to read text and try to understand aging, just like how human's can try understand aging by
+reading texts and journal articles. And also, to present a machine's understanding of aging to humans
+and allow them correct and modify the machine's understanding of aging in a intuitive way.
 }
 
-% Routinely search for keywords related to aging, dowloading text articles from sources like PubMed.
-% Build a spam filter to get rid of non-scientific sentences.
-% Extract scientific facts from the sentences and save them in a structured format.
-% Provide a graphical interface that allows users to search and explore the knowledge base.
+}
 
 \end{frame}
 
 \section{Knowledge Extraction}
+
+\note{
+To date, I've made quite a bit of progress in allowing a machine to read and extract knowledge from
+text articles, and have also been able to display that knowledge in a manner that helps humans understand aging.
+However, I haven't made much progress on allowing the machine to form a theory of aging and reason about aging
+itself; i.e. it can't really decide what knowledge is relevant to aging and what it is not.
+}
 
 \begin{frame}
 
@@ -254,7 +312,30 @@ respectively. ...
 \includegraphics[width=0.5\linewidth]{images/elastinneighborhood.png}
 \end{block}
 
+\note{
+As Steve Garan put it, aging can be looked at as the degradation over
+time and eventual failure of an organism's systems. So let's start off
+talking about knowledge extraction with an excerpt from a journal abstract
+that is related to elastin degradation. Have a look at the example input sentence:
+I've highlighted the literal nouns found in the sentence and the literal verbs that
+relate nouns to one another. Now look at the output: knowledge extraction is the process
+of identifying literal nouns and relating them to each other, i.e. making logical assertions
+about the actions that they can perform on one another.
+}
+
 \end{frame}
+
+\note{
+Natural language data is rather unstructured,
+and so I have to decide on what components of natural language are essential for describing how
+systems and processes work when translating it into a structured format that a machine can understand
+and reason about. There are problems with the same literal nouns and verbs being used to represent
+multiple concepts in natural language. Take people's names for example: i.e. two different people
+can have the same name. However, I need to be able to blindly extract knowledge first before
+worrying about those problems, and extracting knowledge blindly is still quite useful for us when
+it comes to understanding and reasoning about aging; we just have to be aware that there could be
+problems.
+}
 
 \begin{frame}
 
@@ -270,6 +351,11 @@ respectively. ...
 \end{description}
 
 \end{frame}
+
+\note{
+And this is how my software extracts knowledge from text articles. Read the sentences left to
+right, one at a time, and extract knowledge from each sentence.
+}
 
 \begin{frame}
 
@@ -418,28 +504,6 @@ Task &  Assignees\\
 \textcolor{red}{Biomedical Spam Filtering} & \textcolor{red}{---} \\
 \textcolor{red}{Automated Reasoning} & \textcolor{red}{---} \\
 \end{tabular}
-
-
-% Filter spam sentences from documents.
-% The accuracy of the parser could be optimized:
-% Should be trained to identify more nouns from the biomedical domain.
-% Define more patterns for extracting facts: The software succeeds around 50\% of the time.
-
-
-% Support negated clauses and conditional logic.
-% Facts can contradict each other:
-% Store the probability that is true as the weight of its edge on the
-% knowledge base's graph.
-% Scale and launch the software service.
-
-% Demonstrated a method for automatically constructing CREA's
-% knowledge base on aging.
-% Showed how to extract facts from English text in the knowledge
-% base's structured format.
-% Discussed the need to improve software accuracy by lensing in on
-% the biomedical domain.
-% Suggested how the software implementation can be scaled for
-% production usage.
 
 \end{frame}
 
