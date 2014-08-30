@@ -354,7 +354,9 @@ problems.
 
 \note{
 And this is how my software extracts knowledge from text articles. Read the sentences left to
-right, one at a time, and extract knowledge from each sentence.
+right, one at a time, and extract knowledge from each sentence. Examine the grammatical structure of
+each sentence and translate it into a format that a machine can understand and reason about; that's knowledge
+extraction.
 }
 
 \begin{frame}
@@ -384,6 +386,13 @@ VBG & Gerund Verb & falling\\
 
 \end{frame}
 
+\note{
+But, there needs to be some way for a machine to examine sentence structure. Let's first
+talk about how linguists might formally examine sentence structure, so that it becomes obvious
+how a machine might do so as well. First, they'd label what part-of-speech each word is in a sentence: e.g.
+"blue" is an adjective, "dog" is a singular noun and so on and so forth.
+}
+
 \begin{frame}
 
 \frametitle{Constituent Tree Tags}
@@ -405,6 +414,10 @@ CONJP & Conjunctive Phrase & as well as \\
 
 \end{frame}
 
+\note{
+Then, they'd label groups of words that contain certains parts-of-speech - these are called phrases.
+For example "the woman" is a phrase, containing a determiner and singular noun.
+}
 
 \begin{frame}
 
@@ -423,6 +436,12 @@ SBAR & Conjunction + Clause & that the dog walks\\
 
 \end{frame}
 
+\note{
+And lastly, groups of phrases that, together, form a logical proposition, are called clauses.
+For instance "the dog walks" is a clause because, when read, it makes a logical assertion about
+the dog.
+}
+
 \begin{frame}
 
 \frametitle{Knowledge Extraction}
@@ -432,12 +451,27 @@ SBAR & Conjunction + Clause & that the dog walks\\
 \begin{block}{Input Token}
 The man walks the dog.
 \end{block}
+
+\note{
+Now let's look at this example sentence and its grammatical structure.
+}
+
 }
 
 \only<2>{
 \begin{block}{Parse Token}
 \Tree [.ROOT [.S [.@S [.NP [.DT The ] [.NN man ] ] [.VP [.VBZ walks ] [.NP [.DT the ] [.NN dog ] ] ] ] [.. ] ] ]
 \end{block}
+
+\note{
+Based on the information I just gave you, we could have created this illustration of
+the sentence's structure ourselves. But, a machine needs to be able to do this as well,
+it needs to be able to parse sentences and generate constituent trees, in order to
+extract knowledge from them. So, there are several software tools available for training a machine
+to parse sentences, some using different methods than others; I have been using software called The
+Berkeley Parser, which worked fairly well, i.e. it has been fairly accurate when parsing sentences.
+}
+
 }
 
 \only<3>{
