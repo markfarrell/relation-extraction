@@ -1,5 +1,7 @@
 \documentclass[mathserif]{beamer}
-\usetheme{Berkeley}
+\usetheme{Warsaw}
+\useoutertheme{miniframes}
+\useinnertheme{rectangles}
 \usecolortheme{albatross}
 \usepackage{listings}
 \usepackage{pgf}
@@ -8,20 +10,29 @@
 \usetikzlibrary{shapes, arrows}
 \usepackage{gb4e}
 
+\titlegraphic{
+\vspace{1.0em}
+\includegraphics[height=1.5em]{images/ucberkeley}
+\hfill
+\includegraphics[height=1.5em]{images/berkeleylab}
+}
 
-\title{Constructing a Knowledge Base on Aging}
-\subtitle{An Automated Approach}
+\title[Understanding the Aging Process with Artificial Intelligence]{Understanding the Aging Process}
+\subtitle{An Automated Approach that Uses Artificial Intelligence}
+
 \author{Mark Farrell}
 \institute{
 
 Bioinformatics Researcher \and
 
-\inst{}%
 Center for Research and Education on Aging \\
 Lawrence Berkeley National Laboratory \\
 University of California, Berkeley
 
 }
+
+\date{September 4th, 2014}
+\subject{Bioinformatics}
 
 \note{
 Good afternoon everybody. My name's Mark Farrell and I've been doing research for CREA
@@ -31,12 +42,9 @@ The presentation should be about 20 minutes in length and there will be an oppor
 questions at the end.
 }
 
-\date{September 4th, 2014}
-\subject{Bioinformatics}
-
 \AtBeginSection[]
 {
-\begin{frame}
+  \begin{frame}[plain]
 \frametitle{Outline}
 \tableofcontents[currentsection]
 \end{frame}
@@ -53,10 +61,9 @@ showstringspaces=false
 \setbeameroption{show notes}
 \setbeamercolor{note page}{bg=white!90!black, fg=black}
 
-
 \begin{document}
 
-\begin{frame}
+\begin{frame}[plain]
 \titlepage
 \end{frame}
 
@@ -88,7 +95,8 @@ working as a co-op student for Defence R\&D Canada.
 \begin{frame}
 \frametitle{Where I'm from}
 \framesubtitle{Atlantic Canada}
-\includegraphics[width=1.0\linewidth]{images/map.png}
+\centering
+\includegraphics[width=0.95\linewidth]{images/map.png}
 \end{frame}
 
 \note{
@@ -100,7 +108,7 @@ Berkeley.
 
 \frametitle{What I'm Studying}
 
-\begin{columns}[l]
+\begin{columns}
 \begin{column}{.7\textwidth}
 \begin{description}
 \item[Year] 2
@@ -170,7 +178,7 @@ opportunity to hone my interests, allowing me to deepen knowledge of computing
 beyond what I would likely accomplish on my own.
 }
 
-\section{Understanding Aging}
+\section{Understanding the Aging Process}
 
 \note{
 Ok, so let's talk about 'Understanding Aging' and where I come in.
@@ -277,7 +285,7 @@ minimum height=2em]
 Have a look at this figure: the idea behind the software project I'm working on is to get a machine
 to read text and try to understand aging, just like how human's can try understand aging by
 reading texts and journal articles. And also, to present a machine's understanding of aging to humans
-and allow them correct and modify the machine's understanding of aging in a intuitive way.
+and allow them correct and modify the machine's understanding of aging in an intuitive way.
 }
 
 }
@@ -342,7 +350,7 @@ problems.
 \frametitle{Knowledge Extraction}
 \framesubtitle{Method}
 
-\begin{description}[<+->]
+\begin{description}
 
 \item[Tokenization] Input a text document and read it, one sentence at a time.
 \item[Parsing] For each sentence, generate a constituent tree that describes its phrase structure.
@@ -465,7 +473,7 @@ Now let's look at this example sentence and its grammatical structure.
 
 \note{
 Based on the information I just gave you, we could have created this illustration of
-the sentence's structure ourselves. But, a machine needs to be able to do this as well,
+the sentence's structure ourselveshfill. But, a machine needs to be able to do this as well,
 it needs to be able to parse sentences and generate constituent trees, in order to
 extract knowledge from them. So, there are several software tools available for training a machine
 to parse sentences, some using different methods than others; I have been using software called The
