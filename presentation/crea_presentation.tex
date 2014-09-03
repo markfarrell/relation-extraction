@@ -91,20 +91,9 @@ So, I'm going to start off by introducing myself.
 }
 
 \begin{frame}
-\frametitle{Where I'm from}
-\framesubtitle{Atlantic Canada}
-\centering
-\includegraphics[height=.75\textheight]{images/map.png}
-\end{frame}
-
-\note{
-I grew up on Canada's East Coast, and was back home again this summer.
-So, I've had to travel quite a bit over the past few days in order to arrive here at Berkeley.
-}
-
-\begin{frame}
 
 \frametitle{What I'm Studying}
+\framesubtitle{Computer Science}
 
 \begin{columns}
 \begin{column}{.7\textwidth}
@@ -124,8 +113,19 @@ So, I've had to travel quite a bit over the past few days in order to arrive her
 \end{frame}
 
 \note{
-And in case you're wondering, I'm going into my second year of undergraduate studies
-at the University of Waterloo, majoring in Computer Science.
+I'm going into my second year of undergraduate studies at the University of Waterloo, majoring in Computer Science.
+}
+
+\begin{frame}
+\frametitle{Where I'm from}
+\framesubtitle{Atlantic Canada}
+\centering
+\includegraphics[height=.75\textheight]{images/map.png}
+\end{frame}
+
+\note{
+I grew up on Canada's East Coast, and was back home again this summer.
+So, I've had to travel quite a bit over the past few days in order to arrive here at Berkeley.
 }
 
 \begin{frame}
@@ -153,29 +153,6 @@ be President back in the 80s. It looked interesting, so I began working
 with him, meeting weekly on Skype to discuss progress.
 }
 
-\begin{frame}
-
-\frametitle{Why was I Interested in Research at CREA?}
-
-\centering
-\begin{tabular}{ c | c }
-Hobby & CREA Research \\
-\hline
-Reverse Engineering & Natural Language Processing\\
-Game Development & Artificial Intelligence\\
-Health & Bioinformatics\\
-\end{tabular}
-
-\end{frame}
-
-\note{
-So, why was I interested in research at CREA? I've worked on some
-software projects involving reverse engineering network protocols and
-game development in my spare time. And, I felt that CREA was offering me an
-opportunity to hone my interests, allowing me to deepen my knowledge of computing
-beyond what I would likely accomplish on my own.
-}
-
 \section{Understanding the Aging Process}
 
 \note{
@@ -201,6 +178,7 @@ human lifespan.
 \begin{frame}
 
 \frametitle{Why is it Difficult to Understand Aging?}
+\framesubtitle{High Number of Publications; Growing Rate of Discovery}
 
 \centering
 \only<1>{
@@ -219,7 +197,7 @@ decades.
 
 \only<2>{
 
-\includegraphics[width=.5\linewidth]{images/cascadeofbooks.jpg}
+\includegraphics[height=.4\textheight]{images/cascadeofbooks}
 
 \note{
 So, we need a better way to manage past and future knowledge that will help us understand
@@ -236,20 +214,6 @@ aging; this is a problem.
 \framesubtitle{Build a Knowledge Base that Describes and Reasons about Aging}
 
 \centering
-
-\only<1>{
-
-\includegraphics[height=.75\textheight]{images/knowledgebase.jpg}
-
-\note{
-And that's where I come in. I've been trying to work on a solution to this problem, which
-involves building a knowledge base, software, that can assist humans in order to understand
-aging and develop theories about it.
-}
-
-}
-
-\only<2>{
 
 \tikzstyle{decision} = [diamond, draw, fill=blue!60,
 text width=4.5em, text badly centered, node distance=2.5cm, inner sep=0pt]
@@ -280,13 +244,17 @@ minimum height=2em]
 \end{tikzpicture}
 
 \note{
+
+And that's where I come in. I've been trying to work on a solution to this problem, which
+involves building a knowledge base, software, that can assist humans in order to understand
+aging and develop theories about it.
+
 Have a look at this figure: the idea behind the software project I'm working on is to get a machine
 to read text and try to understand aging, just like how human's can try understand to aging by
 reading texts and journal articles. And also, to present a machine's understanding of aging to humans
 and allow them correct and modify the machine's understanding of aging in an intuitive way.
 }
 
-}
 
 \end{frame}
 
@@ -301,10 +269,17 @@ itself; i.e. it can't really decide what knowledge is relevant to aging and what
 
 \begin{frame}
 
-\frametitle{Knowledge Extraction}
-\framesubtitle{Overview of Progress}
+\frametitle{What is Knowledge Extraction?}
 
 \centering
+
+\only<1>{
+\framesubtitle{Knowledge Extraction is the Act of Reading and Understanding Text}
+\includegraphics[height=.75\textheight]{images/knowledgebase.jpg}
+}
+
+\only<2>{
+\framesubtitle{An Example of Knowledge Extraction}
 
 \begin{block}{Input}
 ... The \textcolor{orange}{pyridinoline} and \textcolor{orange}{desmosine}
@@ -317,6 +292,8 @@ respectively. ...
 \centering
 \includegraphics[height=.4\textheight]{images/elastinneighborhood}
 \end{block}
+
+}
 
 \note{
 As Steve Garan put it, aging can be looked at as the degradation over
@@ -331,22 +308,10 @@ about the actions that they can perform on one another.
 
 \end{frame}
 
-\note{
-Natural language data is rather unstructured,
-and so I have to decide on what components of natural language are essential for describing how
-systems and processes work when translating it into a structured format that a machine can understand
-and reason about. There are problems with the same literal nouns and verbs being used to represent
-multiple concepts in natural language. Take people's names for example: i.e. two different people
-can have the same name. However, I need to be able to blindly extract knowledge first before
-worrying about those problems, and extracting knowledge blindly is still quite useful for us when
-it comes to understanding and reasoning about aging; we just have to be aware that there could be
-problems.
-}
-
 \begin{frame}
 
-\frametitle{Knowledge Extraction}
-\framesubtitle{Method}
+\frametitle{How is Knowledge Extracted from Text?}
+\framesubtitle{An Overview of Knowledge Extraction}
 
 \begin{description}
 
@@ -358,20 +323,48 @@ problems.
 
 \end{frame}
 
-\note{
-And this is how my software extracts knowledge from text articles. Read the sentences left to
-right, one at a time, and extract knowledge from each sentence. Examine the grammatical structure of
-each sentence and translate it into a format that a machine can understand and reason about; that's knowledge
-extraction.
-}
-
 \begin{frame}
 
-\frametitle{Constituent Tree Tags}
-\framesubtitle{Word Level}
+\frametitle{How is Knowledge Extracted from Text?}
+
+\only<1>{
+\framesubtitle{An Example of How Knowledge is Extracted From Text}
+\begin{block}{Input Token - A Sentence}
+The man walks the dog.
+\end{block}
+
+\begin{block}{Output Fact - An Understanding of the Sentence}
+\centering
+\includegraphics[height=.25\textheight]{images/manwalkdog}
+\end{block}
+
+}
+
+\only<2>{
+
+\framesubtitle{Tokenization: Begin by Reading a Sentence}
+
+The man walks the dog.
+
+}
+
+\only<3>{
+
+\framesubtitle{Parsing: Generate a Constituent Tree for the Sentence}
+
+\tiny
+\Tree [.ROOT [.S [.@S [.NP [.DT The ] [.NN man ] ] [.VP [.VBZ walks ] [.NP [.DT the ] [.NN dog ] ] ] ] [.. ] ] ]
+
+}
+
+\only<4>{
+
+\framesubtitle{A Brief Lesson on Parsing Sentences}
 
 \centering
-
+\begin{block}{Assign each Word a Part-of-Speech Tag}
+\centering
+\tiny
 \begin{tabular}{c | c | c}
 Tag & Meaning & Example \\
 \hline
@@ -390,22 +383,18 @@ VBG & Gerund Verb & falling\\
 ... & ... & ...\\
 \end{tabular}
 
-\end{frame}
+\end{block}
 
-\note{
-But, there needs to be some way for a machine to examine sentence structure. Let's first
-talk about how linguists might formally examine sentence structure, so that it becomes obvious
-how a machine might do so as well. First, they'd label what part-of-speech each word is in a sentence: e.g.
-"blue" is an adjective, "dog" is a singular noun and so on and so forth.
 }
 
-\begin{frame}
+\only<5>{
 
-\frametitle{Constituent Tree Tags}
-\framesubtitle{Phrase Level}
+\framesubtitle{A Brief Lesson on Parsing Sentences}
 
 \centering
 
+\begin{block}{Group Words into Phrases}
+\centering
 \begin{tabular}{c | c | c}
 Tag & Meaning & Example \\
 \hline
@@ -417,21 +406,18 @@ ADJP & Adjective Phrase & blue and red \\
 CONJP & Conjunctive Phrase & as well as \\
 ... & ... & ...\\
 \end{tabular}
+\end{block}
 
-\end{frame}
-
-\note{
-Then, they'd label groups of words that contain certains parts-of-speech - these are called phrases.
-For example "the woman" is a phrase, containing a determiner and singular noun.
 }
 
-\begin{frame}
+\only<6>{
 
-\frametitle{Constituent Tree Tags}
-\framesubtitle{Clause Level}
+\framesubtitle{A Brief Lesson on Parsing Sentences}
 
 \centering
 
+\begin{block}{Group Phrases into Clauses - Containing Facts}
+\centering
 \begin{tabular}{c | c | c}
 Tag & Meaning & Example \\
 \hline
@@ -439,71 +425,91 @@ S & Declarative Clause & the dog walks\\
 SBAR & Conjunction + Clause & that the dog walks\\
 ... & ... & ...\\
 \end{tabular}
-
-\end{frame}
-
-\note{
-And lastly, groups of phrases that, together, form a logical proposition, are called clauses.
-For instance "the dog walks" is a clause because, when read, it makes a logical assertion about
-the dog.
-}
-
-\begin{frame}
-
-\frametitle{Knowledge Extraction}
-\framesubtitle{Example}
-
-\only<1>{
-\begin{block}{Input Token}
-The man walks the dog.
 \end{block}
 
-\note{
-Now let's look at this example sentence and its grammatical structure.
 }
+
+\only<7>{
+
+\framesubtitle{Compilation: Understand the Meaning of the Sentence}
+
+\begin{block}{Find Clauses in the Constituent Tree}
+\tiny
+\Tree [.ROOT [.\textcolor{red}{S} [.\textcolor{red}{@S} [.NP [.DT The ] [.NN man ] ] [.VP [.VBZ walks ] [.NP [.DT the ] [.NN dog ] ] ] ] [.. ] ] ]
+\end{block}
 
 }
 
-\only<2>{
-\begin{block}{Parse Token}
+\only<8>{
+
+\framesubtitle{Compilation: Understand the Meaning of the Sentence}
+
+\begin{block}{Find Predicates - Actions that Relate Literal Nouns to Form Facts}
+
+\tiny
+\Tree [.ROOT [.\textcolor{red}{S} [.\textcolor{red}{@S} [.NP [.DT The ] [.NN man ] ]
+[.\textcolor{red}{VP} [.\textcolor{red}{VBZ} \textcolor{red}{walks} ] [.NP [.DT the ] [.NN dog ] ] ] ] [.. ] ] ]
+\end{block}
+
+}
+
+\only<9>{
+
+\framesubtitle{Compilation: Understand the Meaning of the Sentence}
+
+\begin{block}{Rewrite the Constituent Tree - Include the Predicate}
+
+\tiny
+\Tree [.ROOT [.\textcolor{red}{S} [.\textcolor{red}{@S} [.NP [.DT The ] [.NN man ] ]
+[.\textcolor{green}{$\langle$predicate:walk$\rangle$} [.NP [.DT the ] [.NN dog ] ] ] ] [.. ] ] ]
+\end{block}
+
+}
+
+\only<10>{
+
+\framesubtitle{Compilation: Understand the Meaning of the Sentence}
+
+\begin{block}{Find Literal Nouns}
 \small
-\Tree [.ROOT [.S [.@S [.NP [.DT The ] [.NN man ] ] [.VP [.VBZ walks ] [.NP [.DT the ] [.NN dog ] ] ] ] [.. ] ] ]
+\Tree [.ROOT [.\textcolor{red}{S} [.\textcolor{red}{@S} [.\textcolor{red}{NP} [.DT The ] [.\textcolor{red}{NN} \textcolor{red}{man} ] ]
+[.\textcolor{green}{$\langle$predicate:walk$\rangle$} [.\textcolor{red}{NP} [.DT the ] [.\textcolor{red}{NN} \textcolor{red}{dog} ] ] ] ] [.. ] ] ]
 \end{block}
 
-\note{
-Based on the information I just gave you, we could have created this illustration of
-the sentence's structure ourselves. But, a machine needs to be able to do this as well,
-it needs to be able to parse sentences and generate constituent trees, in order to
-extract knowledge from them. So, there are several software tools available for training a machine
-to parse sentences, some using different methods than others; I have been using software called The
-Berkeley Parser, which worked fairly well, i.e. it has been fairly accurate when parsing sentences.
 }
 
-}
+\only<11>{
 
-\only<3>{
-\begin{block}{Compile Token}
+\framesubtitle{Compilation: Understand the Meaning of the Sentence}
+
+\begin{block}{Rewrite the Constituent Tree - Include Literal Nouns}
 \small
-\Tree [.ROOT [.S [.@S [.NP [.DT The ] [.NN man ] ] [.$\langle$predicate:walk$\rangle$ [.NP [.DT the ] [.NN dog ] ] ] ] [.. ] ] ]
+\Tree [.ROOT [.\textcolor{red}{S} [.\textcolor{red}{@S} \textcolor{cyan}{$\langle$argument:man$\rangle$}
+[.\textcolor{green}{$\langle$predicate:walk$\rangle$} \textcolor{cyan}{$\langle$argument:dog$\rangle$} ] ] [.. ] ] ]
 \end{block}
+
 }
 
-\only<4>{
-\begin{block}{Compile Token}
-\Tree [.ROOT [.$\langle$predicate:walk$\rangle$ [.NP [.DT The ] [.NN man ] ] [.NP [.DT the ] [.NN dog ] ] ] ]
+\only<12>{
+
+\framesubtitle{Compilation: Understand the Meaning of the Sentence}
+
+\begin{block}{Rewrite the Constituent Tree - Apply Arguments to the Predicate to Form a Fact}
+
+\Tree [.ROOT [.\textcolor{green}{$\langle$predicate:walk$\rangle$} \textcolor{cyan}{$\langle$argument:man$\rangle$}
+\textcolor{cyan}{$\langle$argument:dog$\rangle$} ] ]
+
 \end{block}
+
 }
 
-\only<5>{
-\begin{block}{Compile Token}
-\Tree [.ROOT [.$\langle$predicate:walk$\rangle$ $\langle$argument:man$\rangle$ $\langle$argument:dog$\rangle$ ] ]
-\end{block}
-}
+\only<13>{
 
-\only<6>{
+\framesubtitle{Compilation: Understand the Meaning of the Sentence}
+
 \begin{block}{Output Fact}
 \centering
-\includegraphics[width=.5\linewidth]{images/manwalkdog.png}
+\includegraphics[width=.5\linewidth]{images/manwalkdog}
 \end{block}
 }
 
@@ -511,24 +517,13 @@ Berkeley Parser, which worked fairly well, i.e. it has been fairly accurate when
 
 \begin{frame}
 
-\frametitle{Software Demonstration}
-\framesubtitle{A preview of CREA's knowledge base, compiled from PubMed abstracts.}
+\frametitle{Why is Knowledge Extraction Useful for Understanding the Aging Process?}
+\framesubtitle{Let's Examine a Visualization of Knowledge Extracted from PubMed Abstracts to Find Out}
 
 \centering
 \href{http://markfarrell.ca/creal}{
 \includegraphics[height=.75\textheight]{images/results}
 }
-
-\end{frame}
-
-\begin{frame}
-
-\frametitle{High Performance}
-\framesubtitle{Knowledge can be extracted from many sentences at the same time.}
-
-\centering
-
-\includegraphics[height=.75\textheight]{images/parallel.jpg}
 
 \end{frame}
 
