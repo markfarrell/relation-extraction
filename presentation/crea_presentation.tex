@@ -1,4 +1,4 @@
-\documentclass[mathserif]{beamer}
+\documentclass[mathserif, aspectratio=169]{beamer}
 \usetheme{Warsaw}
 \useoutertheme{miniframes}
 \useinnertheme{rectangles}
@@ -44,7 +44,7 @@ questions at the end.
 
 \AtBeginSection[]
 {
-  \begin{frame}[plain]
+\begin{frame}[plain]
 \frametitle{Outline}
 \tableofcontents[currentsection]
 \end{frame}
@@ -58,7 +58,7 @@ showstringspaces=false
 
 \noautomath
 
-\setbeameroption{show notes}
+%\setbeameroption{show notes}
 \setbeamercolor{note page}{bg=white!90!black, fg=black}
 
 \begin{document}
@@ -77,31 +77,29 @@ showstringspaces=false
 \centering
 
 \begin{tabular}{c c}
-\includegraphics[width=0.30\linewidth]{images/starfall.png}&
-\includegraphics[width=0.30\linewidth]{images/rink.jpg} \\
-\includegraphics[angle=270, origin=c, width=0.30\linewidth]{images/alfie.jpg}&
-\includegraphics[angle=270, origin=c, width=0.30\linewidth]{images/camping.jpg}\\
+\includegraphics[width=.2\linewidth]{images/starfall.png}&
+\includegraphics[width=.2\linewidth]{images/rink.jpg}\\
+\includegraphics[angle=270, origin=c, width=.2\linewidth]{images/alfie.jpg}&
+\includegraphics[angle=270, origin=c, width=.2\linewidth]{images/camping.jpg}
 \end{tabular}
 
 \end{frame}
 
 \note{
-I'm going to start off by introducing myself.
 This is my first time being here in person, so I doubt many of you know who I am.
-I've lived most of my life in Canada's East Coast. I was back home again this summer,
-working as a co-op student for Defence R\&D Canada.
+So, I'm going to start off by introducing myself.
 }
 
 \begin{frame}
 \frametitle{Where I'm from}
 \framesubtitle{Atlantic Canada}
 \centering
-\includegraphics[width=0.95\linewidth]{images/map.png}
+\includegraphics[height=.75\textheight]{images/map.png}
 \end{frame}
 
 \note{
-So, I've had to travel quite a bit over the past few days in order to arrive here at
-Berkeley.
+I grew up on Canada's East Coast, and was back home again this summer.
+So, I've had to travel quite a bit over the past few days in order to arrive here at Berkeley.
 }
 
 \begin{frame}
@@ -138,18 +136,18 @@ at the University of Waterloo, majoring in Computer Science.
 \centering
 
 \begin{tabular}{c c}
-\includegraphics[width=0.40\linewidth]{images/malto_webcam.png} &
-\includegraphics[width=0.40\linewidth]{images/bitshift_webcam.png}\\
-\includegraphics[width=0.40\linewidth]{images/csc.png} &
-\includegraphics[width=0.40\linewidth]{images/steve_garan.jpg}\\
+\includegraphics[width=0.30\linewidth]{images/malto_webcam.png} &
+\includegraphics[width=0.30\linewidth]{images/bitshift_webcam.png}\\
+\includegraphics[width=0.30\linewidth]{images/csc.png} &
+\includegraphics[width=0.30\linewidth]{images/steve_garan.jpg}\\
 \end{tabular}
 
 \end{frame}
 
 \note{
 That's all very well and good: I haven't explained how I got involved
-with research at CREA. Steve Garan (you might know him) emailed the
-University of Waterloo Computer Science Club back in January, looking for
+with research at CREA. Steve Garan (you might know him) emailed the University of Waterloo
+Computer Science Club back in January, looking for
 current members interested in an AI internship; he used to
 be President back in the 80s. It looked interesting, so I began working
 with him, meeting weekly on Skype to discuss progress.
@@ -173,8 +171,8 @@ Health & Bioinformatics\\
 \note{
 So, why was I interested in research at CREA? I've worked on some
 software projects involving reverse engineering network protocols and
-game development in spare time. And, I felt that CREA was offering me an
-opportunity to hone my interests, allowing me to deepen knowledge of computing
+game development in my spare time. And, I felt that CREA was offering me an
+opportunity to hone my interests, allowing me to deepen my knowledge of computing
 beyond what I would likely accomplish on my own.
 }
 
@@ -191,7 +189,7 @@ Ok, so let's talk about 'Understanding Aging' and where I come in.
 
 \centering
 
-\includegraphics[width=0.75\linewidth]{images/aging.jpg}
+\includegraphics[height=.5\textheight]{images/aging}
 
 \end{frame}
 
@@ -207,12 +205,12 @@ human lifespan.
 \centering
 \only<1>{
 
-\includegraphics[width=.75\linewidth]{images/pubmed.png}
+\includegraphics[width=.95\textheight]{images/pubmed}
 
 \note{
 But, Why is it Difficult to Understand Aging?
 If you look at this figure here, you can see that not only is there a large
-volume of publications made on the subject (on the order of ~300 000), but also the
+volume of publications made on the subject, but also the
 rate at which new publications are being made has been doubling over the past few
 decades.
 }
@@ -241,7 +239,7 @@ aging; this is a problem.
 
 \only<1>{
 
-\includegraphics[width=1.0\linewidth]{images/knowledgebase.jpg}
+\includegraphics[height=.75\textheight]{images/knowledgebase.jpg}
 
 \note{
 And that's where I come in. I've been trying to work on a solution to this problem, which
@@ -254,7 +252,7 @@ aging and develop theories about it.
 \only<2>{
 
 \tikzstyle{decision} = [diamond, draw, fill=blue!60,
-text width=4.5em, text badly centered, node distance=3cm, inner sep=0pt]
+text width=4.5em, text badly centered, node distance=2.5cm, inner sep=0pt]
 \tikzstyle{block} = [rectangle, draw, fill=blue!60,
 text width=5em, text centered, rounded corners, minimum height=4em]
 \tikzstyle{line} = [draw, -latex']
@@ -283,7 +281,7 @@ minimum height=2em]
 
 \note{
 Have a look at this figure: the idea behind the software project I'm working on is to get a machine
-to read text and try to understand aging, just like how human's can try understand aging by
+to read text and try to understand aging, just like how human's can try understand to aging by
 reading texts and journal articles. And also, to present a machine's understanding of aging to humans
 and allow them correct and modify the machine's understanding of aging in an intuitive way.
 }
@@ -317,7 +315,7 @@ respectively. ...
 
 \begin{block}{Output}
 \centering
-\includegraphics[width=0.5\linewidth]{images/elastinneighborhood.png}
+\includegraphics[height=.4\textheight]{images/elastinneighborhood}
 \end{block}
 
 \note{
@@ -468,12 +466,13 @@ Now let's look at this example sentence and its grammatical structure.
 
 \only<2>{
 \begin{block}{Parse Token}
+\small
 \Tree [.ROOT [.S [.@S [.NP [.DT The ] [.NN man ] ] [.VP [.VBZ walks ] [.NP [.DT the ] [.NN dog ] ] ] ] [.. ] ] ]
 \end{block}
 
 \note{
 Based on the information I just gave you, we could have created this illustration of
-the sentence's structure ourselveshfill. But, a machine needs to be able to do this as well,
+the sentence's structure ourselves. But, a machine needs to be able to do this as well,
 it needs to be able to parse sentences and generate constituent trees, in order to
 extract knowledge from them. So, there are several software tools available for training a machine
 to parse sentences, some using different methods than others; I have been using software called The
@@ -484,6 +483,7 @@ Berkeley Parser, which worked fairly well, i.e. it has been fairly accurate when
 
 \only<3>{
 \begin{block}{Compile Token}
+\small
 \Tree [.ROOT [.S [.@S [.NP [.DT The ] [.NN man ] ] [.$\langle$predicate:walk$\rangle$ [.NP [.DT the ] [.NN dog ] ] ] ] [.. ] ] ]
 \end{block}
 }
@@ -514,7 +514,10 @@ Berkeley Parser, which worked fairly well, i.e. it has been fairly accurate when
 \frametitle{Software Demonstration}
 \framesubtitle{A preview of CREA's knowledge base, compiled from PubMed abstracts.}
 
-\href{http://markfarrell.ca/creal}{\includegraphics[width=1.0\linewidth]{images/results.png}}
+\centering
+\href{http://markfarrell.ca/creal}{
+\includegraphics[height=.75\textheight]{images/results}
+}
 
 \end{frame}
 
@@ -523,7 +526,9 @@ Berkeley Parser, which worked fairly well, i.e. it has been fairly accurate when
 \frametitle{High Performance}
 \framesubtitle{Knowledge can be extracted from many sentences at the same time.}
 
-\includegraphics[width=1.0\linewidth]{images/parallel.jpg}
+\centering
+
+\includegraphics[height=.75\textheight]{images/parallel.jpg}
 
 \end{frame}
 
@@ -559,6 +564,11 @@ Task &  Assignees\\
 \item[Website] markfarrell.ca
 \end{description}
 
+\end{frame}
+
+\begin{frame}[plain]
+\centering
+Questions?
 \end{frame}
 
 \end{document}
