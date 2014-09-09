@@ -3,7 +3,7 @@
 
 # crea-nlp
 
-Software for compiling text into graphs, for automatically constructing knowledge bases.
+Information extraction software - for automatically constructing knowledge bases.
 
 #### Instructions
 
