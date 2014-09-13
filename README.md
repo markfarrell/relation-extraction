@@ -1,5 +1,5 @@
 
-![travis-ci](https://travis-ci.org/markfarrell/crea-nlp.svg?branch=master)
+![travis-ci](https://travis-ci.org/crea-berkeley/knowledge-extraction.svg?branch=master)
 
 # Knowledge Extraction Software
 
