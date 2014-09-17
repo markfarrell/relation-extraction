@@ -18,8 +18,8 @@ package object Patterns {
 
   }
 
-  private[this] def applyArguments(arguments : => Stream[Atom])(compound : Compound) : Stream[Compound] = {
-    arguments.map(arg => Compound(args = List(arg)) |+| compound)
+  private[this] def applyArguments(arguments : => Stream[Literal])(relation : Relation) : Stream[Relation] = {
+    arguments.map(arg => Relation(args = List(arg)) |+| relation)
   }
 
   sealed trait ConstituentPattern
@@ -43,28 +43,28 @@ package object Patterns {
     private[this] val preCD = new Preterminal(CD)
     private[this] val preEX = new Preterminal(EX)
 
-    def apply(tree : Tree[String]) : Option[Atom] = tree match {
+    def apply(tree : Tree[String]) : Option[Literal] = tree match {
 
       case Tree.Node(PRN|AtPRN, _) | Tree.Node(ADVP|AtADVP, _) =>
 
-        Monoid[Atom].zero.some
+        Monoid[Literal].zero.some
 
       case preDT(_) | preRB(_) | preRBR(_) | preRBS(_) | preJJR(_) | preJJS(_)
         | prePRP(_) | prePRP$(_) | preEX(_) | preJJ(_) | preCD(_) =>
 
-        Monoid[Atom].zero.some
+        Monoid[Literal].zero.some
 
       case preNN(_) | preNNS(_) | preNNP(_) | preNNPS(_)| preFW(_) =>
 
-        Atom(tree.id).some
+        Literal(tree.id).some
 
       case Tree.Node(NP|AtNP, Stream(Tree.Node(VBG|VBN, Stream(x)), PredicateArgumentExpression(arg))) =>
 
-        Atom(x.id).some |+| arg.some
+        Literal(x.id).some |+| arg.some
 
       case Tree.Node(NP|AtNP, Stream(PredicateArgumentExpression(arg), Tree.Node(VBG|VBN, Stream(x)))) =>
 
-        arg.some |+| Atom(x.id).some
+        arg.some |+| Literal(x.id).some
 
       case Tree.Node(NP|AtNP|ADJP|AtADJP, Stream(PredicateArgumentExpression(arg))) =>
 
@@ -86,13 +86,13 @@ package object Patterns {
 
     }
 
-    def unapply(tree : Tree[String]) : Option[Atom] = apply(tree)
+    def unapply(tree : Tree[String]) : Option[Literal] = apply(tree)
 
   }
 
   object PredicateArgumentsExpression extends ConstituentPattern {
 
-    def apply(tree : Tree[String]) : Option[Stream[Atom]] = tree match {
+    def apply(tree : Tree[String]) : Option[Stream[Literal]] = tree match {
 
       case Tree.Node(NP|AtNP, Stream(
         Tree.Node(AtNP, Stream(
@@ -124,7 +124,7 @@ package object Patterns {
 
     }
 
-    def unapply(tree : Tree[String]) : Option[Stream[Atom]] = apply(tree)
+    def unapply(tree : Tree[String]) : Option[Stream[Literal]] = apply(tree)
 
   }
 
@@ -137,11 +137,11 @@ package object Patterns {
     private[this] val preVBP = new Preterminal(VBP)
     private[this] val preVBZ = new Preterminal(VBZ)
 
-    def apply(tree : Tree[String]) : Option[Stream[Compound]] = tree match {
+    def apply(tree : Tree[String]) : Option[Stream[Relation]] = tree match {
 
       case preVB(_) | preVBD(_) | preVBG(_) | preVBN(_) | preVBP(_) | preVBZ(_) =>
 
-        Stream(Compound(atom=Atom(tree.id))).some
+        Stream(Relation(literal=Literal(tree.id))).some
 
       case Tree.Node(VP|AtVP, Stream(preVB(_) | preVBD(_) | preVBG(_) | preVBN(_) | preVBP(_) | preVBZ(_),  PredicateExpression(stream))) =>
 
@@ -157,7 +157,7 @@ package object Patterns {
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), Tree.Node(PRT, Stream(particle)))) =>
 
-        predicates.map((_ : Compound) |+| Compound(atom=Atom(particle.id))).some
+        predicates.map((_ : Relation) |+| Relation(literal=Literal(particle.id))).some
 
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PredicateArgumentsExpression(arguments))) =>
 
@@ -195,13 +195,13 @@ package object Patterns {
 
     }
 
-    def unapply(tree : Tree[String]) : Option[Stream[Compound]] = apply(tree)
+    def unapply(tree : Tree[String]) : Option[Stream[Relation]] = apply(tree)
 
   }
 
   object PrepositionalPhraseExpression extends ConstituentPattern {
 
-    def apply(tree : Tree[String]) : Option[Tuple2[Stream[Atom], Stream[Compound]]] = tree match {
+    def apply(tree : Tree[String]) : Option[Tuple2[Stream[Literal], Stream[Relation]]] = tree match {
 
       case Tree.Node(PP|AtPP, Stream(Tree.Node(IN|VBG|TO, Stream(_)), PhraseExpression((arguments, clauses)))) =>
 
@@ -223,13 +223,13 @@ package object Patterns {
 
     }
 
-    def unapply(tree : Tree[String]) :  Option[Tuple2[Stream[Atom], Stream[Compound]]] = apply(tree)
+    def unapply(tree : Tree[String]) :  Option[Tuple2[Stream[Literal], Stream[Relation]]] = apply(tree)
 
   }
 
   object PhraseExpression extends ConstituentPattern {
 
-    def apply(tree :  Tree[String]) : Option[Tuple2[Stream[Atom], Stream[Compound]]] = tree match {
+    def apply(tree :  Tree[String]) : Option[Tuple2[Stream[Literal], Stream[Relation]]] = tree match {
 
       case Tree.Node(PRN|AtPRN, _) =>
 
@@ -296,13 +296,13 @@ package object Patterns {
 
     }
 
-    def unapply(tree : Tree[String]) : Option[Tuple2[Stream[Atom], Stream[Compound]]] = apply(tree)
+    def unapply(tree : Tree[String]) : Option[Tuple2[Stream[Literal], Stream[Relation]]] = apply(tree)
 
   }
 
   object ClauseExpression extends ConstituentPattern {
 
-    def apply(tree : Tree[String]) : Option[Stream[Compound]] = tree match {
+    def apply(tree : Tree[String]) : Option[Stream[Relation]] = tree match {
 
       case Tree.Node(AtS, Stream(
         PredicateArgumentsExpression(arguments),
@@ -346,15 +346,15 @@ package object Patterns {
 
     }
 
-    def unapply(tree : Tree[String]) : Option[Stream[Compound]] = apply(tree)
+    def unapply(tree : Tree[String]) : Option[Stream[Relation]] = apply(tree)
 
   }
 
 
   object RootExpression extends ConstituentPattern {
 
-    def apply(tree : Tree[String]) : Option[Stream[Compound]] = tree match {
-      case Tree.Node(ROOT, Stream(ClauseExpression(compounds))) => compounds.some
+    def apply(tree : Tree[String]) : Option[Stream[Relation]] = tree match {
+      case Tree.Node(ROOT, Stream(ClauseExpression(relations))) => relations.some
       case _ => none
     }
 

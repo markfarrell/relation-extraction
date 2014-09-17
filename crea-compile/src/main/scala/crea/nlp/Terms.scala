@@ -7,49 +7,49 @@ package object Terms {
 
   sealed trait Term
 
-  final case class Atom(id : String) extends Term
+  final case class Literal(id : String) extends Term
 
-  final case class Compound(atom : Atom = Monoid[Atom].zero, args : List[Atom] = Monoid[List[Atom]].zero) extends Term
+  final case class Relation(literal : Literal = Monoid[Literal].zero, args : List[Literal] = Monoid[List[Literal]].zero) extends Term
 
-  implicit val equalAtom : Equal[Atom] = Equal.equal(_.id === _.id)
+  implicit val equalLiteral : Equal[Literal] = Equal.equal(_.id === _.id)
 
-  implicit val equalCompound : Equal[Compound] = Equal.equal {
-    (x, y) => (x.atom, x.args) === (y.atom, y.args)
+  implicit val equalRelation : Equal[Relation] = Equal.equal {
+    (x, y) => (x.literal, x.args) === (y.literal, y.args)
   }
 
-  implicit val monoidAtom : Monoid[Atom] = new Monoid[Atom] {
+  implicit val monoidLiteral : Monoid[Literal] = new Monoid[Literal] {
 
-    def zero : Atom = Atom(Monoid[String].zero)
+    def zero : Literal = Literal(Monoid[String].zero)
 
-    def append(a1 : Atom, a2: => Atom) : Atom = Atom(List(a1.id, a2.id).distinct.mkString(" ").trim)
+    def append(a1 : Literal, a2: => Literal) : Literal = Literal(List(a1.id, a2.id).distinct.mkString(" ").trim)
 
   }
 
-  implicit val monoidCompound : Monoid[Compound] = new Monoid[Compound] {
+  implicit val monoidRelation : Monoid[Relation] = new Monoid[Relation] {
 
-    def zero : Compound = Compound(Monoid[Atom].zero, Monoid[List[Atom]].zero)
+    def zero : Relation = Relation(Monoid[Literal].zero, Monoid[List[Literal]].zero)
 
-    def append(a1 : Compound, a2 : => Compound) : Compound = {
-      Compound(a1.atom |+| a2.atom, (a1.args |+| a2.args).filterNot(_ === Monoid[Atom].zero).distinct)
+    def append(a1 : Relation, a2 : => Relation) : Relation = {
+      Relation(a1.literal |+| a2.literal, (a1.args |+| a2.args).filterNot(_ === Monoid[Literal].zero).distinct)
     }
 
   }
 
-  implicit val showAtom : Show[Atom] = new Show[Atom] {
+  implicit val showLiteral : Show[Literal] = new Show[Literal] {
 
-    override def shows(atom : Atom) : String = s"<atom:${atom.id}>"
-
-  }
-
-  implicit val showCompound : Show[Compound] = new Show[Compound] {
-
-    override def shows(compound : Compound) : String = s"""<compound:${compound.atom.id}(${compound.args.map(_.shows).mkString(", ")})>"""
+    override def shows(literal : Literal) : String = s"<literal:${literal.id}>"
 
   }
 
-  implicit val showCompoundStream : Show[Stream[Compound]] = new Show[Stream[Compound]] {
+  implicit val showRelation : Show[Relation] = new Show[Relation] {
 
-    override def shows(compounds : Stream[Compound]) : String = compounds.iterator.map(_.shows).mkString("\n")
+    override def shows(relation : Relation) : String = s"""<relation:${relation.literal.id}(${relation.args.map(_.shows).mkString(", ")})>"""
+
+  }
+
+  implicit val showRelationStream : Show[Stream[Relation]] = new Show[Stream[Relation]] {
+
+    override def shows(relations : Stream[Relation]) : String = relations.iterator.map(_.shows).mkString("\n")
 
   }
 
