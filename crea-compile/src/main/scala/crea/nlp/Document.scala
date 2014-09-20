@@ -50,6 +50,8 @@ object Document {
 
     import it.uniroma1.dis.wsngroup.gexf4j.core.impl.{StaxGraphWriter, GexfImpl}
     import it.uniroma1.dis.wsngroup.gexf4j.core.{EdgeType, Mode, Node}
+    import edu.cmu.lti.lexical_db.NictWordNet
+    import edu.cmu.lti.ws4j.impl.WuPalmer
     import scala.collection.mutable.HashMap
 
     val charset = "UTF-8"
@@ -58,6 +60,9 @@ object Document {
     val graph = gexf.getGraph
 
     val writer = new StaxGraphWriter
+
+    val db = new NictWordNet
+    val rc = new WuPalmer(db)
 
     graph.setDefaultEdgeType(EdgeType.DIRECTED).setMode(Mode.STATIC)
 
@@ -82,7 +87,17 @@ object Document {
           nodeTable(target.id)
         }
 
-        \/.fromTryCatch(sourceNode.connectTo(targetNode).setLabel(relation.literal.id))
+        \/.fromTryCatch {
+
+          val label = relation.literal.id
+          val edge = sourceNode.connectTo(targetNode)
+
+          edge.setLabel(label)
+          edge.setWeight(rc.calcRelatednessOfWords(s"${label}#v","increase#v").toFloat)
+
+          edge
+
+        }
 
       }
 
