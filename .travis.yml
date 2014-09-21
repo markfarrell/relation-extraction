@@ -1,5 +1,4 @@
 language: scala
-before_script: cd crea-compile
 scala:
   - "2.11.1"
 jdk:
