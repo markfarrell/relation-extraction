@@ -9,7 +9,7 @@ Compiles text into graphs, relating literal nouns by the actions they perform on
 
 ##### Build
 
-Install SBT 0.13.0+ and then run <code>sbt stage</code> from the <code>crea-compile</code> directory.
+Install SBT 0.13.0+ and then run <code>sbt stage</code>.
 
 ##### Usage
 
