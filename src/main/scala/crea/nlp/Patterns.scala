@@ -219,6 +219,18 @@ package object Patterns {
 
         (arguments, Stream()).some
 
+      case Tree.Node(PP|AtPP, Stream(
+        Tree.Node(IN, Stream(_)),
+        Tree.Node(S, Stream(
+          Tree.Node(VP, Stream(
+            Tree.Node(VBG, Stream(arg0)),
+            PrepositionalPhraseExpression((arguments, clauses))
+          ))
+        ))
+      )) => 
+      
+        (Stream((Literal(arg0.id) #:: arguments).reduce(_ |+| _)), clauses).some
+
       case _ => none
 
     }
@@ -277,6 +289,26 @@ package object Patterns {
             ))
         ))
       )) =>
+
+        (arguments, (predicates >>= applyArguments(arguments))).some
+
+      case Tree.Node(NP, Stream(
+        PredicateArgumentsExpression(arguments),
+        Tree.Node(SBAR, Stream(
+          Tree.Node(WHNP, Stream(
+            PredicateArgumentsExpression(_),
+            Tree.Node(WHPP, Stream(
+              Tree.Node(IN, Stream(_)),
+              Tree.Node(WHNP, Stream(
+                Tree.Node(WDT, Stream(_))
+              ))
+            ))
+          )),
+          Tree.Node(S, Stream(
+            PredicateExpression(predicates)
+          ))
+        ))
+      )) => 
 
         (arguments, (predicates >>= applyArguments(arguments))).some
 
