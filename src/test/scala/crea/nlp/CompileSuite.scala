@@ -170,7 +170,7 @@ class CompileSuite extends FunSuite {
 
   }
 
-  test("Reporting verb + that clause") {
+  test("Reporting verb + that clause.") {
 
     val expect = Stream(
       Relation(Literal("suggest"), List(Literal("study"))),
@@ -182,7 +182,7 @@ class CompileSuite extends FunSuite {
 
   }
 
-  test("Nouns & Conjunction Phrases") {
+  test("Nouns & Conjunction Phrases.") {
 
     val expect = Stream(
       Relation(Literal("walk"), List(Literal("man"))),
@@ -195,6 +195,30 @@ class CompileSuite extends FunSuite {
     expect assert_=== compile("The man, the dog as well as the cat can walk.")
 
   }
+
+  test("Parentheses.") {
+
+    val expect = Stream(
+      Relation(Literal("walk"), List(Literal("man"))),
+      Relation(Literal("walk"), List(Literal("monkey")))
+    ).some
+
+    expect assert_=== compile("The man (monkeys) walked.")
+
+  }
+
+  test("Cardinal Numbers.") { 
+
+    val expect = Stream(
+      Relation(Literal("participate"), List(
+        Literal("66 woman total"),
+        Literal("study")
+      ))
+    ).some
+
+    expect assert_=== compile("A total of 66 women participated in the study.")
+
+  } 
 
 }
 

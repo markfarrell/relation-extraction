@@ -7,13 +7,14 @@ import edu.cmu.lti.ws4j.impl.WuPalmer
 import scala.collection.mutable.HashMap
 import java.io.ByteArrayOutputStream
 
+import scala.xml.{XML, Elem}
 import scalaz._
 import Scalaz._
 import Terms._
 
 object Gexf { 
 
-  def apply(relations : List[Relation]) : String = {
+  def apply(result : Tree[String] \/ List[Relation]) : Tree[String] \/ Elem = result.map { relations =>
 
     val charset = "UTF-8"
 
@@ -64,7 +65,7 @@ object Gexf {
 
     writer.writeToStream(gexf, dest, charset)
 
-    dest.toString()
+    XML.loadString(dest.toString())
 
   }
 
