@@ -1,26 +1,45 @@
-
 ![travis-ci](https://travis-ci.org/crea-berkeley/knowledge-extraction.svg?branch=master)
 
 # Knowledge Extraction Software
 
-Compiles text into graphs, relating literal nouns by the actions they perform on each other.
+Extracts knowledge from text articles.
 
 #### Instructions
 
-##### Build
-
-Install SBT 0.13.0+ and then run <code>sbt stage</code>.
+Install SBT 0.13.0+.
 
 ##### Usage
 
-Compile text into a [GEXF 1.2](http://gexf.net/format/index.html) file, a graph file format.
+    $ sbt console
+    scala> val sentence = "The man walks the dog."
+    sentence: String = The man walks the dog.
 
-    ./crea-compile -f an_output_file.gexf < an_input_file.txt
+    scala> val parsed = Parse(sentence)
+    parsed: Tree[String] =
+      (ROOT
+        (S
+          (@S
+            (NP (DT The) (NN man))
+            (VP (VBZ walks)
+              (NP (DT the) (NN dog))))
+        (. .)))
 
-#### Demonstration
+    scala> val compiled = Compile(parsed)
+    compiled: Tree[String] \/ List[Relation] = \/-([
+      <relation:walk(<literal:man>, <literal:dog>)>
+    ])
 
- [![Results](results.png)](http://markfarrell.ca/creal)
-
-
-
-
+    scala> Gexf(compiled)
+    res0: Tree[String] \/ Elem = \/-(
+      <gexf version="1.2" xmlns="http://www.gexf.net/1.2draft">
+        <graph mode="static" idtype="string" defaultedgetype="directed">
+          <nodes count="2">
+            <node label="man" id="man"/>
+            <node label="dog" id="dog"/>
+          </nodes>
+          <edges count="1">
+            <edge label="walk" type="directed" source="man" target="dog" id="87c3..."/>
+          </edges>
+        </graph>
+      </gexf>
+    )
