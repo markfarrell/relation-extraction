@@ -19,7 +19,18 @@ package object Patterns {
   }
 
   private[this] def applyArguments(arguments : => Stream[Literal])(relation : Relation) : Stream[Relation] = {
-    arguments.map(arg => Relation(args = List(arg)) |+| relation)
+
+    val lit = relation.literal
+    val args = relation.args.takeRight(1)
+
+    arguments.map { arg => 
+
+      val newArgs = (arg :: args).filterNot(_ === Monoid[Literal].zero)
+
+      Relation(lit, newArgs)
+
+    } 
+
   }
 
   sealed trait ConstituentPattern
@@ -45,16 +56,16 @@ package object Patterns {
 
     def apply(tree : Tree[String]) : Option[Literal] = tree match {
 
-      case Tree.Node(PRN|AtPRN, _) | Tree.Node(ADVP|AtADVP, _) =>
+      case Tree.Node(ADVP|AtADVP, _) =>
 
         Monoid[Literal].zero.some
 
       case preDT(_) | preRB(_) | preRBR(_) | preRBS(_) | preJJR(_) | preJJS(_)
-        | prePRP(_) | prePRP$(_) | preEX(_) | preJJ(_) | preCD(_) =>
+        | prePRP(_) | prePRP$(_) | preEX(_) | preJJ(_) =>
 
         Monoid[Literal].zero.some
 
-      case preNN(_) | preNNS(_) | preNNP(_) | preNNPS(_)| preFW(_) =>
+      case preNN(_) | preNNS(_) | preNNP(_) | preNNPS(_)| preFW(_) | preCD(_) =>
 
         Literal(tree.id).some
 
@@ -103,6 +114,16 @@ package object Patterns {
       )) =>
 
         args1.some |+| args2.some
+
+      case Tree.Node(PRN, Stream(
+        Tree.Node(AtPRN, Stream(
+          Tree.Node(LRB, Stream(_)),
+          PredicateArgumentsExpression(args)
+        )),
+        Tree.Node(RRB, Stream(_))
+      ))  =>
+
+        args.some
 
       case PredicateArgumentExpression(arg) =>
 
@@ -203,13 +224,13 @@ package object Patterns {
 
     def apply(tree : Tree[String]) : Option[Tuple2[Stream[Literal], Stream[Relation]]] = tree match {
 
-      case Tree.Node(PP|AtPP, Stream(Tree.Node(IN|VBG|TO, Stream(_)), PhraseExpression((arguments, clauses)))) =>
-
-        (arguments, clauses).some
-
       case Tree.Node(PP|AtPP, Stream(Tree.Node(IN|VBG|TO, Stream(_)), PredicateArgumentsExpression(arguments))) =>
 
         (arguments, Stream()).some
+
+      case Tree.Node(PP|AtPP, Stream(Tree.Node(IN|VBG|TO, Stream(_)), PhraseExpression((arguments, clauses)))) =>
+
+        (arguments, clauses).some
 
       case Tree.Node(PP|AtPP, Stream(Tree.Node(AtPP, Stream(_, Tree.Node(IN|VBG|TO, Stream(_)))), PhraseExpression((arguments, clauses)))) =>
 
@@ -218,6 +239,18 @@ package object Patterns {
       case Tree.Node(PP|AtPP, Stream(Tree.Node(AtPP, Stream(_, Tree.Node(IN|VBG|TO, Stream(_)))), PredicateArgumentsExpression(arguments))) =>
 
         (arguments, Stream()).some
+
+      case Tree.Node(PP|AtPP, Stream(
+        Tree.Node(IN, Stream(_)),
+        Tree.Node(S, Stream(
+          Tree.Node(VP, Stream(
+            Tree.Node(VBG, Stream(arg0)),
+            PrepositionalPhraseExpression((arguments, clauses))
+          ))
+        ))
+      )) => 
+      
+        (Stream((Literal(arg0.id) #:: arguments).reduce(_ |+| _)), clauses).some
 
       case _ => none
 
@@ -230,10 +263,6 @@ package object Patterns {
   object PhraseExpression extends ConstituentPattern {
 
     def apply(tree :  Tree[String]) : Option[Tuple2[Stream[Literal], Stream[Relation]]] = tree match {
-
-      case Tree.Node(PRN|AtPRN, _) =>
-
-        (Stream(), Stream()).some
 
       case PrepositionalPhraseExpression((arguments, clauses)) =>
 
@@ -277,6 +306,26 @@ package object Patterns {
             ))
         ))
       )) =>
+
+        (arguments, (predicates >>= applyArguments(arguments))).some
+
+      case Tree.Node(NP, Stream(
+        PredicateArgumentsExpression(arguments),
+        Tree.Node(SBAR, Stream(
+          Tree.Node(WHNP, Stream(
+            PredicateArgumentsExpression(_),
+            Tree.Node(WHPP, Stream(
+              Tree.Node(IN, Stream(_)),
+              Tree.Node(WHNP, Stream(
+                Tree.Node(WDT, Stream(_))
+              ))
+            ))
+          )),
+          Tree.Node(S, Stream(
+            PredicateExpression(predicates)
+          ))
+        ))
+      )) => 
 
         (arguments, (predicates >>= applyArguments(arguments))).some
 

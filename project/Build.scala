@@ -13,14 +13,11 @@ object ProjectBuild extends Build {
       import Terms._
       import Trees._
     """,
-    name := "crea-compile",
-    version := "1.0",
+    name := "knowledge-extraction",
+    version := "1.1",
     scalaVersion := "2.11.1",
-    fork in run := true,
-    javaOptions += "-Xmx8G -Xss128M -Xms1G -XX:SurvivorRatio=16 -XX:NewRatio=5 -XX:+UseConcMarkSweepGC",
     maintainer in Debian := "Mark Farrell",
-    mainClass in (Compile) := Some("crea.nlp.GexfCompiler"),
-    packageDescription in Debian := "Compiles text into text-networks.",
+    packageDescription in Debian := "Extracts knowledge from text articles.",
     resolvers ++= Seq(
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
       "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
