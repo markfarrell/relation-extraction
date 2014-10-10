@@ -94,5 +94,6 @@ package object Constituents {
   val LRB = "-LRB-"
   val RRB = "-RRB-"
   val COMMA = ","
+  val COLON = ":"
 
 }

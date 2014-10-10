@@ -108,7 +108,7 @@ package object Patterns {
       case Tree.Node(NP|AtNP, Stream(
         Tree.Node(AtNP, Stream(
           PredicateArgumentsExpression(args1),
-          Tree.Node(CC|COMMA|CONJP, _)
+          Tree.Node(CC|COMMA|CONJP|COLON, _)
         )),
         PredicateArgumentsExpression(args2)
       )) =>
@@ -192,10 +192,6 @@ package object Patterns {
 
         stream.some
 
-      case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PrepositionalPhraseExpression((arguments, clauses)))) =>
-
-        (predicates >>= applyArguments(arguments)).some |+| clauses.some
-
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PhraseExpression((arguments, clauses)))) =>
 
         (predicates >>= applyArguments(arguments)).some |+| clauses.some
@@ -239,6 +235,15 @@ package object Patterns {
       case Tree.Node(PP|AtPP, Stream(Tree.Node(AtPP, Stream(_, Tree.Node(IN|VBG|TO, Stream(_)))), PredicateArgumentsExpression(arguments))) =>
 
         (arguments, Stream()).some
+
+      case Tree.Node(PP|AtPP, Stream(
+        Tree.Node(IN, Stream(_)),
+        Tree.Node(S, Stream(
+          PredicateExpression(clauses)
+        ))
+      )) => 
+
+        (Stream(), clauses).some
 
       case Tree.Node(PP|AtPP, Stream(
         Tree.Node(IN, Stream(_)),
@@ -353,7 +358,7 @@ package object Patterns {
 
     def apply(tree : Tree[String]) : Option[Stream[Relation]] = tree match {
 
-      case Tree.Node(AtS, Stream(
+      case Tree.Node(S|AtS, Stream(
         PredicateArgumentsExpression(arguments),
         Tree.Node(VP, Stream(
           PredicateExpression(predicates),

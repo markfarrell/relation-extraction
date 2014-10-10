@@ -43,3 +43,5 @@ Install SBT 0.13.0+.
         </graph>
       </gexf>
     )
+
+[Wiki](https://github.com/crea-berkeley/knowledge-extraction/wiki)
