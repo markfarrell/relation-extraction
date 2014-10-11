@@ -6,11 +6,9 @@ final case class Pubmed(pmid : String, title : String, _abstract : String)
 
 object Pubmed {
 
-  def apply(path : String) : String = articles(path).map(_._abstract).mkString("\n")
+  def apply(term : String) : Stream[Pubmed] = ids(term).flatMap { id =>
 
-  def articles(path : String) : Seq[Pubmed] = {
-
-    val xml = XML.loadFile(path)
+    val xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${id}&rettype=xml""")
 
     (xml \\ "PubmedArticleSet" \\ "PubmedArticle").map { article =>
 
@@ -24,6 +22,31 @@ object Pubmed {
 
   }
 
+  def ids(term : String) : Stream[Int] = {
+
+    val xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term}"&retmax=2000&rettype=xml""")
+
+    (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text.toInt).toStream
+
+  }
+
 }
 
+object PubmedExtract {
 
+  import scalaz._
+  import Scalaz._
+  import Terms._
+
+  import scala.concurrent._
+  import ExecutionContext.Implicits.global
+  import java.io.{OutputStream, PrintStream}
+
+  def apply(term : String) : Stream[Future[Tree[String] \/ List[Relation]]] = {
+
+    Pubmed(term).flatMap(x => Tokenize(x._abstract))
+      .map(y => future { Compile(Parse(y)) })
+
+  }
+
+}
