@@ -21,7 +21,7 @@ class Parser(grammarPath : String = "eng_sm6.gr") {
   private[this] val accurate : Boolean = false
   private[this] val variational : Boolean = false
 
-  private[this] val tokenizer : PTBLineLexer = new PTBLineLexer
+  private[this] def tokenizer : PTBLineLexer = new PTBLineLexer
   private[this] val pData : ParserData = ParserData.Load(grammarPath)
 
   private[this] val parser : CoarseToFineMaxRuleParser = {

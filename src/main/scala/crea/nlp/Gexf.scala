@@ -12,9 +12,9 @@ import scalaz._
 import Scalaz._
 import Terms._
 
-object Gexf { 
+object Gexf {
 
-  def apply(result : Tree[String] \/ List[Relation]) : Tree[String] \/ Elem = result.map { relations =>
+  def apply(relations : List[Relation]) : Elem = {
 
     val charset = "UTF-8"
 
@@ -70,4 +70,4 @@ object Gexf {
   }
 
 
-} 
+}

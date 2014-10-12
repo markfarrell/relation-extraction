@@ -38,7 +38,8 @@ object ProjectBuild extends Build {
       "com.chuusai" %% "shapeless" % "2.0.0",
       "com.bizo" % "mighty-csv_2.11" % "0.2",
       "net.sourceforge.owlapi" % "owlapi-distribution" % "3.4.10",
-      "net.sf.jwordnet" % "jwnl" % "1.4_rc3"
+      "net.sf.jwordnet" % "jwnl" % "1.4_rc3",
+      "org.scalanlp" %% "epic" % "0.2"
     )
   )
 
