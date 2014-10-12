@@ -29,19 +29,4 @@ Install SBT 0.13.0+.
       <relation:walk(<literal:man>, <literal:dog>)>
     ])
 
-    scala> Gexf(compiled)
-    res0: Tree[String] \/ Elem = \/-(
-      <gexf version="1.2" xmlns="http://www.gexf.net/1.2draft">
-        <graph mode="static" idtype="string" defaultedgetype="directed">
-          <nodes count="2">
-            <node label="man" id="man"/>
-            <node label="dog" id="dog"/>
-          </nodes>
-          <edges count="1">
-            <edge label="walk" type="directed" source="man" target="dog" id="87c3..."/>
-          </edges>
-        </graph>
-      </gexf>
-    )
-
 [Wiki](https://github.com/crea-berkeley/knowledge-extraction/wiki)

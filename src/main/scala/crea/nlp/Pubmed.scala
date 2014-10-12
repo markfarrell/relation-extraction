@@ -24,7 +24,7 @@ object Pubmed {
 
   def ids(term : String) : Stream[Int] = {
 
-    val xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term}"&retmax=2000&rettype=xml""")
+    val xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term}"&retmax=20&rettype=xml""")
 
     (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text.toInt).toStream
 
@@ -32,7 +32,7 @@ object Pubmed {
 
 }
 
-object PubmedExtract {
+object Extract {
 
   import scalaz._
   import Scalaz._
@@ -40,12 +40,36 @@ object PubmedExtract {
 
   import scala.concurrent._
   import ExecutionContext.Implicits.global
+
+  import scala.xml.{Elem, XML}
+
+  import epic.preprocess.MLSentenceSegmenter
+
   import java.io.{OutputStream, PrintStream}
 
-  def apply(term : String) : Stream[Future[Tree[String] \/ List[Relation]]] = {
+  def apply(term : String) : Unit = {
 
-    Pubmed(term).flatMap(x => Tokenize(x._abstract))
-      .map(y => future { Compile(Parse(y)) })
+    val sentences = MLSentenceSegmenter.bundled().get
+
+    def parses = Pubmed(term)
+      .flatMap(x => sentences(x._abstract))
+      .map(Parse.apply)
+
+    Future.sequence {
+       parses.map { y => future { Compile(y) } }
+    }.map {
+
+      _.flatMap {
+
+        _.toList
+         .flatMap(_.toList)
+
+      }.toList
+
+    }.map(Gexf.apply).onSuccess {
+      case gexf =>
+        XML.save(s"${term}.gexf", gexf)
+    }
 
   }
 
