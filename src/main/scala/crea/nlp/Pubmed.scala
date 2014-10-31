@@ -11,18 +11,36 @@ import java.io.{PrintStream, OutputStream}
 
 import epic.preprocess.MLSentenceSegmenter
 
+import edu.cmu.lti.lexical_db.NictWordNet
+import edu.cmu.lti.ws4j.impl.WuPalmer
+
 import Terms._
 
 object Pubmed {
 
   private[this] final case class Pubmed(pmid : String, title : String, _abstract : List[String])
+  private[this] final case class Row(pmid : String, subject : String, predicate : String, obj : String, relatedness : Float, time : Long, term : String) {
+    override def toString : String = s""""${pmid}","${predicate}","${subject}","${obj}","${relatedness}","${time}","${term}""""
+  }
+
+  private[this] val db = new NictWordNet
+  private[this] val rc = new WuPalmer(db)
 
   private[this] val retmax = 10000
+  private[this] val timeout = 30000
 
-  def apply(term : String) : Process[Task, Relation] = ids(term)
+  def apply(term : String) : Process[Task, String] = ids(term)
     .flatMap(id => article(id).flatMap(compileArticle))
     .flatMap(lst => Process.emitAll(lst))
-    .filter(_.args.length === 2)
+    .filter(_._2.args.length === 2)
+    .map{ case (pmid, relation, time) => Row(pmid,
+      relation.args.head.id,
+      relation.literal.id,
+      relation.args.last.id,
+      relatedness(relation.literal.id),
+      time,
+      term)
+    }.map(_.toString)
 
   private[this] def article(id : Int) : Process[Task, Pubmed] = Process.eval { Task {
 
@@ -58,13 +76,19 @@ object Pubmed {
 
   }
 
-  private[this] def compileArticle(article : Pubmed) : Process[Task, List[Relation]] = Process.emitAll(article._abstract).flatMap(compileSentence)
+  private[this] def compileArticle(article : Pubmed) : Process[Task, List[(String, Relation, Long)]] = Process.emitAll(article._abstract)
+    .flatMap(compileSentence(article))
 
-  private[this] def compileSentence(sentence : String) : Process[Task, List[Relation]] = Process.eval { Task {
+  private[this] def compileSentence(article : Pubmed)(sentence : String) : Process[Task, List[(String, Relation, Long)]] = Process.eval { Task {
 
-    Compile(parse(sentence)).toList.flatten
+    val t1 = System.currentTimeMillis
+    val relations = Compile(parse(sentence)).toList.flatten
+    val t2 = System.currentTimeMillis
+    val dt = t2 - t1
 
-  }.timed(10000).or(Task.now(List.empty[Relation])) }
+    relations.map(x => (article.pmid, x, dt))
+
+  }.timed(timeout).or(Task.now(List.empty[(String, Relation, Long)])) }
 
   private[this] def parse(sentence : String) : Tree[String] = {
 
@@ -81,5 +105,7 @@ object Pubmed {
     tree
 
   }
+
+  private[this] def relatedness(word : String) : Float = rc.calcRelatednessOfWords(s"${word}#v","increase#v").toFloat
 
 }
