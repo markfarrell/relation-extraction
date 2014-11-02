@@ -6,9 +6,10 @@ import Keys._
 object ProjectBuild extends Build {
 
   def standardSettings = Defaults.defaultSettings ++ Seq(
-    initialCommands in console := """import crea.nlp._
-      import scalaz._
+    initialCommands in console := """import scalaz._
       import Scalaz._
+      import scalaz.stream._
+      import crea.nlp._
       import Patterns._
       import Terms._
       import Trees._

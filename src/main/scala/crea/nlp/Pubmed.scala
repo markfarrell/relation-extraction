@@ -11,36 +11,39 @@ import java.io.{PrintStream, OutputStream}
 
 import epic.preprocess.MLSentenceSegmenter
 
-import edu.cmu.lti.lexical_db.NictWordNet
-import edu.cmu.lti.ws4j.impl.WuPalmer
-
 import Terms._
 
 object Pubmed {
 
   private[this] final case class Pubmed(pmid : String, title : String, _abstract : List[String])
-  private[this] final case class Row(pmid : String, subject : String, predicate : String, obj : String, relatedness : Float, time : Long, term : String) {
-    override def toString : String = s""""${pmid}","${predicate}","${subject}","${obj}","${relatedness}","${time}","${term}""""
+  private[this] final case class Row(pmid : String, subject : String, predicate : String, obj : String,
+    term : String, elapsed : Long, timestamp : Long) {
+    override def toString : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${elapsed}","${timestamp}""""
   }
 
-  private[this] val db = new NictWordNet
-  private[this] val rc = new WuPalmer(db)
+  private[this] val retmax = 100000
+  private[this] val timeout = 60000
 
-  private[this] val retmax = 10000
-  private[this] val timeout = 30000
+  private[this] val nullStream = new PrintStream(new OutputStream {
+      override def write(b : Int) : Unit = Unit
+  })
 
-  def apply(term : String) : Process[Task, String] = ids(term)
+  def apply(term : String) : Task[Unit] = ids(term)
     .flatMap(id => article(id).flatMap(compileArticle))
     .flatMap(lst => Process.emitAll(lst))
     .filter(_._2.args.length === 2)
-    .map{ case (pmid, relation, time) => Row(pmid,
+    .map { case (pmid, relation, elapsed) => Row(pmid,
       relation.args.head.id,
       relation.literal.id,
       relation.args.last.id,
-      relatedness(relation.literal.id),
-      time,
-      term)
+      term,
+      elapsed,
+      System.currentTimeMillis)
     }.map(_.toString)
+    .intersperse("\n")
+    .pipe(text.utf8Encode)
+    .to(io.fileChunkW(s"${term}_${System.currentTimeMillis}.csv"))
+    .run
 
   private[this] def article(id : Int) : Process[Task, Pubmed] = Process.eval { Task {
 
@@ -94,9 +97,7 @@ object Pubmed {
 
     val errStream : PrintStream = System.err
 
-    System.setErr(new PrintStream(new OutputStream {
-      override def write(b : Int) : Unit = Unit
-    }))
+    System.setErr(nullStream)
 
     val tree = (new Parser).apply(sentence)
 
@@ -105,7 +106,5 @@ object Pubmed {
     tree
 
   }
-
-  private[this] def relatedness(word : String) : Float = rc.calcRelatednessOfWords(s"${word}#v","increase#v").toFloat
 
 }
