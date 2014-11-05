@@ -16,19 +16,27 @@ import Terms._
 object Pubmed {
 
   private[this] final case class Pubmed(pmid : String, title : String, _abstract : List[String])
-  private[this] final case class Row(pmid : String, subject : String, predicate : String, obj : String,
+  final case class Row(pmid : String, subject : String, predicate : String, obj : String,
     term : String, elapsed : Long, timestamp : Long) {
-    override def toString : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}", "${elapsed}", "${timestamp}""""
+    override def toString : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${elapsed}","${timestamp}""""
   }
 
-  private[this] val retmax = 100000
-  private[this] val timeout = 60000
+  private[this] val retmax = 5000
+  private[this] val timeout = 90000
+  private[this] val maxOpen = 3
 
   private[this] val nullStream = new PrintStream(new OutputStream {
       override def write(b : Int) : Unit = Unit
   })
 
-  def apply(term : String) : Task[Unit] = ids(term)
+  def apply() : Task[Unit] = stream.merge.mergeN(maxOpen)(io.linesR("terms.txt").map(mine))
+    .map(_.toString)
+    .intersperse("\n")
+    .pipe(text.utf8Encode)
+    .to(io.fileChunkW(s"${System.currentTimeMillis}.csv"))
+    .run
+
+  def mine(term : String) : Process[Task, Row] = ids(term)
     .flatMap(id => article(id).flatMap(compileArticle))
     .flatMap(lst => Process.emitAll(lst))
     .filter(_._2.args.length === 2)
@@ -39,13 +47,9 @@ object Pubmed {
       term,
       elapsed,
       System.currentTimeMillis)
-    }.map(_.toString)
-    .intersperse("\n")
-    .pipe(text.utf8Encode)
-    .to(io.fileChunkW(s"${term}_${System.currentTimeMillis}.csv"))
-    .run
+    }
 
-  private[this] def article(id : Int) : Process[Task, Pubmed] = Process.eval { Task {
+  private[this] def article(id : String) : Process[Task, Pubmed] = Process.eval { Task {
 
     val tokens = MLSentenceSegmenter.bundled().get
 
@@ -69,11 +73,11 @@ object Pubmed {
 
   } }
 
-  private[this] def ids(term : String) : Process[Task, Int] = {
+  private[this] def ids(term : String) : Process[Task, String] = {
 
     def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term}"&retmax=${retmax}&rettype=xml""")
 
-    def lst = (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text.toInt).toList
+    def lst = (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toList
 
     Process.emitAll(lst).toSource
 
