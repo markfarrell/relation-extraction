@@ -16,7 +16,7 @@ import Terms._
 object Pubmed {
 
   private[this] final case class Pubmed(pmid : String, title : String, _abstract : List[String])
-  final case class Row(pmid : String, subject : String, predicate : String, obj : String,
+  private[this] final case class Row(pmid : String, subject : String, predicate : String, obj : String,
     term : String, elapsed : Long, timestamp : Long) {
     override def toString : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${elapsed}","${timestamp}""""
   }
@@ -36,7 +36,7 @@ object Pubmed {
     .to(io.fileChunkW(s"${System.currentTimeMillis}.csv"))
     .run
 
-  def mine(term : String) : Process[Task, Row] = ids(term)
+  private[this] def mine(term : String) : Process[Task, Row] = ids(term)
     .flatMap(id => article(id).flatMap(compileArticle))
     .flatMap(lst => Process.emitAll(lst))
     .filter(_._2.args.length === 2)
