@@ -16,27 +16,13 @@ import edu.stanford.nlp.util.CoreMap
 
 object Lemmatizer {
 
-  val pipeline : StanfordCoreNLP = {
+  def pipeline : StanfordCoreNLP = new StanfordCoreNLP({
 
-    val errStream : PrintStream = System.err
+    val props : Properties = new Properties
+    props.put("annotators", "tokenize, ssplit, pos, lemma")
+    props
 
-    System.setErr(new PrintStream(new OutputStream {
-      override def write(b : Int) : Unit = Unit
-    }))
-
-    val tmp = new StanfordCoreNLP({
-
-      val props : Properties = new Properties
-      props.put("annotators", "tokenize, ssplit, pos, lemma")
-      props
-
-    })
-
-    System.setErr(errStream)
-
-    tmp
-
-  }
+  })
 
   def apply(str : String) : String = {
 

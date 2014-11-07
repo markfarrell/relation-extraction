@@ -16,7 +16,7 @@ import Terms._
 object Pubmed {
 
   private[this] final case class Pubmed(pmid : String, title : String, _abstract : List[String])
-  private[this] final case class Row(pmid : String, subject : String, predicate : String, obj : String,
+  final case class Row(pmid : String, subject : String, predicate : String, obj : String,
     term : String, elapsed : Long, timestamp : Long) {
     override def toString : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${elapsed}","${timestamp}""""
   }
@@ -25,10 +25,6 @@ object Pubmed {
   private[this] val timeout = 90000
   private[this] val maxOpen = 3
 
-  private[this] val nullStream = new PrintStream(new OutputStream {
-      override def write(b : Int) : Unit = Unit
-  })
-
   def apply() : Task[Unit] = stream.merge.mergeN(maxOpen)(io.linesR("terms.txt").map(mine))
     .map(_.toString)
     .intersperse("\n")
@@ -36,8 +32,8 @@ object Pubmed {
     .to(io.fileChunkW(s"${System.currentTimeMillis}.csv"))
     .run
 
-  private[this] def mine(term : String) : Process[Task, Row] = ids(term)
-    .flatMap(id => article(id).flatMap(compileArticle))
+  def mine(term : String) : Process[Task, Row] = stream.merge.mergeN(1)(articles(term))
+    .flatMap(compileArticle)
     .flatMap(lst => Process.emitAll(lst))
     .filter(_._2.args.length === 2)
     .map { case (pmid, relation, elapsed) => Row(pmid,
@@ -67,19 +63,19 @@ object Pubmed {
 
     }
 
-    assert(seq.length === 1)
+    assert(seq.length === 1, "Sequence length not 1!")
 
     seq(0)
 
   } }
 
-  private[this] def ids(term : String) : Process[Task, String] = {
+  private[this] def articles(term : String) : Process[Task, Process[Task, Pubmed]] = {
 
     def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term}"&retmax=${retmax}&rettype=xml""")
 
-    def lst = (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toList
+    def ids = (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toList
 
-    Process.emitAll(lst).toSource
+    Process.emitAll(ids.map(article)).toSource
 
   }
 
@@ -97,18 +93,6 @@ object Pubmed {
 
   }.timed(timeout).or(Task.now(List.empty[(String, Relation, Long)])) }
 
-  private[this] def parse(sentence : String) : Tree[String] = {
-
-    val errStream : PrintStream = System.err
-
-    System.setErr(nullStream)
-
-    val tree = (new Parser).apply(sentence)
-
-    System.setErr(errStream)
-
-    tree
-
-  }
+  private[this] def parse(sentence : String) : Tree[String] = (new Parser).apply(sentence)
 
 }
