@@ -40,7 +40,8 @@ object ProjectBuild extends Build {
       "com.bizo" % "mighty-csv_2.11" % "0.2",
       "net.sourceforge.owlapi" % "owlapi-distribution" % "3.4.10",
       "net.sf.jwordnet" % "jwnl" % "1.4_rc3",
-      "org.scalanlp" %% "epic" % "0.2"
+      "org.scalanlp" %% "epic" % "0.2",
+      "org.twitter4j" % "twitter4j-core" % "[4.0,)"
     )
   )
 

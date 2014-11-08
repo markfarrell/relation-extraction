@@ -16,7 +16,7 @@ import edu.stanford.nlp.util.CoreMap
 
 object Lemmatizer {
 
-  def pipeline : StanfordCoreNLP = new StanfordCoreNLP({
+  lazy val pipeline : StanfordCoreNLP = new StanfordCoreNLP({
 
     val props : Properties = new Properties
     props.put("annotators", "tokenize, ssplit, pos, lemma")
