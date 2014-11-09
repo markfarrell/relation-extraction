@@ -15,7 +15,6 @@ import twitter4j._
 
 import Terms._
 
-
 object Pubmed {
 
   private[this] final case class Pubmed(pmid : String, title : String, _abstract : List[String])
@@ -33,17 +32,17 @@ object Pubmed {
   }
 
   private[this] val retmax = 5000
-  private[this] val timeout = 90000
+  private[this] val timeout = 180000
   private[this] val maxOpen = 3
 
   def apply() : Task[Unit] = stream.merge.mergeN(maxOpen)(io.linesR("terms.txt").map(mine))
+    .observe(Twitter.out.contramap(_.toTweet))
+    .observe(io.stdOutLines.contramap(_.toCSV))
     .map(_.toCSV)
     .intersperse("\n")
     .pipe(text.utf8Encode)
-    .to(io.fileChunkW(s"${System.currentTimeMillis}.csv"))
+    .to(io.fileChunkW(s"${System.currentTimeMillis}.csv", bufferSize = 128))
     .run
-
-
 
   def mine(term : String) : Process[Task, Row] = stream.merge.mergeN(1)(articles(term))
     .flatMap(compileArticle)
