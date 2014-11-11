@@ -23,9 +23,9 @@ object Pubmed {
 
     def toCSV : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${elapsed}","${timestamp}""""
 
-    def toTweet : String = s"""True or false? ${predicate}(#${camel(subject)}, #${camel(obj)}) (${url}) #${camel(term)}"""
+    def toTweet : String = s"""True or false? ${predicate}(${subject}, ${obj}) ${url} #${camel(term)}"""
 
-    def url : String = Bitly(s"http://www.ncbi.nlm.nih.gov/pubmed/${pmid}")
+    def url : String = Bitly(s"http://www.ncbi.nlm.nih.gov/pubmed/${pmid}").or(Task.now("")).run
 
     private[this] def camel(s : String) = s.split(" ").map(_.capitalize).mkString("")
 
@@ -112,7 +112,7 @@ object Pubmed {
 
 private[this] object Bitly {
 
-  def apply(link : String) : String = {
+  def apply(link : String) : Task[String] = Task {
 
     import scala.io.Source
     import scala.util.parsing.json._
