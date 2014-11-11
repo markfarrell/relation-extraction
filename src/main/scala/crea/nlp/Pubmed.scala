@@ -23,30 +23,34 @@ object Pubmed {
 
     def toCSV : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${elapsed}","${timestamp}""""
 
-    def toTweet : String = s"""True or false? ${predicate}(${subject}, ${obj}) ${url} #${camel(term)}"""
+    def toTweet : String = s"""True or false? ${predicate}(${subject}, ${obj}) ${url} #${hashtag(term)}"""
 
-    def url : String = Bitly(s"http://www.ncbi.nlm.nih.gov/pubmed/${pmid}").or(Task.now("")).run
+    private[this] def url : String = Bitly(s"http://www.ncbi.nlm.nih.gov/pubmed/${pmid}").or(Task.now("")).run
 
-    private[this] def camel(s : String) = s.split(" ").map(_.capitalize).mkString("")
+    private[this] def hashtag(s : String) = s.replaceAll("\\W", " ")
+      .split(" ")
+      .map(_.capitalize).mkString("")
 
   }
 
   private[this] val retmax = 5000
   private[this] val timeout = 180000
-  private[this] val maxOpen = 3
+  private[this] val maxOpen = 30
+  private[this] val maxQueued = 3
+  private[this] val bufferSize = 128
 
-  def apply() : Task[Unit] = stream.merge.mergeN(maxOpen)(io.linesR("terms.txt").map(mine))
+  def apply(filePath : String = "terms.txt") : Task[Unit] = nondeterminism.njoin(maxOpen, maxQueued)(io.linesR(filePath).map(mine))
     .observe(Twitter.out.contramap(_.toTweet))
     .observe(io.stdOutLines.contramap(_.toCSV))
     .map(_.toCSV)
     .intersperse("\n")
     .pipe(text.utf8Encode)
-    .to(io.fileChunkW(s"${System.currentTimeMillis}.csv", bufferSize = 128))
+    .to(io.fileChunkW(s"${System.currentTimeMillis}.csv", bufferSize))
     .run
 
   def mine(term : String) : Process[Task, Row] = stream.merge.mergeN(1)(articles(term))
     .flatMap(compileArticle)
-    .flatMap(lst => Process.emitAll(lst))
+    .flatMap(Process.emitAll)
     .filter(_._2.args.length === 2)
     .map { case (pmid, relation, elapsed) => Row(pmid,
       relation.args.head.id,
@@ -83,11 +87,11 @@ object Pubmed {
 
   private[this] def articles(term : String) : Process[Task, Process[Task, Pubmed]] = {
 
-    def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term}"&retmax=${retmax}&rettype=xml""")
+    def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term.replaceAll(" ", "%20")}"&retmax=${retmax}&rettype=xml""")
 
     def ids = (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toList
 
-    Process.emitAll(ids.map(article)).toSource
+    Process.emitAll(ids).map(article).toSource
 
   }
 
@@ -109,7 +113,6 @@ object Pubmed {
 
 }
 
-
 private[this] object Bitly {
 
   def apply(link : String) : Task[String] = Task {
@@ -119,7 +122,11 @@ private[this] object Bitly {
 
     val result = Source.fromURL(requestURL(link)).mkString
 
-    JSON.parseFull(result).map(_.asInstanceOf[Map[String,Any]]("data").asInstanceOf[Map[String, Any]]("url").asInstanceOf[String]).get
+    JSON.parseFull(result).map {
+      _.asInstanceOf[Map[String,Any]]("data")
+      .asInstanceOf[Map[String, Any]]("url")
+      .asInstanceOf[String]
+    }.get
 
   }
 
