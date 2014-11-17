@@ -23,23 +23,27 @@ object Pubmed {
 
     def toCSV : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${elapsed}","${timestamp}""""
 
-    def toTweet : String = s"""True or false? ${predicate}(${subject}, ${obj}) ${url} #${hashtag(term)}"""
+    def toTweet : String = s"""True or false? ${predicate}(${hashtag(subject)}, ${hashtag(obj)}) ${url} #${hashtag(term)}"""
 
     private[this] def url : String = Bitly(s"http://www.ncbi.nlm.nih.gov/pubmed/${pmid}").or(Task.now("")).run
 
-    private[this] def hashtag(s : String) = s.replaceAll("\\W", " ")
-      .split(" ")
-      .map(_.capitalize).mkString("")
+    private[this] def hashtag(s : String) = if(s.matches("""^\d+""")) {
+      s
+    } else {
+      s.replaceAll("\\W", " ")
+       .split(" ")
+       .map(_.capitalize)
+       .mkString("")
+    }
 
   }
 
   private[this] val retmax = 5000
   private[this] val timeout = 180000
-  private[this] val maxOpen = 30
-  private[this] val maxQueued = 3
+  private[this] val maxOpen = 3
   private[this] val bufferSize = 128
 
-  def apply(filePath : String = "terms.txt") : Task[Unit] = nondeterminism.njoin(maxOpen, maxQueued)(io.linesR(filePath).map(mine))
+  def apply(filePath : String) : Task[Unit] = stream.merge.mergeN(maxOpen)(io.linesR(filePath).map(mine))
     .observe(Twitter.out.contramap(_.toTweet))
     .observe(io.stdOutLines.contramap(_.toCSV))
     .map(_.toCSV)
