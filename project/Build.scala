@@ -42,7 +42,8 @@ object ProjectBuild extends Build {
       "net.sf.jwordnet" % "jwnl" % "1.4_rc3",
       "org.scalanlp" %% "epic" % "0.2",
       "org.twitter4j" % "twitter4j-core" % "[4.0,)",
-      "com.github.tototoshi" %% "scala-csv" % "1.1.1"
+      "com.github.tototoshi" %% "scala-csv" % "1.1.1",
+      "pircbot" % "pircbot" % "1.5.0"
     )
   )
 

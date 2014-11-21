@@ -18,19 +18,20 @@ import Terms._
 object Pubmed {
 
   private[this] final case class Pubmed(pmid : String, title : String, _abstract : List[String])
-  final case class Row(pmid : String, subject : String, predicate : String, obj : String,
+
+  private[this] final case class Row(pmid : String, subject : String, predicate : String, obj : String,
     term : String, elapsed : Long, timestamp : Long) {
 
-    def toCSV : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${elapsed}","${timestamp}""""
+    def toCSV : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${elapsed}","${timestamp}"\n"""
 
-    def toTweet : String = s"""True or false? ${predicate}(${hashtag(subject)}, ${hashtag(obj)}) ${url} #${hashtag(term)}"""
+    def toTweet : String = s"""True or false? ${predicate}(${hashtag(subject)}, ${hashtag(obj)}) ${url} ${hashtag(term)}"""
 
-    private[this] def url : String = Bitly(s"http://www.ncbi.nlm.nih.gov/pubmed/${pmid}").or(Task.now("")).run
+    private[this] lazy val url : String = Bitly(s"http://www.ncbi.nlm.nih.gov/pubmed/${pmid}").or(Task.now("")).run
 
     private[this] def hashtag(s : String) = if(s.matches("""^\d+""")) {
       s
     } else {
-      s.replaceAll("\\W", " ")
+      "#" + s.replaceAll("\\W", " ")
        .split(" ")
        .map(_.capitalize)
        .mkString("")
@@ -40,32 +41,22 @@ object Pubmed {
 
   private[this] val retmax = 5000
   private[this] val timeout = 180000
-  private[this] val maxOpen = 3
   private[this] val bufferSize = 128
 
-  def apply(filePath : String) : Task[Unit] = stream.merge.mergeN(maxOpen)(io.linesR(filePath).map(mine))
-    .observe(Twitter.out.contramap(_.toTweet))
-    .observe(io.stdOutLines.contramap(_.toCSV))
-    .map(_.toCSV)
-    .intersperse("\n")
-    .pipe(text.utf8Encode)
-    .to(io.fileChunkW(s"${System.currentTimeMillis}.csv", bufferSize))
-    .run
+  def apply() : Task[Unit] = {
 
-  def mine(term : String) : Process[Task, Row] = stream.merge.mergeN(1)(articles(term))
-    .flatMap(compileArticle)
-    .flatMap(Process.emitAll)
-    .filter(_._2.args.length === 2)
-    .map { case (pmid, relation, elapsed) => Row(pmid,
-      relation.args.head.id,
-      relation.literal.id,
-      relation.args.last.id,
-      term,
-      elapsed,
-      System.currentTimeMillis)
-    }
+    IRC.in.observe(io.stdOutLines.contramap(_.toString))
+     .flatMap((article _).tupled)
+     .observe(Twitter.out.contramap(_.toTweet))
+     .observe(io.stdOutLines.contramap(_.toCSV))
+     .map(_.toCSV)
+     .pipe(text.utf8Encode)
+     .to(io.fileChunkW(s"${System.currentTimeMillis}.csv", bufferSize))
+     .run
 
-  private[this] def article(id : String) : Process[Task, Pubmed] = Process.eval { Task {
+  }
+
+  private[this] def article(id : String, term : String) : Process[Task, Row] = Process.eval { Task {
 
     val tokens = MLSentenceSegmenter.bundled().get
 
@@ -87,15 +78,25 @@ object Pubmed {
 
     seq(0)
 
-  } }
+  } }.flatMap(compileArticle)
+   .flatMap(Process.emitAll)
+   .filter(_._2.args.length === 2)
+   .map { case (pmid, relation, elapsed) => Row(pmid,
+    relation.args.head.id,
+    relation.literal.id,
+    relation.args.last.id,
+    term,
+    elapsed,
+    System.currentTimeMillis)
+  }
 
-  private[this] def articles(term : String) : Process[Task, Process[Task, Pubmed]] = {
+  def ids(term : String) : Process[Task, String] = {
 
     def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term.replaceAll(" ", "%20")}"&retmax=${retmax}&rettype=xml""")
 
-    def ids = (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toList
+    val lst = (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toList
 
-    Process.emitAll(ids).map(article).toSource
+    Process.emitAll(lst)
 
   }
 
@@ -147,6 +148,72 @@ object Twitter {
       TwitterFactory.getSingleton.updateStatus(s)
       ()
     }.or(Task.delay(println(s"Could not tweet: ${s}")))
+  }
+
+}
+
+object IRC {
+
+  import org.jibble.pircbot._
+  import scala.concurrent.duration._
+
+  private[this] implicit val scheduler = scalaz.stream.DefaultScheduler
+
+  private[this] val t = async.topic[(String, String)]()
+
+  private[this] val whitelist = List("m4farrel")
+
+  private[this] val bot = new PircBot {
+
+    private[this] val name = "semanticbot"
+
+    private[this] val pattern = s"""^${name}: (.+)""".r
+
+    this.setName(name)
+    this.setVerbose(false)
+    this.connect("irc.freenode.net")
+    this.joinChannel("#csc")
+    this.joinChannel("#cmc")
+
+    override def onMessage(channel : String, sender : String, login : String,
+      hostname : String, message : String) : Unit = if(message.startsWith(name)) {
+        if(whitelist.contains(sender)) {
+
+          Task {
+
+            message match {
+
+              case pattern(term) =>
+
+                this.sendMessage(channel, s"${sender}: ok")
+
+                Pubmed.ids(term)
+                 .map(id => (id, term))
+                 .zipWith(Process.awakeEvery(1 seconds))((x, _) => x)
+                 .to(t.publish).run.run
+
+              case _ =>
+
+                this.sendMessage(channel, s"${sender}: I don't understand.")
+
+           }
+
+         }.runAsync(_ => ())
+
+        } else {
+          this.sendMessage(channel, s"${sender}: Not allowed.")
+        }
+
+      }
+
+  }
+
+  def in : Process[Task, (String, String)] = t.subscribe
+
+  def out(channelName : String) : Sink[Task, String] = io.channel { (s : String) =>
+    Task.delay {
+      bot.sendMessage(channelName, s)
+    }.or(Task.delay(println(s"Could not IRC: ${s}")))
   }
 
 }
