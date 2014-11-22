@@ -17,6 +17,8 @@ import Terms._
 
 object Pubmed {
 
+  private[this] implicit val scheduler = scalaz.stream.DefaultScheduler
+
   private[this] final case class Pubmed(pmid : String, title : String, _abstract : List[String])
 
   private[this] final case class Row(pmid : String, subject : String, predicate : String, obj : String,
@@ -45,7 +47,9 @@ object Pubmed {
 
   def apply() : Task[Unit] = {
 
-    IRC.in.observe(io.stdOutLines.contramap(_.toString))
+    val src = IRC.in
+
+    src.observe(io.stdOutLines.contramap(_.toString))
      .flatMap((article _).tupled)
      .observe(Twitter.out.contramap(_.toTweet))
      .observe(io.stdOutLines.contramap(_.toCSV))
@@ -167,7 +171,7 @@ object IRC {
 
     private[this] val name = "semanticbot"
 
-    private[this] val pattern = s"""^${name}: (.+)""".r
+    private[this] val pattern = s"""^${name}: research (.+)""".r
 
     this.setName(name)
     this.setVerbose(false)
@@ -185,11 +189,16 @@ object IRC {
 
               case pattern(term) =>
 
-                this.sendMessage(channel, s"${sender}: ok")
+                TweetChemicalImage(term).attemptRun match {
+                  case -\/(_) =>
+                    this.sendMessage(channel, s"Researching ${term}.")
+                  case \/-(url) =>
+                    this.sendMessage(channel, s"Researching ${term}. ${url}")
+                }
 
                 Pubmed.ids(term)
                  .map(id => (id, term))
-                 .zipWith(Process.awakeEvery(1 seconds))((x, _) => x)
+                 .zipWith(Process.awakeEvery(10 seconds))((x, _) => x)
                  .to(t.publish).run.run
 
               case _ =>
@@ -201,7 +210,7 @@ object IRC {
          }.runAsync(_ => ())
 
         } else {
-          this.sendMessage(channel, s"${sender}: Not allowed.")
+          this.sendMessage(channel, s"${sender}: Please don't talk to me.")
         }
 
       }
@@ -214,6 +223,45 @@ object IRC {
     Task.delay {
       bot.sendMessage(channelName, s)
     }.or(Task.delay(println(s"Could not IRC: ${s}")))
+  }
+
+}
+
+object TweetChemicalImage {
+
+  import sys.process._
+  import java.net.URL
+  import java.io.File
+
+  import twitter4j.conf._
+  import twitter4j.media._
+
+  private[this] lazy val factory = new ImageUploadFactory((new ConfigurationBuilder).build())
+
+  private[this] lazy val pattern = "^http://p.twipple.jp/(.+)".r
+
+  def apply(chemical : String) : Task[String] = Task {
+
+    val url = new URL(s"http://cactus.nci.nih.gov/chemical/structure/${chemical}/image")
+
+    val file = new File(s"${chemical}.gif")
+
+    val twitter = TwitterFactory.getSingleton
+
+    url #> file !!
+
+    val uploadedUrl = factory.getInstance.upload(file)
+
+    val imageUrl = uploadedUrl match {
+      case pattern(id) => s"http://p.twpl.jp/show/orig/${id}"
+    }
+
+   twitter.updateStatus(new StatusUpdate(s"Researching ${chemical} ${imageUrl}"))
+
+    file.delete()
+
+    uploadedUrl
+
   }
 
 }

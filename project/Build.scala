@@ -34,16 +34,20 @@ object ProjectBuild extends Build {
       "com.github.scopt" %% "scopt" % "3.2.0",
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1",
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models",
-      "org.scalaz" %% "scalaz-core" % "7.0.6",
+      "org.scalaz" %% "scalaz-core" % "7.1.0",
       "org.scalaz.stream" %% "scalaz-stream" % "0.5",
       "com.chuusai" %% "shapeless" % "2.0.0",
       "com.bizo" % "mighty-csv_2.11" % "0.2",
       "net.sourceforge.owlapi" % "owlapi-distribution" % "3.4.10",
       "net.sf.jwordnet" % "jwnl" % "1.4_rc3",
       "org.scalanlp" %% "epic" % "0.2",
-      "org.twitter4j" % "twitter4j-core" % "[4.0,)",
+      "org.twitter4j" % "twitter4j-core" % "4.0.2",
+      "org.twitter4j" % "twitter4j-media-support" % "4.0.2",
       "com.github.tototoshi" %% "scala-csv" % "1.1.1",
-      "pircbot" % "pircbot" % "1.5.0"
+      "pircbot" % "pircbot" % "1.5.0",
+      "org.http4s" %% "http4s-core" % "0.4.1",
+      "org.http4s" %% "http4s-server" % "0.4.1",
+      "org.http4s" %% "http4s-dsl" % "0.4.1"
     )
   )
 
