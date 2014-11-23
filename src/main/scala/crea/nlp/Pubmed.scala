@@ -178,6 +178,9 @@ object IRC {
     this.connect("irc.freenode.net")
     this.joinChannel("#csc")
     this.joinChannel("#cmc")
+    this.joinChannel("##cmc")
+    this.joinChannel("###cmc")
+    this.joinChannel("#crea")
 
     override def onMessage(channel : String, sender : String, login : String,
       hostname : String, message : String) : Unit = if(message.startsWith(name)) {
