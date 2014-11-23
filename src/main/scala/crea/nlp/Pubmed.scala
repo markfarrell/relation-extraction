@@ -34,9 +34,9 @@ object Pubmed {
       s
     } else {
       "#" + s.replaceAll("\\W", " ")
-       .split(" ")
-       .map(_.capitalize)
-       .mkString("")
+        .split(" ")
+        .map(_.capitalize)
+        .mkString("")
     }
 
   }
@@ -83,15 +83,15 @@ object Pubmed {
     seq(0)
 
   } }.flatMap(compileArticle)
-   .flatMap(Process.emitAll)
-   .filter(_._2.args.length === 2)
-   .map { case (pmid, relation, elapsed) => Row(pmid,
-    relation.args.head.id,
-    relation.literal.id,
-    relation.args.last.id,
-    term,
-    elapsed,
-    System.currentTimeMillis)
+    .flatMap(Process.emitAll)
+    .filter(_._2.args.length === 2)
+    .map { case (pmid, relation, elapsed) => Row(pmid,
+      relation.args.head.id,
+      relation.literal.id,
+      relation.args.last.id,
+      term,
+      elapsed,
+      System.currentTimeMillis)
   }
 
   def ids(term : String) : Process[Task, String] = {
@@ -165,8 +165,6 @@ object IRC {
 
   private[this] val t = async.topic[(String, String)]()
 
-  private[this] val whitelist = List("m4farrel")
-
   private[this] val bot = new PircBot {
 
     private[this] val name = "semanticbot"
@@ -184,39 +182,37 @@ object IRC {
 
     override def onMessage(channel : String, sender : String, login : String,
       hostname : String, message : String) : Unit = if(message.startsWith(name)) {
-        if(whitelist.contains(sender)) {
 
-          Task {
+      Task {
 
-            message match {
+        message match {
 
-              case pattern(term) =>
+          case pattern(term) =>
 
-                TweetChemicalImage(term).attemptRun match {
-                  case -\/(_) =>
-                    this.sendMessage(channel, s"Researching ${term}.")
-                  case \/-(url) =>
-                    this.sendMessage(channel, s"Researching ${term}. ${url}")
-                }
+          TweetChemicalImage(term).attemptRun match {
+            case -\/(_) =>
 
-                Pubmed.ids(term)
-                 .map(id => (id, term))
-                 .zipWith(Process.awakeEvery(10 seconds))((x, _) => x)
-                 .to(t.publish).run.run
+              this.sendMessage(channel, s"Researching ${term}.")
 
-              case _ =>
+            case \/-(url) =>
 
-                this.sendMessage(channel, s"${sender}: I don't understand.")
+              this.sendMessage(channel, s"Researching ${term}. ${url}")
+          }
 
-           }
+          Pubmed.ids(term)
+            .map(id => (id, term))
+            .zipWith(Process.awakeEvery(10 seconds))((x, _) => x)
+            .to(t.publish).run.run
 
-         }.runAsync(_ => ())
+          case _ =>
 
-        } else {
-          this.sendMessage(channel, s"${sender}: Please don't talk to me.")
+            this.sendMessage(channel, s"${sender}: I don't understand.")
+
         }
 
-      }
+      }.runAsync(_ => ())
+
+    }
 
   }
 
