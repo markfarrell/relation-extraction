@@ -47,7 +47,12 @@ object ProjectBuild extends Build {
       "pircbot" % "pircbot" % "1.5.0",
       "org.http4s" %% "http4s-core" % "0.4.1",
       "org.http4s" %% "http4s-server" % "0.4.1",
-      "org.http4s" %% "http4s-dsl" % "0.4.1"
+      "org.http4s" %% "http4s-dsl" % "0.4.1",
+      "org.http4s" %% "http4s-servlet" % "0.4.1",
+      "org.http4s" %% "http4s-jetty" % "0.4.1",
+      "org.http4s" %% "http4s-blazecore" % "0.4.1",
+      "org.http4s" %% "http4s-blazeserver" % "0.4.1",
+      "org.log4s" %% "log4s" % "1.1.3"
     )
   )
 

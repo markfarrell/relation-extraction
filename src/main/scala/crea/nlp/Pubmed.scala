@@ -28,6 +28,8 @@ object Pubmed {
 
     def toTweet : String = s"""True or false? ${predicate}(${hashtag(subject)}, ${hashtag(obj)}) ${url} ${hashtag(term)}"""
 
+    def toJSON : String = s"""{"pmid":"${pmid}","predicate":"${predicate}","subject":"${subject}","obj":"${obj}","term":"${term}","elapsed":"${elapsed}","timestamp":"${timestamp}"}"""
+
     private[this] lazy val url : String = Bitly(s"http://www.ncbi.nlm.nih.gov/pubmed/${pmid}").or(Task.now("")).run
 
     private[this] def hashtag(s : String) = if(s.matches("""^\d+""")) {
@@ -45,6 +47,8 @@ object Pubmed {
   private[this] val timeout = 180000
   private[this] val bufferSize = 128
 
+  private[this] val t = async.topic[String]()
+
   def apply() : Task[Unit] = {
 
     val src = IRC.in
@@ -53,10 +57,23 @@ object Pubmed {
      .flatMap((article _).tupled)
      .observe(Twitter.out.contramap(_.toTweet))
      .observe(io.stdOutLines.contramap(_.toCSV))
+     .observe(t.publish.contramap(_.toJSON))
      .map(_.toCSV)
      .pipe(text.utf8Encode)
      .to(io.fileChunkW(s"${System.currentTimeMillis}.csv", bufferSize))
      .run
+
+  }
+
+  def in : Process[Task, String] = t.subscribe
+
+  def ids(term : String) : Process[Task, String] = {
+
+    def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term.replaceAll(" ", "%20")}"&retmax=${retmax}&rettype=xml""")
+
+    val lst = (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toList
+
+    Process.emitAll(lst)
 
   }
 
@@ -92,16 +109,6 @@ object Pubmed {
       term,
       elapsed,
       System.currentTimeMillis)
-  }
-
-  def ids(term : String) : Process[Task, String] = {
-
-    def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term.replaceAll(" ", "%20")}"&retmax=${retmax}&rettype=xml""")
-
-    val lst = (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toList
-
-    Process.emitAll(lst)
-
   }
 
   private[this] def compileArticle(article : Pubmed) : Process[Task, List[(String, Relation, Long)]] = Process.emitAll(article._abstract)
@@ -174,9 +181,6 @@ object IRC {
     this.setName(name)
     this.setVerbose(false)
     this.connect("irc.freenode.net")
-    this.joinChannel("#csc")
-    this.joinChannel("#cmc")
-    this.joinChannel("##cmc")
     this.joinChannel("###cmc")
     this.joinChannel("#crea")
 
@@ -255,11 +259,57 @@ object TweetChemicalImage {
       case pattern(id) => s"http://p.twpl.jp/show/orig/${id}"
     }
 
-   twitter.updateStatus(new StatusUpdate(s"Researching ${chemical} ${imageUrl}"))
+    twitter.updateStatus(new StatusUpdate(s"Researching ${chemical} ${imageUrl}"))
 
     file.delete()
 
     uploadedUrl
+
+  }
+
+}
+
+object Web {
+
+  import org.http4s._
+  import org.http4s.dsl._
+  import org.http4s.websocket._
+  import org.http4s.websocket.WebsocketBits._
+  import org.http4s.server._
+  import org.http4s.server.websocket._
+
+  import org.http4s.server.jetty.JettyBuilder
+  import org.http4s.server.blaze.{WebSocketSupport, Http1ServerStage}
+  import org.http4s.blaze.channel.nio1.NIO1SocketServerChannelFactory
+  import org.http4s.blaze.channel.SocketConnection
+  import org.http4s.blaze.pipeline.LeafBuilder
+  import java.nio.ByteBuffer
+  import java.net.InetSocketAddress
+
+  private[this] val route = HttpService {
+
+    case req@ GET -> Root / "log" =>
+
+      val src = Pubmed.in.map(s => Text(s))
+
+      val sink: Sink[Task, WebSocketFrame] = Process.constant {
+        case Text(s, _) => Task.delay( println(s))
+        case f => Task.delay(println(s"Unknown type: $f"))
+      }
+
+      WS(src, sink)
+
+  }
+
+  def start : Unit = {
+
+    Task(Pubmed().run).runAsync(_ => ())
+
+    def pipebuilder(conn: SocketConnection): LeafBuilder[ByteBuffer] = new Http1ServerStage(route, Some(conn)) with WebSocketSupport
+
+    new NIO1SocketServerChannelFactory(pipebuilder, 12, 8*1024)
+      .bind(new InetSocketAddress(8080))
+      .run()
 
   }
 
