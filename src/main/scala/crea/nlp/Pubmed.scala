@@ -77,6 +77,21 @@ object Pubmed {
 
   }
 
+  private[this] def writer1[I](n : Int) : Writer1[Seq[I], I, I] = {
+
+    import process1._
+    import Process._
+
+    require(n > 0, "window size must be > 0, was: " + n)
+
+    def go(window: Vector[I]): Writer1[Vector[I], I, I] = {
+      emit(-\/(window)) fby receive1(i => emit(\/-(i)) ++ go(window.tail :+ i))
+    }
+
+    chunk(n).once.flatMap(go)
+
+  }
+
   private[this] def article(id : String, term : String) : Process[Task, Row] = Process.eval { Task {
 
     val tokens = MLSentenceSegmenter.bundled().get
@@ -293,7 +308,7 @@ object Web {
       val src = Pubmed.in.map(s => Text(s))
 
       val sink: Sink[Task, WebSocketFrame] = Process.constant {
-        case Text(s, _) => Task.delay( println(s))
+        case Text(s, _) => Task.delay(println(s))
         case f => Task.delay(println(s"Unknown type: $f"))
       }
 
