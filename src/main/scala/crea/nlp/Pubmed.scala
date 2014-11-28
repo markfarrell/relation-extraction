@@ -4,6 +4,7 @@ import scala.xml.XML
 
 import scalaz._
 import scalaz.concurrent._
+import scala.concurrent.duration._
 import scalaz.stream._
 import Scalaz._
 
@@ -51,7 +52,7 @@ object Pubmed {
 
   def apply() : Task[Unit] = {
 
-    val src = IRC.in
+    val src = Web.in.merge(IRC.in)
 
     src.observe(io.stdOutLines.contramap(_.toString))
      .flatMap((article _).tupled)
@@ -67,7 +68,16 @@ object Pubmed {
 
   def in : Process[Task, String] = t.subscribe
 
-  def ids(term : String) : Process[Task, String] = {
+  def search(term : String, t : async.mutable.Topic[(String, String)]) : Process[Task, Unit] = { 
+
+    ids(term)
+      .map(id => (id, term))
+      .zipWith(Process.awakeEvery(10 seconds))((x, _) => x)
+      .to(t.publish)
+
+  } 
+
+  private[this] def ids(term : String) : Process[Task, String] = {
 
     def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term.replaceAll(" ", "%20")}"&retmax=${retmax}&rettype=xml""")
 
@@ -181,7 +191,6 @@ object Twitter {
 object IRC {
 
   import org.jibble.pircbot._
-  import scala.concurrent.duration._
 
   private[this] implicit val scheduler = scalaz.stream.DefaultScheduler
 
@@ -208,20 +217,9 @@ object IRC {
 
           case pattern(term) =>
 
-          TweetChemicalImage(term).attemptRun match {
-            case -\/(_) =>
+            this.sendMessage(channel, s"Researching ${term}.")
 
-              this.sendMessage(channel, s"Researching ${term}.")
-
-            case \/-(url) =>
-
-              this.sendMessage(channel, s"Researching ${term}. ${url}")
-          }
-
-          Pubmed.ids(term)
-            .map(id => (id, term))
-            .zipWith(Process.awakeEvery(10 seconds))((x, _) => x)
-            .to(t.publish).run.run
+            Pubmed.search(term, t).run.run
 
           case _ =>
 
@@ -245,45 +243,6 @@ object IRC {
 
 }
 
-object TweetChemicalImage {
-
-  import sys.process._
-  import java.net.URL
-  import java.io.File
-
-  import twitter4j.conf._
-  import twitter4j.media._
-
-  private[this] lazy val factory = new ImageUploadFactory((new ConfigurationBuilder).build())
-
-  private[this] lazy val pattern = "^http://p.twipple.jp/(.+)".r
-
-  def apply(chemical : String) : Task[String] = Task {
-
-    val url = new URL(s"http://cactus.nci.nih.gov/chemical/structure/${chemical}/image")
-
-    val file = new File(s"${chemical}.gif")
-
-    val twitter = TwitterFactory.getSingleton
-
-    url #> file !!
-
-    val uploadedUrl = factory.getInstance.upload(file)
-
-    val imageUrl = uploadedUrl match {
-      case pattern(id) => s"http://p.twpl.jp/show/orig/${id}"
-    }
-
-    twitter.updateStatus(new StatusUpdate(s"Researching ${chemical} ${imageUrl}"))
-
-    file.delete()
-
-    uploadedUrl
-
-  }
-
-}
-
 object Web {
 
   import org.http4s._
@@ -301,20 +260,35 @@ object Web {
   import java.nio.ByteBuffer
   import java.net.InetSocketAddress
 
+  private[this] implicit val scheduler = scalaz.stream.DefaultScheduler
+
+  private[this] val t = async.topic[(String, String)]()
+
   private[this] val route = HttpService {
 
-    case req@ GET -> Root / "log" =>
+    case req@ GET -> Root =>
 
       val src = Pubmed.in.map(s => Text(s))
 
-      val sink: Sink[Task, WebSocketFrame] = Process.constant {
-        case Text(s, _) => Task.delay(println(s))
-        case f => Task.delay(println(s"Unknown type: $f"))
+      val sink : Sink[Task, WebSocketFrame] = Process.constant {
+
+        case Text(term, _) => Task {
+
+          Pubmed.search(term, t).run.runAsync(_ => ())
+
+        }
+
+        case f => 
+        
+          Task.delay(println(s"Unknown type: $f"))
+
       }
 
       WS(src, sink)
 
   }
+
+  def in = t.subscribe
 
   def start : Unit = {
 
