@@ -48,6 +48,10 @@ object Pubmed {
   private[this] val timeout = 180000
   private[this] val bufferSize = 128
 
+  private[this] val whitelist = List("increase", "decrease", "upregulate", "downregulate",
+    "regulate", "encode", "decode", "secrete", "inhibit", "induce", "transmit", "cause", "treat", "prevent",
+    "be", "have", "call", "share", "contain", "compose", "use", "approve", "link", "associate", "correlate")
+
   private[this] val t = async.topic[String]()
 
   def apply(file : String) : Task[Unit] = {
@@ -70,6 +74,7 @@ object Pubmed {
 
     src.observe(io.stdOutLines.contramap(_.toString))
      .flatMap((article _).tupled)
+     .filter(row => whitelist.contains(row.predicate))
      .observe(Twitter.out.contramap(_.toTweet))
      .observe(io.stdOutLines.contramap(_.toCSV))
      .observe(t.publish.contramap(_.toJSON))
