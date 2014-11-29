@@ -50,9 +50,23 @@ object Pubmed {
 
   private[this] val t = async.topic[String]()
 
-  def apply() : Task[Unit] = {
+  def apply(file : String) : Task[Unit] = {
 
-    val src = Web.in.merge(IRC.in)
+    val fileTopic = async.topic[(String, String)]()
+
+    val fileIn = fileTopic.subscribe
+
+    val fileSink = io.channel { (term : String) => Task.delay {
+
+      search(term, fileTopic).run.runAsync(_ => ())
+
+    }}
+
+    io.linesR(file)
+      .to(fileSink)
+      .run.run
+
+    val src = Web.in.merge(IRC.in).merge(fileIn)
 
     src.observe(io.stdOutLines.contramap(_.toString))
      .flatMap((article _).tupled)
@@ -68,14 +82,14 @@ object Pubmed {
 
   def in : Process[Task, String] = t.subscribe
 
-  def search(term : String, t : async.mutable.Topic[(String, String)]) : Process[Task, Unit] = { 
+  def search(term : String, t : async.mutable.Topic[(String, String)]) : Process[Task, Unit] = {
 
     ids(term)
       .map(id => (id, term))
       .zipWith(Process.awakeEvery(10 seconds))((x, _) => x)
       .to(t.publish)
 
-  } 
+  }
 
   private[this] def ids(term : String) : Process[Task, String] = {
 
@@ -179,9 +193,11 @@ private[this] object Bitly {
 
 object Twitter {
 
+  private[this] lazy val twitter = TwitterFactory.getSingleton
+
   def out : Sink[Task, String] = io.channel { (s : String) =>
     Task.delay {
-      TwitterFactory.getSingleton.updateStatus(s)
+      twitter.updateStatus(s)
       ()
     }.or(Task.delay(println(s"Could not tweet: ${s}")))
   }
@@ -272,14 +288,14 @@ object Web {
 
       val sink : Sink[Task, WebSocketFrame] = Process.constant {
 
-        case Text(term, _) => Task {
+        case Text(term, _) => Task.delay {
 
           Pubmed.search(term, t).run.runAsync(_ => ())
 
         }
 
-        case f => 
-        
+        case f =>
+
           Task.delay(println(s"Unknown type: $f"))
 
       }
@@ -290,9 +306,9 @@ object Web {
 
   def in = t.subscribe
 
-  def start : Unit = {
+  def start(file : String = "neuroendocrine.txt") : Unit = {
 
-    Task(Pubmed().run).runAsync(_ => ())
+    Task(Pubmed(file).run).runAsync(_ => ())
 
     def pipebuilder(conn: SocketConnection): LeafBuilder[ByteBuffer] = new Http1ServerStage(route, Some(conn)) with WebSocketSupport
 

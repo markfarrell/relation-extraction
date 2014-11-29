@@ -1,0 +1,104 @@
+hypothalamus
+oxytocin
+vasopressin
+posterior pituitary gland
+neurohypophysis
+adrenocorticotrophic hormone
+luteinizing hormone
+follicle-stimulating hormone
+thyroid-stimulating hormone
+prolactin
+growth hormone
+anterior pituitary gland
+adenohypophysis
+somatostatin
+neuroendocrine system
+pituitary gland
+thyrotropin-releasing hormone
+asperger syndrome
+autism
+schizophrenia
+depression
+bipolar disorder
+attention deficit disorder
+anxiety disorder
+antisocial personality disorder
+aboulia
+absence epilepsy
+acute stress disorder
+adolescent antisocial behavior
+adult antisocial behavior
+age-related cognitive decline
+agoraphobia
+alzheimer's disease
+binge eating disorder
+dissociative identity disorder
+dyslexia
+down syndrome
+depersonalization disorder
+intellectual disability
+huntington's disease
+kleptomania
+dyscalculia
+narcissitic personality disorder
+obsessive-compulsive disorder
+schizoaffective disorder
+schizophrenia
+sleep disorder
+tourette syndrome
+sadomasochism
+acamprosate
+baclofen
+buprenorphine
+naloxone
+disulfiram
+methadone
+naltrexone
+ondansetron
+bupropion
+cytisine
+varenicline
+amphetamine
+dexmethylphenidate
+dextroamphetamine
+lisdexamfetamine
+methamphetamine
+methylphenidate
+atomoxetine
+bupropion
+clonidine
+guanfacine
+venlafaxine
+alprazolam
+bromazepam
+chlordiazepoxide
+clobazam
+clonazepam
+clorazepate
+diazepam
+lorazepam
+oxazepam
+tofisopam
+buspirone
+hydroxyzine
+meprobamate
+pregabalin
+citalopram
+clomipramine
+doxepin
+escitalopram
+fluoxetine
+imipramine
+mirtazapine
+mirtazapine
+paraoxetine
+sertraline
+risperidone
+amisulpride
+asenapine
+chlorpromazine
+cocaine
+heroin
+nicotine
+cannabis
+morphine
