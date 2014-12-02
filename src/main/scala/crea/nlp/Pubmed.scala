@@ -33,7 +33,7 @@ object Pubmed {
 
     private[this] lazy val url : String = Bitly(s"http://www.ncbi.nlm.nih.gov/pubmed/${pmid}").or(Task.now("")).run
 
-    private[this] def hashtag(s : String) = if(s.matches("""^\d+""")) {
+    private[this] def hashtag(s : String) = if(s.matches("""^\d+$""")) {
       s
     } else {
       "#" + s.replaceAll("\\W", " ")
@@ -49,11 +49,12 @@ object Pubmed {
   private[this] val bufferSize = 128
 
   private[this] val whitelist = List("increase", "decrease", "upregulate", "downregulate",
-    "regulate", "encode", "decode", "secrete", "inhibit", "induce", "transmit", "cause", "treat", "prevent",
-    "be", "have", "call", "share", "contain", "compose", "use", "approve", "link", "associate", "correlate")
+    "regulate", "encode", "decode", "secrete", "block", "activate", "inhibit", "trigger", "signal",
+    "induce", "transmit", "cause", "treat", "prevent",  "interact", "suppress", "mediate", "respond",
+    "translate", "approve", "link", "correlate", "inject", "release")
 
   private[this] val t = async.topic[String]()
-
+ 
   def apply(file : String) : Task[Unit] = {
 
     val fileTopic = async.topic[(String, String)]()
