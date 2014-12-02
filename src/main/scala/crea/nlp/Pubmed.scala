@@ -1,6 +1,8 @@
 package crea.nlp
 
 import scala.xml.XML
+import scala.xml.Elem
+import scala.util.Random
 
 import scalaz._
 import scalaz.concurrent._
@@ -12,6 +14,8 @@ import java.io.{PrintStream, OutputStream}
 
 import epic.preprocess.MLSentenceSegmenter
 
+import org.log4s._
+
 import twitter4j._
 
 import Terms._
@@ -20,9 +24,9 @@ object Pubmed {
 
   private[this] implicit val scheduler = scalaz.stream.DefaultScheduler
 
-  private[this] final case class Pubmed(pmid : String, title : String, _abstract : List[String])
+  private[this] implicit val logger = org.log4s.getLogger
 
-  private[this] final case class Row(pmid : String, subject : String, predicate : String, obj : String,
+  final case class Row(pmid : String, subject : String, predicate : String, obj : String,
     term : String, elapsed : Long, timestamp : Long) {
 
     def toCSV : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${elapsed}","${timestamp}"\n"""
@@ -33,19 +37,27 @@ object Pubmed {
 
     private[this] lazy val url : String = Bitly(s"http://www.ncbi.nlm.nih.gov/pubmed/${pmid}").or(Task.now("")).run
 
-    private[this] def hashtag(s : String) = if(s.matches("""^\d+$""")) {
-      s
-    } else {
-      "#" + s.replaceAll("\\W", " ")
+    private[this] def hashtag(s : String) = {
+
+      val ret = s.replaceAll("\\W", " ")
         .split(" ")
         .map(_.capitalize)
         .mkString("")
+
+      if(ret.matches("""^\d+$""")) {
+
+        ret
+
+      } else {
+
+        "#" + ret
+
+      }
+
     }
 
   }
 
-  private[this] val retmax = 5000
-  private[this] val timeout = 180000
   private[this] val bufferSize = 128
 
   private[this] val whitelist = List("increase", "decrease", "upregulate", "downregulate",
@@ -54,16 +66,16 @@ object Pubmed {
     "translate", "approve", "link", "correlate", "inject", "release")
 
   private[this] val t = async.topic[String]()
- 
+
   def apply(file : String) : Task[Unit] = {
 
-    val fileTopic = async.topic[(String, String)]()
+    val fileTopic = async.topic[Row]()
 
     val fileIn = fileTopic.subscribe
 
     val fileSink = io.channel { (term : String) => Task.delay {
 
-      search(term, fileTopic).run.runAsync(_ => ())
+      search(term).to(fileTopic.publish).run.runAsync(_ => ())
 
     }}
 
@@ -73,11 +85,9 @@ object Pubmed {
 
     val src = Web.in.merge(IRC.in).merge(fileIn)
 
-    src.observe(io.stdOutLines.contramap(_.toString))
-     .flatMap((article _).tupled)
-     .filter(row => whitelist.contains(row.predicate))
+    src.filter(row => whitelist.contains(row.predicate))
      .observe(Twitter.out.contramap(_.toTweet))
-     .observe(io.stdOutLines.contramap(_.toCSV))
+     .observe(Log.info.contramap(_.toCSV))
      .observe(t.publish.contramap(_.toJSON))
      .map(_.toCSV)
      .pipe(text.utf8Encode)
@@ -88,87 +98,96 @@ object Pubmed {
 
   def in : Process[Task, String] = t.subscribe
 
-  def search(term : String, t : async.mutable.Topic[(String, String)]) : Process[Task, Unit] = {
+  def search(term : String) : Process[Task, Row] = {
 
     ids(term)
       .map(id => (id, term))
-      .zipWith(Process.awakeEvery(10 seconds))((x, _) => x)
-      .to(t.publish)
+      .flatMap((extractArticle _).tupled)
 
   }
 
-  private[this] def ids(term : String) : Process[Task, String] = {
+  /**
+    * E-utilities guide: http://www.ncbi.nlm.nih.gov/books/NBK25499/
+   **/
+  def ids(term : String) : Process[Task, String] = {
 
-    def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${term.replaceAll(" ", "%20")}"&retmax=${retmax}&rettype=xml""")
+    val datetype = "pdat"
+    val mindate = "2000/01/01"
+    val maxdate = "2015/01/01"
+    val retmax = 100000
+    val formattedTerm = term.replaceAll(" ", "%20")
+    val duration = 5 minutes
 
-    val lst = (xml \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toList
+    def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${formattedTerm}"&retmax=${retmax}&rettype=xml&datetype=${datetype}&mindate=${mindate}&maxdate=${maxdate}""")
 
-    Process.emitAll(lst)
+    def seq(elem : Elem) : Seq[String] = Random.shuffle((elem \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toSeq)
 
-  }
-
-  private[this] def writer1[I](n : Int) : Writer1[Seq[I], I, I] = {
-
-    import process1._
-    import Process._
-
-    require(n > 0, "window size must be > 0, was: " + n)
-
-    def go(window: Vector[I]): Writer1[Vector[I], I, I] = {
-      emit(-\/(window)) fby receive1(i => emit(\/-(i)) ++ go(window.tail :+ i))
-    }
-
-    chunk(n).once.flatMap(go)
+    Process.eval(Task.delay(xml).timed(duration))
+      .pipe(process1.lift(seq))
+      .observe(Log.debug.contramap(x => s"Got ${x.size} article ids about '${term}'."))
+      .pipe(process1.unchunk)
 
   }
 
-  private[this] def article(id : String, term : String) : Process[Task, Row] = Process.eval { Task {
+  def extractArticle(id : String, term : String) : Process[Task, Row] = {
 
     val tokens = MLSentenceSegmenter.bundled().get
+    val duration = 5 minutes
 
-    val xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${id}&rettype=xml""")
+    def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${id}&rettype=xml""")
 
-    val seq = (xml \\ "PubmedArticleSet" \\ "PubmedArticle").map { article =>
+    def seq(elem : Elem) : Seq[(String, String, String)] = (elem \\ "PubmedArticleSet" \\ "PubmedArticle").flatMap { article =>
 
       val pmid = (article \\ "PMID").text
       val title = (article \\ "ArticleTitle").text
       val _abstractBlock = (article \\ "Abstract").text
 
-      val _abstract = tokens(Option(_abstractBlock).getOrElse("")).toList
+      val sentences = tokens(Option(_abstractBlock).getOrElse("")).toList
 
-      Pubmed(pmid, title, _abstract)
+      sentences.map(sentence => (pmid, title, sentence))
 
     }
 
-    assert(seq.length === 1, "Sequence length not 1!")
+    def extract : ((String, String, String)) => Seq[Row] = {
+      case (pmid, title, sentence) =>
 
-    seq(0)
+        val t1 = System.currentTimeMillis
+        val res = Compile(parse(sentence))
+        val t2 = System.currentTimeMillis
+        val dt = t2 - t1
 
-  } }.flatMap(compileArticle)
-    .flatMap(Process.emitAll)
-    .filter(_._2.args.length === 2)
-    .map { case (pmid, relation, elapsed) => Row(pmid,
-      relation.args.head.id,
-      relation.literal.id,
-      relation.args.last.id,
-      term,
-      elapsed,
-      System.currentTimeMillis)
+        res match {
+
+          case -\/(_) =>
+
+            logger.warn(s"Could not extract relations from: ${sentence} | ${title} | ${pmid} | ${dt}")
+
+            Seq()
+
+          case \/-(relations) =>
+
+            relations.filter(_.args.length == 2)
+              .map { relation =>
+
+                val predicate = relation.literal.id
+                val subject = relation.args.head.id
+                val obj = relation.args.last.id
+                val now = System.currentTimeMillis
+
+                Row(pmid, subject, predicate, obj, term, dt, now)
+
+              }
+
+        }
+    }
+
+    Process.eval(Task.delay(xml).timed(duration))
+      .pipe(process1.lift(seq))
+      .pipe(process1.unchunk)
+      .pipe(process1.lift(extract))
+      .pipe(process1.unchunk)
+
   }
-
-  private[this] def compileArticle(article : Pubmed) : Process[Task, List[(String, Relation, Long)]] = Process.emitAll(article._abstract)
-    .flatMap(compileSentence(article))
-
-  private[this] def compileSentence(article : Pubmed)(sentence : String) : Process[Task, List[(String, Relation, Long)]] = Process.eval { Task {
-
-    val t1 = System.currentTimeMillis
-    val relations = Compile(parse(sentence)).toList.flatten
-    val t2 = System.currentTimeMillis
-    val dt = t2 - t1
-
-    relations.map(x => (article.pmid, x, dt))
-
-  }.timed(timeout).or(Task.now(List.empty[(String, Relation, Long)])) }
 
   private[this] def parse(sentence : String) : Tree[String] = (new Parser).apply(sentence)
 
@@ -197,15 +216,51 @@ private[this] object Bitly {
 
 }
 
+object Log {
+
+  def debug(implicit logger : org.log4s.Logger) : Sink[Task, String] = io.channel { (s : String) =>
+    Task.delay {
+      logger.debug(s)
+    }
+  }
+
+  def info(implicit logger : org.log4s.Logger) : Sink[Task, String] = io.channel { (s : String) =>
+    Task.delay {
+      logger.info(s)
+    }
+  }
+
+  def warn(implicit logger : org.log4s.Logger) : Sink[Task, String] = io.channel { (s : String) =>
+    Task.delay {
+      logger.warn(s)
+    }
+  }
+
+  def error(implicit logger : org.log4s.Logger) : Sink[Task, String] = io.channel { (s : String) =>
+    Task.delay {
+      logger.error(s)
+    }
+  }
+
+  def trace(implicit logger : org.log4s.Logger) : Sink[Task, String] = io.channel { (s : String) =>
+    Task.delay {
+      logger.trace(s)
+    }
+  }
+
+}
+
 object Twitter {
 
   private[this] lazy val twitter = TwitterFactory.getSingleton
+
+  private[this] implicit val logger = org.log4s.getLogger
 
   def out : Sink[Task, String] = io.channel { (s : String) =>
     Task.delay {
       twitter.updateStatus(s)
       ()
-    }.or(Task.delay(println(s"Could not tweet: ${s}")))
+    }.or(Task.delay(logger.warn(s"Could not tweet: ${s}")))
   }
 
 }
@@ -216,7 +271,9 @@ object IRC {
 
   private[this] implicit val scheduler = scalaz.stream.DefaultScheduler
 
-  private[this] val t = async.topic[(String, String)]()
+  private[this] val logger = org.log4s.getLogger
+
+  private[this] val t = async.topic[Pubmed.Row]()
 
   private[this] val bot = new PircBot {
 
@@ -241,7 +298,7 @@ object IRC {
 
             this.sendMessage(channel, s"Researching ${term}.")
 
-            Pubmed.search(term, t).run.run
+            Pubmed.search(term).to(t.publish).run.run
 
           case _ =>
 
@@ -255,12 +312,12 @@ object IRC {
 
   }
 
-  def in : Process[Task, (String, String)] = t.subscribe
+  def in : Process[Task, Pubmed.Row] = t.subscribe
 
   def out(channelName : String) : Sink[Task, String] = io.channel { (s : String) =>
     Task.delay {
       bot.sendMessage(channelName, s)
-    }.or(Task.delay(println(s"Could not IRC: ${s}")))
+    }.or(Task.delay(logger.warn(s"Could not IRC: ${s}")))
   }
 
 }
@@ -284,7 +341,7 @@ object Web {
 
   private[this] implicit val scheduler = scalaz.stream.DefaultScheduler
 
-  private[this] val t = async.topic[(String, String)]()
+  private[this] val t = async.topic[Pubmed.Row]()
 
   private[this] val route = HttpService {
 
@@ -296,7 +353,7 @@ object Web {
 
         case Text(term, _) => Task.delay {
 
-          Pubmed.search(term, t).run.runAsync(_ => ())
+          Pubmed.search(term).to(t.publish).run.runAsync(_ => ())
 
         }
 
