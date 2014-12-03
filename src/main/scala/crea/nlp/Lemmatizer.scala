@@ -16,7 +16,7 @@ import edu.stanford.nlp.util.CoreMap
 
 object Lemmatizer {
 
-  lazy val pipeline : StanfordCoreNLP = new StanfordCoreNLP({
+  private[this] lazy val pipeline : StanfordCoreNLP = new StanfordCoreNLP({
 
     val props : Properties = new Properties
     props.put("annotators", "tokenize, ssplit, pos, lemma")
@@ -30,13 +30,11 @@ object Lemmatizer {
 
     pipeline.annotate(doc)
 
-    {
-      for {
-        sentence <- doc.get(classOf[SentencesAnnotation]).asScala
-        token <- sentence.get(classOf[TokensAnnotation]).asScala
-      } yield token.get(classOf[LemmaAnnotation])
-    } mkString("")
+    for {
+      sentence <- doc.get(classOf[SentencesAnnotation]).asScala
+      token <- sentence.get(classOf[TokensAnnotation]).asScala
+    } yield token.get(classOf[LemmaAnnotation])
 
-  }
+  }.mkString("")
 
 }

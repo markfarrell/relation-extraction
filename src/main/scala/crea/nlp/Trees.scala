@@ -57,7 +57,8 @@ package object Trees {
     def id : String = {
 
       tree.leaves.flatMap(_.split(" "))
-        .map(terminal => Lemmatizer(terminal.toLowerCase))
+        .map(_.toLowerCase)
+        .map(Lemmatizer.apply)
         .mkString(" ")
         .trim
 

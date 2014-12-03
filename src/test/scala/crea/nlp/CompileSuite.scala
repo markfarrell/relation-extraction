@@ -12,7 +12,11 @@ class CompileSuite extends FunSuite {
 
   private[this] val parse = new Parser
 
-  private[this] def extract(sentence : String) : Option[Stream[Relation]] = RootExpression(parse(sentence))
+  private[this] def extract(sentence : String) : Option[Stream[Relation]] = { 
+    
+    RootExpression(parse(sentence))
+
+  } 
 
   test("Noun forms.") {
 

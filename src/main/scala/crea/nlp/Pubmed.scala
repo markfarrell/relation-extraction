@@ -63,36 +63,28 @@ object Pubmed {
   private[this] val whitelist = List("increase", "decrease", "upregulate", "downregulate",
     "regulate", "encode", "decode", "secrete", "block", "activate", "inhibit", "trigger", "signal",
     "induce", "transmit", "cause", "treat", "prevent",  "interact", "suppress", "mediate", "respond",
-    "translate", "approve", "link", "correlate", "inject", "release")
+    "translate", "be", "approve", "link", "correlate", "inject", "release", "express")
 
   private[this] val t = async.topic[String]()
 
   def apply(file : String) : Task[Unit] = {
 
-    val fileTopic = async.topic[Row]()
+    val maxOpen = 1 //TODO: Replace XML.load which causes deadlock
 
-    val fileIn = fileTopic.subscribe
-
-    val fileSink = io.channel { (term : String) => Task.delay {
-
-      search(term).to(fileTopic.publish).run.runAsync(_ => ())
-
-    }}
-
-    io.linesR(file)
-      .to(fileSink)
-      .run.run
+    val fileIn = stream.merge.mergeN(maxOpen)(io.linesR(file).map(search))
 
     val src = Web.in.merge(IRC.in).merge(fileIn)
 
-    src.filter(row => whitelist.contains(row.predicate))
-     .observe(Twitter.out.contramap(_.toTweet))
-     .observe(Log.info.contramap(_.toCSV))
-     .observe(t.publish.contramap(_.toJSON))
-     .map(_.toCSV)
-     .pipe(text.utf8Encode)
-     .to(io.fileChunkW(s"${System.currentTimeMillis}.csv", bufferSize))
-     .run
+    logger.debug("Begin reading relations.")
+
+    src.observe(Log.debug.contramap(_.toCSV))
+      .filter(row => whitelist.contains(row.predicate))
+      .observe(Twitter.out.contramap(_.toTweet))
+      .observe(t.publish.contramap(_.toJSON))
+      .map(_.toCSV)
+      .pipe(text.utf8Encode)
+      .to(io.fileChunkW(s"${System.currentTimeMillis}.csv", bufferSize))
+      .run
 
   }
 
@@ -101,8 +93,8 @@ object Pubmed {
   def search(term : String) : Process[Task, Row] = {
 
     ids(term)
-      .map(id => (id, term))
-      .flatMap((extractArticle _).tupled)
+     .map(id => (id, term))
+     .flatMap((extractArticle _).tupled)
 
   }
 
@@ -124,15 +116,15 @@ object Pubmed {
 
     Process.eval(Task.delay(xml).timed(duration))
       .pipe(process1.lift(seq))
-      .observe(Log.debug.contramap(x => s"Got ${x.size} article ids about '${term}'."))
+      .observe(Log.debug.contramap(x => s"[${Thread.currentThread().getName}] Got ${x.size} article ids about '${term}'."))
       .pipe(process1.unchunk)
 
   }
 
   def extractArticle(id : String, term : String) : Process[Task, Row] = {
 
-    val tokens = MLSentenceSegmenter.bundled().get
-    val duration = 5 minutes
+    def tokens = MLSentenceSegmenter.bundled().get
+    val duration = 2 minutes
 
     def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${id}&rettype=xml""")
 
@@ -160,7 +152,7 @@ object Pubmed {
 
           case -\/(_) =>
 
-            logger.warn(s"Could not extract relations from: ${sentence} | ${title} | ${pmid} | ${dt}")
+            logger.warn(s"[${Thread.currentThread().getName}] Could not extract relations from: ${sentence} | ${title} | ${pmid} | ${dt} | ${term}")
 
             Seq()
 

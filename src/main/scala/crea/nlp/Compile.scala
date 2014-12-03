@@ -9,7 +9,7 @@ import Terms._
 object Compile {
 
   def apply(tree : Tree[String]) : Tree[String] \/ List[Relation] = RootExpression(tree) match {
-    case Some(compounds) => compounds.toList.right
+    case Some(relations) => relations.toList.right
     case None => tree.left
   }
 
