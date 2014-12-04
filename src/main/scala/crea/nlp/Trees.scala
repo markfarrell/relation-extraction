@@ -60,6 +60,9 @@ package object Trees {
         .map(_.toLowerCase)
         .map(Lemmatizer.apply)
         .mkString(" ")
+        .replaceAll("-lrb-", "(")
+        .replaceAll("-rrb", ")")
+        .replaceAll("\\/", " per ")
         .trim
 
     }

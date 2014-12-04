@@ -44,6 +44,7 @@
     <priority value = "debug" />
     <appender-ref ref="default.console" />
     <appender-ref ref="debug.file" />
+    <appender-ref ref="warn.file" />
   </root>
 
 </log4j:configuration>

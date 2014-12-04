@@ -63,13 +63,14 @@ object Pubmed {
   private[this] val whitelist = List("increase", "decrease", "upregulate", "downregulate",
     "regulate", "encode", "decode", "secrete", "block", "activate", "inhibit", "trigger", "signal",
     "induce", "transmit", "cause", "treat", "prevent",  "interact", "suppress", "mediate", "respond",
-    "translate", "be", "approve", "link", "correlate", "inject", "release", "express")
+    "translate", "approve", "link", "correlate", "inject", "release", "express",
+    "bind", "stimulate")
 
   private[this] val t = async.topic[String]()
 
   def apply(file : String) : Task[Unit] = {
 
-    val maxOpen = 1 //TODO: Replace XML.load which causes deadlock
+    val maxOpen = 5
 
     val fileIn = stream.merge.mergeN(maxOpen)(io.linesR(file).map(search))
 
@@ -77,7 +78,7 @@ object Pubmed {
 
     logger.debug("Begin reading relations.")
 
-    src.observe(Log.debug.contramap(_.toCSV))
+    src.observe(Log.info.contramap(_.toCSV))
       .filter(row => whitelist.contains(row.predicate))
       .observe(Twitter.out.contramap(_.toTweet))
       .observe(t.publish.contramap(_.toJSON))
@@ -110,13 +111,35 @@ object Pubmed {
     val formattedTerm = term.replaceAll(" ", "%20")
     val duration = 5 minutes
 
-    def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${formattedTerm}"&retmax=${retmax}&rettype=xml&datetype=${datetype}&mindate=${mindate}&maxdate=${maxdate}""")
+    def xml = {
+
+      import sys.process._
+      import java.io.File
+      import java.net.URL
+
+      val url = new URL(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="${formattedTerm}"&retmax=${retmax}&rettype=xml&datetype=${datetype}&mindate=${mindate}&maxdate=${maxdate}""")
+
+      val file = new File(s"""data/${term.replace(" ", "")}.xml""")
+
+      logger.debug("s[${Thread.currentThread().getName}] Downloading ${file.getPath}")
+
+      url #> file !!
+
+      logger.debug(s"[${Thread.currentThread().getName}] Begin parsing ${file.getPath}")
+
+      val ret = XML.loadFile(file)
+
+      logger.debug(s"[${Thread.currentThread().getName}] Finished parsing ${file.getPath}")
+
+      ret
+
+    } 
 
     def seq(elem : Elem) : Seq[String] = Random.shuffle((elem \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toSeq)
 
     Process.eval(Task.delay(xml).timed(duration))
       .pipe(process1.lift(seq))
-      .observe(Log.debug.contramap(x => s"[${Thread.currentThread().getName}] Got ${x.size} article ids about '${term}'."))
+      .observe(Log.info.contramap(x => s"[${Thread.currentThread().getName}] Got ${x.size} article ids about '${term}'."))
       .pipe(process1.unchunk)
 
   }
@@ -126,7 +149,29 @@ object Pubmed {
     def tokens = MLSentenceSegmenter.bundled().get
     val duration = 2 minutes
 
-    def xml = XML.load(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${id}&rettype=xml""")
+    def xml = { 
+
+      import sys.process._
+      import java.io.File
+      import java.net.URL
+      
+      val url = new URL(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${id}&rettype=xml""")
+
+      val file = new File(s"data/${id}.xml")
+
+      logger.debug(s"[${Thread.currentThread().getName}] Downloading ${file.getPath}")
+
+      url #> file !!
+
+      logger.debug(s"[${Thread.currentThread().getName}] Begin parsing ${file.getPath}")
+
+      val ret = XML.loadFile(file)
+
+      logger.debug(s"[${Thread.currentThread().getName}] Finished parsing ${file.getPath}")
+
+      ret
+
+    } 
 
     def seq(elem : Elem) : Seq[(String, String, String)] = (elem \\ "PubmedArticleSet" \\ "PubmedArticle").flatMap { article =>
 
@@ -134,7 +179,11 @@ object Pubmed {
       val title = (article \\ "ArticleTitle").text
       val _abstractBlock = (article \\ "Abstract").text
 
+      logger.debug(s"[${Thread.currentThread().getName}] Begin tokenizing ${pmid}")
+
       val sentences = tokens(Option(_abstractBlock).getOrElse("")).toList
+
+      logger.debug(s"[${Thread.currentThread().getName}] Finished tokenizing ${pmid}")
 
       sentences.map(sentence => (pmid, title, sentence))
 
@@ -143,8 +192,10 @@ object Pubmed {
     def extract : ((String, String, String)) => Seq[Row] = {
       case (pmid, title, sentence) =>
 
+        logger.debug(s"[${Thread.currentThread().getName}] Begin extracting '${sentence}'")
+
         val t1 = System.currentTimeMillis
-        val res = Compile(parse(sentence))
+        val res = Compile(Parse(sentence))
         val t2 = System.currentTimeMillis
         val dt = t2 - t1
 
@@ -166,7 +217,11 @@ object Pubmed {
                 val obj = relation.args.last.id
                 val now = System.currentTimeMillis
 
-                Row(pmid, subject, predicate, obj, term, dt, now)
+                val row = Row(pmid, subject, predicate, obj, term, dt, now)
+
+                logger.debug(s"Extracted: ${row.toCSV}")
+
+                row
 
               }
 
@@ -180,8 +235,6 @@ object Pubmed {
       .pipe(process1.unchunk)
 
   }
-
-  private[this] def parse(sentence : String) : Tree[String] = (new Parser).apply(sentence)
 
 }
 

@@ -5,8 +5,10 @@ import Scalaz._
 
 object Parse {
 
-  lazy val parser = new Parser
+  private[this] lazy val parser = new Parser
 
-  def apply(sentence : String) : Tree[String] = parser.apply(sentence)
+  def apply(sentence : String) : Tree[String] = this.synchronized { 
+    parser.apply(sentence)
+  }
 
 }
