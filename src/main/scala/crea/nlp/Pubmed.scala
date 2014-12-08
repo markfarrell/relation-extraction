@@ -70,9 +70,7 @@ object Pubmed {
 
   def apply(file : String) : Task[Unit] = {
 
-    val maxOpen = 5
-
-    val fileIn = stream.merge.mergeN(maxOpen)(io.linesR(file).map(search))
+    val fileIn = nondeterminism.njoin(maxOpen = 10, maxQueued = 4)(io.linesR(file).map(search))
 
     val src = Web.in.merge(IRC.in).merge(fileIn)
 
@@ -121,15 +119,15 @@ object Pubmed {
 
       val file = new File(s"""data/${term.replace(" ", "")}.xml""")
 
-      logger.debug("s[${Thread.currentThread().getName}] Downloading ${file.getPath}")
+      logger.debug(s"Downloading ${file.getPath}")
 
       url #> file !!
 
-      logger.debug(s"[${Thread.currentThread().getName}] Begin parsing ${file.getPath}")
+      logger.debug(s"Begin parsing ${file.getPath}")
 
       val ret = XML.loadFile(file)
 
-      logger.debug(s"[${Thread.currentThread().getName}] Finished parsing ${file.getPath}")
+      logger.debug(s"Finished parsing ${file.getPath}")
 
       ret
 
@@ -137,9 +135,29 @@ object Pubmed {
 
     def seq(elem : Elem) : Seq[String] = Random.shuffle((elem \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toSeq)
 
-    Process.eval(Task.delay(xml).timed(duration))
+    def task : Task[Elem] = Task(xml).timed(duration).or(reattempt).onFinish { 
+
+      case Some(throwable) => 
+
+        Task.delay(logger.error(throwable)(s"Fetching ids for ${term} failed"))
+
+      case None => 
+
+        Task.delay(logger.debug(s"Finished downloading ids for ${term}"))
+
+    }
+
+    def reattempt : Task[Elem] = Task.delay { 
+
+      logger.warn(s"Reattempting to download article (${term}, ${id}).")
+
+      task.run
+
+    } 
+
+    Process.eval(task)
       .pipe(process1.lift(seq))
-      .observe(Log.info.contramap(x => s"[${Thread.currentThread().getName}] Got ${x.size} article ids about '${term}'."))
+      .observe(Log.info.contramap(x => s"Got ${x.size} article ids about '${term}'."))
       .pipe(process1.unchunk)
 
   }
@@ -159,15 +177,15 @@ object Pubmed {
 
       val file = new File(s"data/${id}.xml")
 
-      logger.debug(s"[${Thread.currentThread().getName}] Downloading ${file.getPath}")
+      logger.debug(s"Downloading ${file.getPath}")
 
       url #> file !!
 
-      logger.debug(s"[${Thread.currentThread().getName}] Begin parsing ${file.getPath}")
+      logger.debug(s"Begin parsing ${file.getPath}")
 
       val ret = XML.loadFile(file)
 
-      logger.debug(s"[${Thread.currentThread().getName}] Finished parsing ${file.getPath}")
+      logger.debug(s"Finished parsing ${file.getPath}")
 
       ret
 
@@ -179,11 +197,11 @@ object Pubmed {
       val title = (article \\ "ArticleTitle").text
       val _abstractBlock = (article \\ "Abstract").text
 
-      logger.debug(s"[${Thread.currentThread().getName}] Begin tokenizing ${pmid}")
+      logger.debug(s"Begin tokenizing ${pmid}")
 
       val sentences = tokens(Option(_abstractBlock).getOrElse("")).toList
 
-      logger.debug(s"[${Thread.currentThread().getName}] Finished tokenizing ${pmid}")
+      logger.debug(s"Finished tokenizing ${pmid}")
 
       sentences.map(sentence => (pmid, title, sentence))
 
@@ -192,22 +210,17 @@ object Pubmed {
     def extract : ((String, String, String)) => Seq[Row] = {
       case (pmid, title, sentence) =>
 
-        logger.debug(s"[${Thread.currentThread().getName}] Begin extracting '${sentence}'")
+        logger.debug(s"Begin extracting '${sentence}'")
 
+        val timeout = 3 minutes
         val t1 = System.currentTimeMillis
-        val res = Compile(Parse(sentence))
+        val res = Task(Compile(Parse(sentence))).timed(timeout).attemptRun
         val t2 = System.currentTimeMillis
         val dt = t2 - t1
 
         res match {
 
-          case -\/(_) =>
-
-            logger.warn(s"[${Thread.currentThread().getName}] Could not extract relations from: ${sentence} | ${title} | ${pmid} | ${dt} | ${term}")
-
-            Seq()
-
-          case \/-(relations) =>
+          case \/-(\/-(relations)) =>
 
             relations.filter(_.args.length == 2)
               .map { relation =>
@@ -225,10 +238,37 @@ object Pubmed {
 
               }
 
+          case _ =>
+
+            logger.warn(s"Could not extract relations from: ${sentence} | ${title} | ${pmid} | ${dt} | ${term}")
+
+            Seq()
+
         }
+
     }
 
-    Process.eval(Task.delay(xml).timed(duration))
+   def task : Task[Elem] = Task(xml).timed(duration).or(reattempt).onFinish { 
+
+      case Some(throwable) => 
+
+        Task.delay(logger.error(throwable)(s"Fetching article for (${term}, ${id}) failed"))
+
+      case None => 
+
+        Task.delay(logger.debug(s"Finished downloading article for (${term}, ${id})"))
+
+    }
+
+    def reattempt : Task[Elem] = Task.delay { 
+
+      logger.warn(s"Reattempting to download article (${term}, ${id}).")
+
+      task.run
+
+    } 
+
+    Process.eval(task)
       .pipe(process1.lift(seq))
       .pipe(process1.unchunk)
       .pipe(process1.lift(extract))
