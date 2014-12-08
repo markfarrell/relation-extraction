@@ -11,6 +11,8 @@ import scalaz.stream._
 import Scalaz._
 
 import java.io.{PrintStream, OutputStream}
+import java.util.Date
+import java.text.SimpleDateFormat
 
 import epic.preprocess.MLSentenceSegmenter
 
@@ -27,13 +29,13 @@ object Pubmed {
   private[this] implicit val logger = org.log4s.getLogger
 
   final case class Row(pmid : String, subject : String, predicate : String, obj : String,
-    term : String, elapsed : Long, timestamp : Long) {
+    term : String, timestamp : Long) {
 
-    def toCSV : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${elapsed}","${timestamp}"\n"""
+    def toCSV : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${timestamp}"\n"""
 
     def toTweet : String = s"""True or false? ${predicate}(${hashtag(subject)}, ${hashtag(obj)}) ${url} ${hashtag(term)}"""
 
-    def toJSON : String = s"""{"pmid":"${pmid}","predicate":"${predicate}","subject":"${subject}","obj":"${obj}","term":"${term}","elapsed":"${elapsed}","timestamp":"${timestamp}"}"""
+    def toJSON : String = s"""{"pmid":"${pmid}","predicate":"${predicate}","subject":"${subject}","obj":"${obj}","term":"${term}","timestamp":"${timestamp}"}"""
 
     private[this] lazy val url : String = Bitly(s"http://www.ncbi.nlm.nih.gov/pubmed/${pmid}").or(Task.now("")).run
 
@@ -191,24 +193,48 @@ object Pubmed {
 
     } 
 
-    def seq(elem : Elem) : Seq[(String, String, String)] = (elem \\ "PubmedArticleSet" \\ "PubmedArticle").flatMap { article =>
+    def seq(elem : Elem) : Seq[(String, String, String, Long)] = (elem \\ "PubmedArticleSet" \\ "PubmedArticle").flatMap { article =>
 
       val pmid = (article \\ "PMID").text
       val title = (article \\ "ArticleTitle").text
       val _abstractBlock = (article \\ "Abstract").text
 
-      logger.debug(s"Begin tokenizing ${pmid}")
+      val timestamp : Long = Task { 
+        
+        (article \\ "MedlineCitation" \\ "DateCreated").map { dateElem => 
+
+          val year = (dateElem \\ "Year").text
+          val month = (dateElem \\ "Month").text
+          val day = (dateElem \\ "Day").text
+
+          val sdf = new SimpleDateFormat("dd/M/yyyy")
+
+          val date = sdf.parse(s"${day}/${month}/${year}")
+
+          logger.debug(s"(${term}, ${pmid}) was created on ${date.toString}")
+
+          date.getTime
+
+        }.max
+
+      }.onFinish { 
+        
+        case Some(throwable) => 
+
+          Task(logger.error(throwable)(s"Failed to extraction a date for article (${pmid}, ${term})"))
+
+        case None => Task.now()
+
+      }.or(Task.now(0L)).run
 
       val sentences = tokens(Option(_abstractBlock).getOrElse("")).toList
 
-      logger.debug(s"Finished tokenizing ${pmid}")
-
-      sentences.map(sentence => (pmid, title, sentence))
+      sentences.map(sentence => (pmid, title, sentence, timestamp))
 
     }
 
-    def extract : ((String, String, String)) => Seq[Row] = {
-      case (pmid, title, sentence) =>
+    def extract : ((String, String, String, Long)) => Seq[Row] = {
+      case (pmid, title, sentence, timestamp) =>
 
         logger.debug(s"Begin extracting '${sentence}'")
 
@@ -228,11 +254,10 @@ object Pubmed {
                 val predicate = relation.literal.id
                 val subject = relation.args.head.id
                 val obj = relation.args.last.id
-                val now = System.currentTimeMillis
 
-                val row = Row(pmid, subject, predicate, obj, term, dt, now)
+                val row = Row(pmid, subject, predicate, obj, term, timestamp)
 
-                logger.debug(s"Extracted: ${row.toCSV}")
+                logger.debug(s"Extracted(${dt}): ${row.toCSV}")
 
                 row
 
@@ -240,7 +265,7 @@ object Pubmed {
 
           case _ =>
 
-            logger.warn(s"Could not extract relations from: ${sentence} | ${title} | ${pmid} | ${dt} | ${term}")
+            logger.warn(s"Could not extract relations from(${dt}): ${sentence} | ${title} | ${pmid} | ${term}")
 
             Seq()
 
