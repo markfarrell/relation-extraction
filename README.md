@@ -1,8 +1,8 @@
 ![travis-ci](https://travis-ci.org/crea-berkeley/knowledge-extraction.svg?branch=master)
 
-# Knowledge Extraction Software
+# Relation Extraction Software
 
-Extracts knowledge from text articles.
+Extracts relations from text articles.
 
 #### Instructions
 
