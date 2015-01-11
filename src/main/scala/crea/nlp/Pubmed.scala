@@ -72,14 +72,12 @@ object Pubmed {
 
   def apply(file : String) : Task[Unit] = {
 
-    val fileIn = nondeterminism.njoin(maxOpen = 10, maxQueued = 4)(io.linesR(file).map(search))
-
-    val src = Web.in.merge(IRC.in).merge(fileIn)
+    val src = nondeterminism.njoin(maxOpen = 10, maxQueued = 4)(io.linesR(file).map(search))
 
     logger.debug("Begin reading relations.")
 
     src.observe(Log.info.contramap(_.toCSV))
-      .filter(row => whitelist.contains(row.predicate))
+      .filter(row => DBpedia.contains(row.subject) && DBpedia.contains(row.obj))
       .observe(Twitter.out.contramap(_.toTweet))
       .observe(t.publish.contramap(_.toJSON))
       .map(_.toCSV)
@@ -133,29 +131,29 @@ object Pubmed {
 
       ret
 
-    } 
+    }
 
     def seq(elem : Elem) : Seq[String] = Random.shuffle((elem \\ "eSearchResult" \\ "IdList" \\ "Id").map(_.text).toSeq)
 
-    def task : Task[Elem] = Task(xml).timed(duration).or(reattempt).onFinish { 
+    def task : Task[Elem] = Task(xml).timed(duration).or(reattempt).onFinish {
 
-      case Some(throwable) => 
+      case Some(throwable) =>
 
         Task.delay(logger.error(throwable)(s"Fetching ids for ${term} failed"))
 
-      case None => 
+      case None =>
 
         Task.delay(logger.debug(s"Finished downloading ids for ${term}"))
 
     }
 
-    def reattempt : Task[Elem] = Task.delay { 
+    def reattempt : Task[Elem] = Task.delay {
 
       logger.warn(s"Reattempting to download article (${term}, ${id}).")
 
       task.run
 
-    } 
+    }
 
     Process.eval(task)
       .pipe(process1.lift(seq))
@@ -169,12 +167,12 @@ object Pubmed {
     def tokens = MLSentenceSegmenter.bundled().get
     val duration = 2 minutes
 
-    def xml = { 
+    def xml = {
 
       import sys.process._
       import java.io.File
       import java.net.URL
-      
+
       val url = new URL(s"""http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${id}&rettype=xml""")
 
       val file = new File(s"data/${id}.xml")
@@ -191,7 +189,7 @@ object Pubmed {
 
       ret
 
-    } 
+    }
 
     def seq(elem : Elem) : Seq[(String, String, String, Long)] = (elem \\ "PubmedArticleSet" \\ "PubmedArticle").flatMap { article =>
 
@@ -199,9 +197,9 @@ object Pubmed {
       val title = (article \\ "ArticleTitle").text
       val _abstractBlock = (article \\ "Abstract").text
 
-      val timestamp : Long = Task { 
-        
-        (article \\ "MedlineCitation" \\ "DateCreated").map { dateElem => 
+      val timestamp : Long = Task {
+
+        (article \\ "MedlineCitation" \\ "DateCreated").map { dateElem =>
 
           val year = (dateElem \\ "Year").text
           val month = (dateElem \\ "Month").text
@@ -217,9 +215,9 @@ object Pubmed {
 
         }.max
 
-      }.onFinish { 
-        
-        case Some(throwable) => 
+      }.onFinish {
+
+        case Some(throwable) =>
 
           Task(logger.error(throwable)(s"Failed to extraction a date for article (${pmid}, ${term})"))
 
@@ -273,25 +271,25 @@ object Pubmed {
 
     }
 
-   def task : Task[Elem] = Task(xml).timed(duration).or(reattempt).onFinish { 
+   def task : Task[Elem] = Task(xml).timed(duration).or(reattempt).onFinish {
 
-      case Some(throwable) => 
+      case Some(throwable) =>
 
         Task.delay(logger.error(throwable)(s"Fetching article for (${term}, ${id}) failed"))
 
-      case None => 
+      case None =>
 
         Task.delay(logger.debug(s"Finished downloading article for (${term}, ${id})"))
 
     }
 
-    def reattempt : Task[Elem] = Task.delay { 
+    def reattempt : Task[Elem] = Task.delay {
 
       logger.warn(s"Reattempting to download article (${term}, ${id}).")
 
       task.run
 
-    } 
+    }
 
     Process.eval(task)
       .pipe(process1.lift(seq))
@@ -326,7 +324,7 @@ private[this] object Bitly {
 
 }
 
-object Log {
+private[this] object Log {
 
   def debug(implicit logger : org.log4s.Logger) : Sink[Task, String] = io.channel { (s : String) =>
     Task.delay {
@@ -360,7 +358,58 @@ object Log {
 
 }
 
-object Twitter {
+private[this] object DBpedia {
+
+  import scalaj.http._
+
+  private[this] implicit val logger = org.log4s.getLogger
+
+  private[this] val endpoint = "http://dbpedia.org/sparql"
+  private[this] val defaultGraphURI = "http://dbpedia.org"
+  private[this] val format = "json"
+  private[this] val timeout = "30000"
+  private[this] val debug = "on"
+
+  // Expected response if a resource exists.
+  private[this] val expect = """{"head":{"link":[]},"boolean":true}"""
+
+  /**
+    * Does a resource exist on DBpedia?
+    * e.g. DBPedia.contains("ghrelin") returns true.
+   **/
+  def contains(resource : String) : Boolean = {
+
+    // e.g. blue man -> Blue_man
+    val formattedResource = resource.replaceAll(" ", "_").capitalize
+
+    val query = s"""ASK { dbpedia:$formattedResource ?p ?o }"""
+
+    val res = Http(endpoint).param("default-graph-uri", defaultGraphURI)
+      .param("query", query)
+      .param("format", format)
+      .param("timeout", timeout)
+      .param("debug", debug)
+      .asString
+      .body
+      .replaceAll(" ", "")
+
+    if(res === expect) {
+
+      logger.debug(s"Found resource dbpedia:$formattedResource")
+      true
+
+    } else {
+
+      logger.warn(s"Could not find resource dbpedia:$formattedResource")
+      false
+
+    }
+
+  }
+
+}
+
+private[this] object Twitter {
 
   private[this] lazy val twitter = TwitterFactory.getSingleton
 
@@ -375,120 +424,3 @@ object Twitter {
 
 }
 
-object IRC {
-
-  import org.jibble.pircbot._
-
-  private[this] implicit val scheduler = scalaz.stream.DefaultScheduler
-
-  private[this] val logger = org.log4s.getLogger
-
-  private[this] val t = async.topic[Pubmed.Row]()
-
-  private[this] val bot = new PircBot {
-
-    private[this] val name = "semanticbot"
-
-    private[this] val pattern = s"""^${name}: research (.+)""".r
-
-    this.setName(name)
-    this.setVerbose(false)
-    this.connect("irc.freenode.net")
-    this.joinChannel("###cmc")
-    this.joinChannel("#crea")
-
-    override def onMessage(channel : String, sender : String, login : String,
-      hostname : String, message : String) : Unit = if(message.startsWith(name)) {
-
-      Task {
-
-        message match {
-
-          case pattern(term) =>
-
-            this.sendMessage(channel, s"Researching ${term}.")
-
-            Pubmed.search(term).to(t.publish).run.run
-
-          case _ =>
-
-            this.sendMessage(channel, s"${sender}: I don't understand.")
-
-        }
-
-      }.runAsync(_ => ())
-
-    }
-
-  }
-
-  def in : Process[Task, Pubmed.Row] = t.subscribe
-
-  def out(channelName : String) : Sink[Task, String] = io.channel { (s : String) =>
-    Task.delay {
-      bot.sendMessage(channelName, s)
-    }.or(Task.delay(logger.warn(s"Could not IRC: ${s}")))
-  }
-
-}
-
-object Web {
-
-  import org.http4s._
-  import org.http4s.dsl._
-  import org.http4s.websocket._
-  import org.http4s.websocket.WebsocketBits._
-  import org.http4s.server._
-  import org.http4s.server.websocket._
-
-  import org.http4s.server.jetty.JettyBuilder
-  import org.http4s.server.blaze.{WebSocketSupport, Http1ServerStage}
-  import org.http4s.blaze.channel.nio1.NIO1SocketServerChannelFactory
-  import org.http4s.blaze.channel.SocketConnection
-  import org.http4s.blaze.pipeline.LeafBuilder
-  import java.nio.ByteBuffer
-  import java.net.InetSocketAddress
-
-  private[this] implicit val scheduler = scalaz.stream.DefaultScheduler
-
-  private[this] val t = async.topic[Pubmed.Row]()
-
-  private[this] val route = HttpService {
-
-    case req@ GET -> Root =>
-
-      val src = Pubmed.in.map(s => Text(s))
-
-      val sink : Sink[Task, WebSocketFrame] = Process.constant {
-
-        case Text(term, _) => Task.delay {
-
-          Pubmed.search(term).to(t.publish).run.runAsync(_ => ())
-
-        }
-
-        case f =>
-
-          Task.delay(println(s"Unknown type: $f"))
-
-      }
-
-      WS(src, sink)
-
-  }
-
-  def in = t.subscribe
-
-  def start(file : String = "neuroendocrine.txt") : Unit = {
-
-    Task(Pubmed(file).run).runAsync(_ => ())
-
-    def pipebuilder(conn: SocketConnection): LeafBuilder[ByteBuffer] = new Http1ServerStage(route, Some(conn)) with WebSocketSupport
-
-    new NIO1SocketServerChannelFactory(pipebuilder, 12, 8*1024)
-      .bind(new InetSocketAddress(8080))
-      .run()
-
-  }
-
-}

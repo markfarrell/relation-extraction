@@ -14,11 +14,11 @@ object ProjectBuild extends Build {
       import Terms._
       import Trees._
     """,
-    name := "knowledge-extraction",
+    name := "relation-extraction",
     version := "1.1",
-    scalaVersion := "2.11.1",
+    scalaVersion := "2.11.4",
     maintainer in Debian := "Mark Farrell",
-    packageDescription in Debian := "Extracts knowledge from text articles.",
+    packageDescription in Debian := "Extracts relations from text articles.",
     resolvers ++= Seq(
       "Sonatype Releases" at "http://oss.sonatype.org/content/repositories/releases",
       "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
@@ -35,7 +35,7 @@ object ProjectBuild extends Build {
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1",
       "edu.stanford.nlp" % "stanford-corenlp" % "3.3.1" classifier "models",
       "org.scalaz" %% "scalaz-core" % "7.1.0",
-      "org.scalaz.stream" %% "scalaz-stream" % "0.5",
+      "org.scalaz.stream" %% "scalaz-stream" % "0.6a",
       "com.chuusai" %% "shapeless" % "2.0.0",
       "com.bizo" % "mighty-csv_2.11" % "0.2",
       "net.sourceforge.owlapi" % "owlapi-distribution" % "3.4.10",
@@ -52,8 +52,9 @@ object ProjectBuild extends Build {
       "org.http4s" %% "http4s-jetty" % "0.4.1",
       "org.http4s" %% "http4s-blazecore" % "0.4.1",
       "org.http4s" %% "http4s-blazeserver" % "0.4.1",
-      "org.log4s" %% "log4s" % "1.1.3", 
-      "com.jcabi" % "jcabi-log" % "0.15.2"
+      "org.log4s" %% "log4s" % "1.1.3",
+      "com.jcabi" % "jcabi-log" % "0.15.2",
+      "org.scalaj" %% "scalaj-http" % "1.1.0"
     )
   )
 
