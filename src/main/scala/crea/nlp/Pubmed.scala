@@ -385,26 +385,35 @@ private[this] object DBpedia {
 
     val query = s"""ASK { dbpedia:$formattedResource ?p ?o }"""
 
-    val res = Http(endpoint).param("default-graph-uri", defaultGraphURI)
-      .param("query", query)
-      .param("format", format)
-      .param("timeout", timeout)
-      .param("debug", debug)
-      .asString
-      .body
-      .replaceAll(" ", "")
+    val res = Task {
 
-    if(res === expect) {
+      Http(endpoint).param("default-graph-uri", defaultGraphURI)
+        .param("query", query)
+        .param("format", format)
+        .param("timeout", timeout)
+        .param("debug", debug)
+        .asString
+        .body
+        .replaceAll(" ", "")
 
-      logger.debug(s"Found resource dbpedia:$formattedResource")
-      true
+    }.attemptRun
 
-    } else {
+    res match {
 
-      logger.warn(s"Could not find resource dbpedia:$formattedResource")
-      false
+      case \/-(expect) =>
+
+        logger.debug(s"Found resource dbpedia:$formattedResource")
+
+        true
+
+      case _ =>
+
+        logger.warn(s"Could not find resource dbpedia:$formattedResource")
+
+        false
 
     }
+
 
   }
 
