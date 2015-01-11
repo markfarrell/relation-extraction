@@ -400,7 +400,7 @@ private[this] object DBpedia {
 
     res match {
 
-      case \/-(expect) =>
+      case \/-(json) if json === expect =>
 
         logger.debug(s"Found resource dbpedia:$formattedResource")
 
