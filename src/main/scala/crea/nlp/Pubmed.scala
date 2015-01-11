@@ -66,7 +66,7 @@ object Pubmed {
     "regulate", "encode", "decode", "secrete", "block", "activate", "inhibit", "trigger", "signal",
     "induce", "transmit", "cause", "treat", "prevent",  "interact", "suppress", "mediate", "respond",
     "translate", "approve", "link", "correlate", "inject", "release", "express",
-    "bind", "stimulate")
+    "bind", "stimulate", "transduce", "excite")
 
   private[this] val t = async.topic[String]()
 
@@ -78,6 +78,7 @@ object Pubmed {
 
     src.observe(Log.info.contramap(_.toCSV))
       .filter(row => DBpedia.contains(row.subject) && DBpedia.contains(row.obj))
+      .filter(row => whitelist.contains(row.predicate))
       .observe(Twitter.out.contramap(_.toTweet))
       .observe(t.publish.contramap(_.toJSON))
       .map(_.toCSV)
