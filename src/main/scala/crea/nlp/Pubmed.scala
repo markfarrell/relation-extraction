@@ -78,7 +78,6 @@ object Pubmed {
 
     src.observe(Log.info.contramap(_.toCSV))
       .filter(row => DBpedia.contains(row.subject) && DBpedia.contains(row.obj))
-      .filter(row => whitelist.contains(row.predicate))
       .observe(Twitter.out.contramap(_.toTweet))
       .observe(t.publish.contramap(_.toJSON))
       .map(_.toCSV)
@@ -254,7 +253,7 @@ object Pubmed {
                 val subject = relation.args.head.id
                 val obj = relation.args.last.id
 
-                val row = Row(pmid, subject, predicate, obj, term, timestamp)
+                val row = Row(id, subject, predicate, obj, term, timestamp)
 
                 logger.debug(s"Extracted(${dt}): ${row.toCSV}")
 
@@ -383,7 +382,7 @@ private[this] object DBpedia {
     // e.g. blue man -> Blue_man
     val formattedResource = resource.replaceAll(" ", "_").capitalize
 
-    val query = s"""ASK { dbpedia:$formattedResource ?p ?o }"""
+    val query = s"""ASK { dbpedia:$formattedResource rdf:type dul:BiologicalObject }"""
 
     val res = Task {
 
@@ -402,13 +401,13 @@ private[this] object DBpedia {
 
       case \/-(json) if json === expect =>
 
-        logger.debug(s"Found resource dbpedia:$formattedResource")
+        logger.debug(s"Found biological object dbpedia:$formattedResource")
 
         true
 
       case _ =>
 
-        logger.warn(s"Could not find resource dbpedia:$formattedResource")
+        logger.warn(s"Could not biological object dbpedia:$formattedResource")
 
         false
 
