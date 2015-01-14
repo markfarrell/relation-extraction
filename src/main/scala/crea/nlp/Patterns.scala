@@ -9,30 +9,6 @@ import Trees._
 
 package object Patterns {
 
-  class Preterminal(value : String) {
-
-    def unapply(tree : Tree[String]) : Option[String] = tree match {
-      case Tree.Node(compareValue, Stream(Tree.Node(terminal, Stream()))) if compareValue === value => terminal.some
-      case _ => none
-    }
-
-  }
-
-  private[this] def applyArguments(arguments : => Stream[Literal])(relation : Relation) : Stream[Relation] = {
-
-    val lit = relation.literal
-    val args = relation.args.takeRight(1)
-
-    arguments.map { arg => 
-
-      val newArgs = (arg :: args).filterNot(_ === Monoid[Literal].zero)
-
-      Relation(lit, newArgs)
-
-    } 
-
-  }
-
   sealed trait ConstituentPattern
 
   object PredicateArgumentExpression extends ConstituentPattern {
@@ -192,6 +168,34 @@ package object Patterns {
 
         stream.some
 
+      case Tree.Node(VP|AtVP, Stream(
+        PredicateExpression(predicates),
+        Tree.Node(PP|AtPP, Stream(
+          Tree.Node(IN|VBG|TO, Stream(Tree.Node(preposition, Stream()))),
+          PredicateArgumentsExpression(arguments)
+        ))
+      )) =>
+
+        def addPreposition(relation : Relation) : Relation = {
+          Relation(relation.literal |+| Literal(preposition), relation.args)
+        }
+
+        (predicates >>= applyArguments(arguments)).map(addPreposition).some
+
+      case Tree.Node(VP|AtVP, Stream(
+        PredicateExpression(predicates),
+        Tree.Node(PP|AtPP, Stream(
+          Tree.Node(IN|VBG|TO, Stream(Tree.Node(preposition, Stream()))),
+          PhraseExpression((arguments, clauses))
+        ))
+      )) =>
+
+        def addPreposition(relation : Relation) : Relation = {
+          Relation(relation.literal |+| Literal(preposition), relation.args)
+        }
+
+        (predicates >>= applyArguments(arguments)).map(addPreposition).some |+| clauses.some
+
       case Tree.Node(VP|AtVP, Stream(PredicateExpression(predicates), PhraseExpression((arguments, clauses)))) =>
 
         (predicates >>= applyArguments(arguments)).some |+| clauses.some
@@ -241,7 +245,7 @@ package object Patterns {
         Tree.Node(S, Stream(
           PredicateExpression(clauses)
         ))
-      )) => 
+      )) =>
 
         (Stream(), clauses).some
 
@@ -253,8 +257,8 @@ package object Patterns {
             PrepositionalPhraseExpression((arguments, clauses))
           ))
         ))
-      )) => 
-      
+      )) =>
+
         (Stream((Literal(arg0.id) #:: arguments).reduce(_ |+| _)), clauses).some
 
       case _ => none
@@ -330,7 +334,7 @@ package object Patterns {
             PredicateExpression(predicates)
           ))
         ))
-      )) => 
+      )) =>
 
         (arguments, (predicates >>= applyArguments(arguments))).some
 
@@ -410,6 +414,30 @@ package object Patterns {
     def apply(tree : Tree[String]) : Option[Stream[Relation]] = tree match {
       case Tree.Node(ROOT, Stream(ClauseExpression(relations))) => relations.some
       case _ => none
+    }
+
+  }
+
+  class Preterminal(value : String) {
+
+    def unapply(tree : Tree[String]) : Option[String] = tree match {
+      case Tree.Node(compareValue, Stream(Tree.Node(terminal, Stream()))) if compareValue === value => terminal.some
+      case _ => none
+    }
+
+  }
+
+  private[this] def applyArguments(arguments : => Stream[Literal])(relation : Relation) : Stream[Relation] = {
+
+    val lit = relation.literal
+    val args = relation.args.takeRight(1)
+
+    arguments.map { arg =>
+
+      val newArgs = (arg :: args).filterNot(_ === Monoid[Literal].zero)
+
+      Relation(lit, newArgs)
+
     }
 
   }

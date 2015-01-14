@@ -12,11 +12,11 @@ class CompileSuite extends FunSuite {
 
   private[this] val parse = new Parser
 
-  private[this] def extract(sentence : String) : Option[Stream[Relation]] = { 
-    
+  private[this] def extract(sentence : String) : Option[Stream[Relation]] = {
+
     RootExpression(parse(sentence))
 
-  } 
+  }
 
   test("Noun forms.") {
 
@@ -58,7 +58,7 @@ class CompileSuite extends FunSuite {
 
   test("Prepositional phrases as noun adjectives.") {
 
-    val expect = Stream(Relation(Literal("take"),List(Literal("man type"), Literal("dog")))).some
+    val expect = Stream(Relation(Literal("take"), List(Literal("man type"), Literal("dog")))).some
 
     expect assert_=== extract("That type of man took the dog.")
     expect assert_=== extract("That type of man has taken the dog.")
@@ -102,7 +102,7 @@ class CompileSuite extends FunSuite {
 
   test("ADJP and VP + PP.") {
 
-    val expect = Stream(Relation(Literal("depend"), List(Literal("age disease progression"), Literal("health balance")))).some
+    val expect = Stream(Relation(Literal("depend on"), List(Literal("age disease progression"), Literal("health balance")))).some
 
     expect assert_=== extract("Age disease progression has depended on the critical and crucial health balance.")
     expect assert_=== extract("Age disease progression depends on the critical and crucial health balance.")
@@ -115,7 +115,7 @@ class CompileSuite extends FunSuite {
 
   test("VP + PP") {
 
-    val expect = Stream(Relation(Literal("talk"), List(Literal("man"), Literal("cat")))).some
+    val expect = Stream(Relation(Literal("talk about"), List(Literal("man"), Literal("cat")))).some
 
     expect assert_=== extract("The man can talk about the cat.")
 
@@ -123,7 +123,7 @@ class CompileSuite extends FunSuite {
 
   test("NP + PP and VP + PP.") {
 
-    val expect = Stream(Relation(Literal("depend"), List(Literal("age progression"), Literal("health balance")))).some
+    val expect = Stream(Relation(Literal("depend on"), List(Literal("age progression"), Literal("health balance")))).some
 
     expect assert_=== extract("Disease progression with aging undoubtedly depends on the critical and crucial health balance.")
     expect assert_=== extract("Disease progression with aging depends undoubtedly on the critical and crucial health balance.")
@@ -134,7 +134,7 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(
       Relation(Literal("worsen"), List(Literal("age disease progression"))),
-      Relation(Literal("depend"), List(Literal("age disease progression"), Literal("health balance")))
+      Relation(Literal("depend on"), List(Literal("age disease progression"), Literal("health balance")))
     ).some
 
     expect assert_=== extract("Age disease progression that can worsen also depends on the critical, highly crucial health balance.")
@@ -145,7 +145,7 @@ class CompileSuite extends FunSuite {
 
     val expect = Stream(
       Relation(Literal("be"), List(Literal("age disease progression"))),
-      Relation(Literal("depend"), List(Literal("age disease progression"), Literal("health balance")))
+      Relation(Literal("depend on"), List(Literal("age disease progression"), Literal("health balance")))
     ).some
 
     expect assert_=== extract("Age disease progression, which is unfortunate, also depends on the critical, highly crucial health balance.")
@@ -211,10 +211,10 @@ class CompileSuite extends FunSuite {
 
   }
 
-  test("Cardinal Numbers.") { 
+  test("Cardinal Numbers.") {
 
     val expect = Stream(
-      Relation(Literal("participate"), List(
+      Relation(Literal("participate in"), List(
         Literal("66 woman total"),
         Literal("study")
       ))
@@ -244,15 +244,15 @@ class CompileSuite extends FunSuite {
   test("Colon") {
 
     val expect = Stream(
-      Relation(Literal("explore"), List(
+      Relation(Literal("explore in"), List(
         Literal("possibility"),
         Literal("two context")
       )),
-      Relation(Literal("explore"), List(
+      Relation(Literal("explore in"), List(
         Literal("possibility"),
         Literal("axon regeneration")
       )),
-      Relation(Literal("explore"), List(
+      Relation(Literal("explore in"), List(
         Literal("possibility"),
         Literal("precursor recruitment")
       ))
@@ -260,7 +260,7 @@ class CompileSuite extends FunSuite {
 
     expect assert_=== extract("This possibility has been explored in two contexts: axon regeneration and endogenous neural precursor recruitment.")
 
-  } 
+  }
 
 }
 
