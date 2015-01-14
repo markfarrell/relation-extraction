@@ -33,7 +33,7 @@ object Pubmed {
 
     def toCSV : String = s""""${pmid}","${predicate}","${subject}","${obj}","${term}","${timestamp}"\n"""
 
-    def toTweet : String = s"""True or false? ${predicate}(${hashtag(subject)}, ${hashtag(obj)}) ${url} ${hashtag(term)}"""
+    def toTweet : String = s"""True or false? ${predicate.replaceAll(" ", "_")}(${hashtag(subject)}, ${hashtag(obj)}) ${url} ${hashtag(term)}"""
 
     def toJSON : String = s"""{"pmid":"${pmid}","predicate":"${predicate}","subject":"${subject}","obj":"${obj}","term":"${term}","timestamp":"${timestamp}"}"""
 
